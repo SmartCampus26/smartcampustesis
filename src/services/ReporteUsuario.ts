@@ -5,22 +5,24 @@ export const asociarUsuarioAReporte = (idReporte: number, idUser: number) =>
   supabase.from('reporte_usuario').insert({ idReporte, idUser })
 // Crea una relación entre un reporte y un usuario.
 
-export const obtenerUsuariosPorReporte = (idReporte: number) =>
+export const obtenerReportesPorUsuario = (idUser: number) =>
   supabase
     .from('reporte_usuario')
     .select(`
-      *,
-      usuario:idUser (
-        idUser,
-        nomUser,
-        apeUser,
-        correoUser,
-        rolUser
+      reporte:idReporte (
+        idReporte,
+        descriReporte,
+        estReporte,
+        fecReporte,
+        prioReporte,
+        empleado (
+          nomEmpl,
+          apeEmpl
+        )
       )
     `)
-    .eq('idReporte', idReporte)
-// Obtiene todos los usuarios asociados a un reporte específico, primero busca en reporte_usuario y luego trae los datos completos del usuario desde la tabla usuario, todo gracias al join automático de Supabase
-
+    .eq('idUser', idUser)
+  
 export const desasociarUsuarioDeReporte = (
   idReporte: number,
   idUser: number

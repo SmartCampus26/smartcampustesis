@@ -6,7 +6,7 @@ export interface Usuario {
     correoUser: string
     nomUser: string
     apeUser: string
-    tlfUser: number
+    tlfUser?: number
     fec_reg_user: string
   }
   
@@ -17,7 +17,7 @@ export interface Usuario {
     contraEmpl: string
     deptEmpl: string
     cargEmpl: string
-    tlfEmpl: number
+    tlfEmpl?: number
     correoEmpl: string
   }
   
@@ -53,8 +53,32 @@ export interface Usuario {
     idReporte: number
     idUser: number
   }
-  
-  export type Sesion =
-    | { tipo: 'usuario'; id: number; rol: string; data: Usuario }
-    | { tipo: 'empleado'; id: number; data: Empleado }
-  //se exporta el objeto de sesión que se guardará en el dispositivo cuando alguien inicia sesión y se divide en dos tipos usuario y empleado esto permitiendo tener sus datos listos sin tener que volver a pedirlos a la base de dadtos
+
+  // Tipo de sesión mejorado con union types
+export type Sesion = 
+| {
+    tipo: 'usuario'
+    id: number
+    rol: string
+    data: Usuario
+  }
+| {
+    tipo: 'empleado'
+    id: number
+    data: Empleado
+  }
+
+// Type guards para verificar el tipo de sesión
+export function esUsuario(sesion: Sesion): sesion is { tipo: 'usuario'; id: number; rol: string; data: Usuario } {
+return sesion.tipo === 'usuario'
+}
+
+export function esEmpleado(sesion: Sesion): sesion is { tipo: 'empleado'; id: number; data: Empleado } {
+return sesion.tipo === 'empleado'
+}
+
+// Tipos de respuesta de Supabase
+export interface SupabaseResponse<T> {
+data: T | null
+error: any
+}

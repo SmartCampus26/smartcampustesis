@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 // Credenciales del super admin que es un usuario especial que no está en la base de datos pero tiene permisos totales y este se valida antes que cualquier login
 const SUPER_ADMIN = {
   correo: 'emily.ojeda.est@uets.edu.ec',
-  contrasena: '123456789'
+  contrasena: 'lumity<319'
 }
 
 // Login con Supabase Auth 

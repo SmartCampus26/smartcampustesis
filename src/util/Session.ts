@@ -1,20 +1,95 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-//AsyncStorage es un módulo de almacenamiento local para aplicaciones React Native, funciona como unalmacenamiento dentro del teléfono donde tu app puede guardar datos que deben mantenerse aunque el usuario cierre la app
 import { Sesion } from '../types/Database'
-// Se importa Sesion un tipo o interfaz TypeScript que define la estructura de los datos del objeto de sesión que será almacenado
 
-export const guardarSesion = async (sesion: Sesion) => {
-  await AsyncStorage.setItem('sesion', JSON.stringify(sesion))
+const SESION_KEY = 'sesion'
+
+/**
+ * Guarda la sesión del usuario en el dispositivo
+ */
+export const guardarSesion = async (sesion: Sesion): Promise<void> => {
+  try {
+    const sesionString = JSON.stringify(sesion)
+    await AsyncStorage.setItem(SESION_KEY, sesionString)
+  } catch (error) {
+    console.error('Error al guardar sesión:', error)
+    throw new Error('No se pudo guardar la sesión')
+  }
 }
-//Guarda la sesión del usuario en el dispositiv convirtiendo el objeto sesion a un string JSON porque AsyncStorage solo guarda texto y lo guarda bajo la clave "sesion"
 
+/**
+ * Obtiene la sesión guardada del usuario
+ */
 export const obtenerSesion = async (): Promise<Sesion | null> => {
-  const sesion = await AsyncStorage.getItem('sesion')
-  return sesion ? JSON.parse(sesion) : null
+  try {
+    const sesionString = await AsyncStorage.getItem(SESION_KEY)
+    if (!sesionString) {
+      return null
+    }
+    
+    const sesion = JSON.parse(sesionString) as Sesion
+    return sesion
+  } catch (error) {
+    console.error('Error al obtener sesión:', error)
+    return null
+  }
 }
-//Recupera la sesión guardada del teléfono, busca si existe algo guardado con la clave "sesion". Si existe convierte el texto a un objeto con el JSON.parse y lo devuelve. Si no existe se devuelve null que quiere decir que no hay una sesión guardada
 
-export const eliminarSesion = async () => {
-  await AsyncStorage.removeItem('sesion')
+/**
+ * Elimina la sesión guardada (cerrar sesión)
+ */
+export const eliminarSesion = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(SESION_KEY)
+  } catch (error) {
+    console.error('Error al eliminar sesión:', error)
+    throw new Error('No se pudo cerrar la sesión')
+  }
 }
-//Borra la sesión guardada del dispositivo por completo
+
+/**
+ * Verifica si hay una sesión activa
+ */
+export const tieneSesionActiva = async (): Promise<boolean> => {
+  const sesion = await obtenerSesion()
+  return sesion !== null
+}
+
+/**
+ * Obtiene el tipo de usuario de la sesión actual
+ */
+export const obtenerTipoUsuario = async (): Promise<'usuario' | 'empleado' | null> => {
+  const sesion = await obtenerSesion()
+  return sesion?.tipo || null
+}
+
+/**
+ * Obtiene el rol del usuario actual
+ */
+export const obtenerRolUsuario = async (): Promise<string | null> => {
+  const sesion = await obtenerSesion()
+  return sesion?.rol || null
+}
+
+/**
+ * Actualiza la sesión completa (para cuando cambia información del usuario)
+ */
+export const actualizarSesion = async (nuevaSesion: Sesion): Promise<void> => {
+  try {
+    await guardarSesion(nuevaSesion)
+  } catch (error) {
+    console.error('Error al actualizar sesión:', error)
+    throw new Error('No se pudo actualizar la sesión')
+  }
+}
+
+/**
+ * Limpia toda la información de AsyncStorage (útil para debugging)
+ */
+export const limpiarTodoElAlmacenamiento = async (): Promise<void> => {
+  try {
+    await AsyncStorage.clear()
+  } catch (error) {
+    console.error('Error al limpiar almacenamiento:', error)
+    throw new Error('No se pudo limpiar el almacenamiento')
+  }
+}

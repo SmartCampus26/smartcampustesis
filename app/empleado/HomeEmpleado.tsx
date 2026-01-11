@@ -1,4 +1,6 @@
+// Importa React y hooks para manejar estado y efectos
 import React, { useState, useEffect } from 'react'
+// Componentes visuales de React Native
 import {
   View,
   Text,
@@ -11,22 +13,39 @@ import {
   Modal,
   TextInput,
 } from 'react-native'
+// Servicios para manejar reportes
 import { obtenerReportes, actualizarReporte } from '../../src/services/ReporteService'
+// Manejo de sesión del empleado
 import { obtenerSesion } from '../../src/util/Session'
+// Tipo de datos Reporte
 import { Reporte } from '../../src/types/Database'
+// Servicio PDF
+import { generarPDF } from '../../src/services/PdfService'
 
+// COMPONENTE PRINCIPAL
 export default function HomeEmpleados() {
+  // ===== ESTADOS PRINCIPALES =====
+
+  // Información del empleado en sesión
   const [empleado, setEmpleado] = useState<any>(null)
+  // Lista de reportes asignados al empleado
   const [reportes, setReportes] = useState<Reporte[]>([])
+  // Estados de carga
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
 
+  // ===== ESTADOS DEL MODAL =====
+
   // Modal para establecer prioridad y tiempo
+  // Controla visibilidad del modal
   const [modalVisible, setModalVisible] = useState(false)
+  // Reporte seleccionado para asignar prioridad
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+   // Datos del formulario
   const [prioridad, setPrioridad] = useState('')
   const [tiempoEstimado, setTiempoEstimado] = useState('')
 
+  // ===== ESTADÍSTICAS =====
   // Estadísticas de reportes asignados al empleado
   const [stats, setStats] = useState({
     total: 0,
@@ -35,20 +54,23 @@ export default function HomeEmpleados() {
     resueltos: 0,
   })
 
+  // Se ejecuta al cargar la pantalla
   useEffect(() => {
     cargarDatos()
   }, [])
 
+  // CARGA DE DATOS
   const cargarDatos = async () => {
     try {
+      // Obtiene la sesión actual
       const sesion = await obtenerSesion()
       setEmpleado(sesion?.data)
 
-      // Cargar SOLO los reportes asignados a este empleado
+      // Obtiene todos los reportes
       const { data: reportesData, error: reportesError } = await obtenerReportes()
       if (reportesError) throw reportesError
 
-      // Filtrar solo los reportes asignados a este empleado
+      // Filtra solo los reportes asignados al empleado
       const misReportes = (reportesData || []).filter(
         (r: Reporte) => r.idEmpl === sesion?.id
       )
@@ -64,6 +86,7 @@ export default function HomeEmpleados() {
     }
   }
 
+  // CÁLCULO DE ESTADÍSTICAS
   const calcularEstadisticas = (data: Reporte[]) => {
     setStats({
       total: data.length,
@@ -73,6 +96,7 @@ export default function HomeEmpleados() {
     })
   }
 
+  // MODAL: PRIORIDAD Y TIEMPO
   const abrirModalPrioridad = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setPrioridad(reporte.prioReporte || '')
@@ -80,6 +104,7 @@ export default function HomeEmpleados() {
     setModalVisible(true)
   }
 
+  // Guarda prioridad (y tiempo estimado)
   const guardarPrioridadYTiempo = async () => {
     if (!reporteSeleccionado) return
 
@@ -97,6 +122,7 @@ export default function HomeEmpleados() {
     }
   }
 
+  // CAMBIO DE ESTADO DEL REPORTE
   const cambiarEstado = async (idReporte: number, nuevoEstado: string) => {
     try {
       await actualizarReporte(idReporte, { estReporte: nuevoEstado })
@@ -107,11 +133,28 @@ export default function HomeEmpleados() {
     }
   }
 
+  // Refrescar con gesto de deslizamiento
   const onRefresh = () => {
     setRefrescando(true)
     cargarDatos()
   }
 
+  // ===== Función para imprimir PDF =====
+  const imprimirPDF = async () => {
+    try {
+      // Creamos un PDF con colores de estado y prioridad
+      const reportesParaPDF = reportes.map(r => ({
+        ...r,
+        colorEstado: getStatusColor(r.estReporte),
+        colorPrioridad: getPriorityColor(r.prioReporte),
+      }))
+      await generarPDF(reportesParaPDF, stats)
+    } catch (error: any) {
+      Alert.alert('Error', error.message)
+    }
+  }
+
+  // PANTALLA DE CARGA
   if (cargando) {
     return (
       <View style={styles.centeredContainer}>
@@ -120,6 +163,7 @@ export default function HomeEmpleados() {
     )
   }
 
+  // PANTALLA DE CARGA
   return (
     <>
       <ScrollView
@@ -128,13 +172,13 @@ export default function HomeEmpleados() {
           <RefreshControl refreshing={refrescando} onRefresh={onRefresh} colors={['#1DCDFE']} />
         }
       >
-        {/* Header */}
+        {/* ENCABEZADO */}
         <View style={styles.header}>
           <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Empleado'}</Text>
           <Text style={styles.role}>Tareas Asignadas</Text>
         </View>
 
-        {/* Estadísticas */}
+        {/* TARJETAS DE ESTADÍSTICAS */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: '#1DCDFE' }]}>
             <Text style={styles.statNumber}>{stats.total}</Text>
@@ -157,11 +201,29 @@ export default function HomeEmpleados() {
           </View>
         </View>
 
-        {/* Lista de Tareas Asignadas */}
+        {/* ===== Botón Imprimir PDF ===== */}
+        <View style={{ padding: 16, marginBottom: 12 }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#FF5252',
+              padding: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+            }}
+            onPress={imprimirPDF}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }}>
+              Imprimir PDF
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* LISTA DE REPORTES */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mis Tareas</Text>
           {reportes.length === 0 ? (
             <View style={styles.emptyState}>
+              {/* Encabezado del reporte */}
               <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
               <Text style={styles.emptySubtext}>Las nuevas tareas aparecerán aquí</Text>
             </View>
@@ -178,10 +240,12 @@ export default function HomeEmpleados() {
                   </View>
                 </View>
 
+                {/* Descripción */}
                 <Text style={styles.reportDesc} numberOfLines={2}>
                   {reporte.descriReporte}
                 </Text>
-
+                
+                {/* Acciones */}
                 <View style={styles.reportFooter}>
                   <Text style={styles.reportDate}>
                     {new Date(reporte.fecReporte).toLocaleDateString()}
@@ -203,6 +267,7 @@ export default function HomeEmpleados() {
                   </View>
                 )}
 
+                
                 {/* Acciones del Empleado */}
                 <View style={styles.actionsContainer}>
                   <TouchableOpacity
@@ -235,7 +300,8 @@ export default function HomeEmpleados() {
           )}
         </View>
       </ScrollView>
-
+      
+      {/* ======= MODAL DE PRIORIDAD ====== */}
       {/* Modal para Prioridad y Tiempo */}
       <Modal
         animationType="slide"
@@ -299,6 +365,8 @@ export default function HomeEmpleados() {
   )
 }
 
+// FUNCIONES AUXILIARES
+// Devuelve color según estado
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'Pendiente': return '#FFA726'

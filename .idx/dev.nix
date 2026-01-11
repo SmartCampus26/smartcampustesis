@@ -1,24 +1,25 @@
-# To learn more about how to use Nix to configure your environment
+# Configuración del entorno de desarrollo usando Nix para proyectos Expo / React Native
+# Permite definir paquetes, variables de entorno y acciones automáticas del workspace
 # see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
-  # Which nixpkgs channel to use.
+  # Canal estable de nixpkgs a utilizar
   channel = "stable-25.05";
-  # Use https://search.nixos.org/packages to find packages
+  # Paquetes necesarios para el proyecto
   packages = [ pkgs.nodejs_22 ];
-  # Sets environment variables in the workspace
+  # Variables de entorno del workspace
   env = { EXPO_USE_FAST_RESOLVER = 1; };
   idx = {
-    # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
+    # Extensiones de VS Code recomendadas para el proyecto
     extensions = [
       "msjsdiag.vscode-react-native"
     ];
     workspace = {
-      # Runs when a workspace is first created with this `dev.nix` file
+      # Comandos que se ejecutan al crear el workspace por primera vez
       onCreate = {
         install =
           "npm ci --prefer-offline --no-audit --no-progress --timing && npm i @expo/ngrok@^4.1.0 react@latest react-dom@latest react-native@latest && npm i -D @types/react@latest";
       };
-      # Runs when a workspace restarted
+      # Comandos que se ejecutan al reiniciar el workspace
       onStart = {
         android = ''
           echo -e "\033[1;33mWaiting for Android emulator to be ready...\033[0m"
@@ -28,7 +29,7 @@
         '';
       };
     };
-    # Enable previews and customize configuration
+    # Habilita y configura las vistas previas del proyecto
     previews = {
       enable = true;
       previews = {
@@ -37,7 +38,7 @@
           manager = "web";
         };
         android = {
-          # noop
+          # Comando vacío para mantener activa la vista previa
           command = [ "tail" "-f" "/dev/null" ];
           manager = "web";
         };

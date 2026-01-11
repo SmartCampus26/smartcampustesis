@@ -1,3 +1,6 @@
+// Pantalla de inicio de sesión para usuarios y empleados
+// Permite autenticar, validar credenciales y redirigir según rol y tipo de usuario
+
 import React, { useState } from 'react'
 import {
   View,
@@ -15,46 +18,55 @@ import {
 import { router } from 'expo-router' 
 import { loginPersonalizado } from '../src/services/AuthService'
 import { Sesion } from '../src/types/Database'
+import { Ionicons } from '@expo/vector-icons'
 
+// Estados del formulario y control de la interfaz
 export default function LoginScreen() {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
   const [cargando, setCargando] = useState(false)
+  const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
+  // Función que gestiona el proceso de inicio de sesión
   const handleLogin = async () => {
+
+    // Validación de campos vacíos
     if (!correo.trim() || !contrasena.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos')
       return
     }
 
     setCargando(true)
+
     try {
+      // Llamada al servicio de autenticación personalizada
       const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
       
-      // Si es super admin (Emily), tiene acceso total
+      // Acceso total para super administrador
       if (sesion.tipo === 'usuario' && sesion.rol === 'super_admin') {
         Alert.alert('Acceso Total', 'Bienvenida Emily - Administrador del Sistema')
-        router.replace('/maxAutoridad/MenuSuperAutoridad') // CAMBIO AQUÍ
+        router.replace('/maxAutoridad/MenuSuperAutoridad')
         return
       }
       
-      // Redirigir según el tipo y rol normal
+      // Redirección según tipo y rol del usuario
       if (sesion.tipo === 'usuario') {
         if (sesion.rol === 'autoridad') {
           Alert.alert('Bienvenido', `Hola ${sesion.data.nomUser}`)
-          router.replace('/autoridad/HomeAutoridad') // CAMBIO AQUÍ
+          router.replace('/autoridad/HomeAutoridad')
         } else if (sesion.rol === 'docente') {
           Alert.alert('Bienvenido', `Hola ${sesion.data.nomUser}`)
-          router.replace('/docente/HomeDocente') // CAMBIO AQUÍ
+          router.replace('/docente/HomeDocente')
         } else {
           throw new Error('Rol de usuario no reconocido')
         }
       } else if (sesion.tipo === 'empleado') {
         Alert.alert('Bienvenido', `Hola ${sesion.data.nomEmpl}`)
-        router.replace('/empleado/HomeEmpleado') // CAMBIO AQUÍ
+        router.replace('/empleado/HomeEmpleado')
       }
     } catch (error: any) {
+      // Manejo de errores de autenticación
       Alert.alert('Error de autenticación', error.message || 'Credenciales incorrectas')
     } finally {
       setCargando(false)
@@ -62,6 +74,7 @@ export default function LoginScreen() {
   }
 
   return (
+    // Ajusta la vista cuando aparece el teclado
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -70,7 +83,7 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo o Imagen */}
+         {/* Logo de la aplicación */}
         <View style={styles.logoContainer}>
           <Image
             source={require('../assets/images/logo_tesis.png')} 
@@ -79,11 +92,11 @@ export default function LoginScreen() {
           />
         </View>
 
-        {/* Título */}
+        {/* Título principal */}
         <Text style={styles.title}>Iniciar Sesión</Text>
         <Text style={styles.subtitle}>Accede a tu cuenta</Text>
 
-        {/* Selector de tipo de usuario */}
+        {/* Selector del tipo de usuario */}
         <View style={styles.tipoUsuarioContainer}>
           <TouchableOpacity
             style={[
@@ -92,6 +105,12 @@ export default function LoginScreen() {
             ]}
             onPress={() => setTipoUsuario('usuario')}
           >
+            <Ionicons 
+              name="people" 
+              size={20} 
+              color={tipoUsuario === 'usuario' ? '#FFFFFF' : '#2F455C'} 
+              style={{ marginRight: 8 }}
+            />
             <Text style={[
               styles.tipoTexto,
               tipoUsuario === 'usuario' && styles.tipoTextoActivo
@@ -107,6 +126,12 @@ export default function LoginScreen() {
             ]}
             onPress={() => setTipoUsuario('empleado')}
           >
+            <Ionicons 
+              name="briefcase" 
+              size={20} 
+              color={tipoUsuario === 'empleado' ? '#FFFFFF' : '#2F455C'} 
+              style={{ marginRight: 8 }}
+            />
             <Text style={[
               styles.tipoTexto,
               tipoUsuario === 'empleado' && styles.tipoTextoActivo
@@ -116,35 +141,64 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Formulario */}
+        {/* Formulario de inicio de sesión */}
         <View style={styles.formContainer}>
+          {/* Campo de correo */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Correo Electrónico</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="ejemplo@correo.com"
-              placeholderTextColor="#8B9BA8"
-              value={correo}
-              onChangeText={setCorreo}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons 
+                name="mail-outline" 
+                size={20} 
+                color="#8B9BA8" 
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="ejemplo@correo.com"
+                placeholderTextColor="#8B9BA8"
+                value={correo}
+                onChangeText={setCorreo}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
           </View>
-
+            
+          {/* Campo de contraseña */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#8B9BA8"
-              value={contrasena}
-              onChangeText={setContrasena}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color="#8B9BA8" 
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#8B9BA8"
+                value={contrasena}
+                onChangeText={setContrasena}
+                secureTextEntry={!mostrarContrasena}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setMostrarContrasena(!mostrarContrasena)}
+              >
+                <Ionicons 
+                  name={mostrarContrasena ? "eye-off-outline" : "eye-outline"} 
+                  size={22} 
+                  color="#8B9BA8"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-
+          
+          {/* Botón de inicio de sesión */}
           <TouchableOpacity
             style={styles.loginButton}
             onPress={handleLogin}
@@ -153,18 +207,29 @@ export default function LoginScreen() {
             {cargando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              <>
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={{ marginLeft: 8 }} />
+              </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Información adicional */}
+        {/* Información según el tipo de usuario */}
         <View style={styles.infoContainer}>
-          <Text style={styles.infoText}>
-            {tipoUsuario === 'usuario' 
-              ? 'Acceso para autoridades y docentes' 
-              : 'Acceso para personal administrativo'}
-          </Text>
+          <View style={styles.infoBadge}>
+            <Ionicons 
+              name="information-circle-outline" 
+              size={16} 
+              color="#8B9BA8" 
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.infoText}>
+              {tipoUsuario === 'usuario' 
+                ? 'Acceso para autoridades y docentes' 
+                : 'Acceso para personal administrativo'}
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -211,12 +276,22 @@ const styles = StyleSheet.create({
   },
   tipoBoton: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 10,
   },
   tipoBotonActivo: {
-    backgroundColor: '#1DCDFE',
+    backgroundColor: '#21D0B2',
+    shadowColor: '#21D0B2',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tipoTexto: {
     fontSize: 16,
@@ -238,21 +313,35 @@ const styles = StyleSheet.create({
     color: '#2F455C',
     marginBottom: 8,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F5F7FA',
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
     paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
     paddingVertical: 14,
     fontSize: 16,
     color: '#2F455C',
-    borderWidth: 2,
-    borderColor: 'transparent',
+  },
+  eyeButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   loginButton: {
     backgroundColor: '#21D0B2',
     borderRadius: 12,
     paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
     shadowColor: '#21D0B2',
     shadowOffset: {
@@ -271,6 +360,14 @@ const styles = StyleSheet.create({
   infoContainer: {
     alignItems: 'center',
     paddingTop: 16,
+  },
+  infoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   infoText: {
     fontSize: 13,
