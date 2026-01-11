@@ -65,9 +65,18 @@ export const obtenerTipoUsuario = async (): Promise<'usuario' | 'empleado' | nul
 /**
  * Obtiene el rol del usuario actual
  */
+import { esUsuario } from '../types/Database'
+
 export const obtenerRolUsuario = async (): Promise<string | null> => {
   const sesion = await obtenerSesion()
-  return sesion?.rol || null
+
+  if (!sesion) return null
+
+  if (esUsuario(sesion)) {
+    return sesion.rol
+  }
+
+  return null // si es empleado
 }
 
 /**

@@ -43,7 +43,7 @@ export default function HomeEmpleados() {
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
    // Datos del formulario
   const [prioridad, setPrioridad] = useState('')
-  const [tiempoEstimado, setTiempoEstimado] = useState('')
+  const [, setTiempoEstimado] = useState('')
 
   // ===== ESTADÍSTICAS =====
   // Estadísticas de reportes asignados al empleado
@@ -96,42 +96,7 @@ export default function HomeEmpleados() {
     })
   }
 
-  // MODAL: PRIORIDAD Y TIEMPO
-  const abrirModalPrioridad = (reporte: Reporte) => {
-    setReporteSeleccionado(reporte)
-    setPrioridad(reporte.prioReporte || '')
-    setTiempoEstimado('') // Necesitarías agregar este campo en tu BD
-    setModalVisible(true)
-  }
 
-  // Guarda prioridad (y tiempo estimado)
-  const guardarPrioridadYTiempo = async () => {
-    if (!reporteSeleccionado) return
-
-    try {
-      await actualizarReporte(reporteSeleccionado.idReporte, {
-        prioReporte: prioridad,
-        // comentReporte: `Tiempo estimado: ${tiempoEstimado}` // Temporal hasta agregar campo
-      })
-
-      Alert.alert('Éxito', 'Prioridad y tiempo actualizados')
-      setModalVisible(false)
-      cargarDatos()
-    } catch (error: any) {
-      Alert.alert('Error', error.message)
-    }
-  }
-
-  // CAMBIO DE ESTADO DEL REPORTE
-  const cambiarEstado = async (idReporte: number, nuevoEstado: string) => {
-    try {
-      await actualizarReporte(idReporte, { estReporte: nuevoEstado })
-      Alert.alert('Éxito', `Estado cambiado a ${nuevoEstado}`)
-      cargarDatos()
-    } catch (error: any) {
-      Alert.alert('Error', error.message)
-    }
-  }
 
   // Refrescar con gesto de deslizamiento
   const onRefresh = () => {
@@ -142,15 +107,16 @@ export default function HomeEmpleados() {
   // ===== Función para imprimir PDF =====
   const imprimirPDF = async () => {
     try {
-      // Creamos un PDF con colores de estado y prioridad
-      const reportesParaPDF = reportes.map(r => ({
-        ...r,
-        colorEstado: getStatusColor(r.estReporte),
-        colorPrioridad: getPriorityColor(r.prioReporte),
-      }))
-      await generarPDF(reportesParaPDF, stats)
+      await generarPDF(reportes, {
+        titulo: 'Mis Tareas Asignadas',
+        incluirEmpleado: false, // porque es el empleado actual
+        incluirUsuario: true,
+      })
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      Alert.alert(
+        'Error',
+        error?.message ?? 'No se pudo generar el PDF'
+      )
     }
   }
 
@@ -268,99 +234,14 @@ export default function HomeEmpleados() {
                 )}
 
                 
-                {/* Acciones del Empleado */}
-                <View style={styles.actionsContainer}>
-                  <TouchableOpacity
-                    style={styles.priorityButton}
-                    onPress={() => abrirModalPrioridad(reporte)}
-                  >
-                    <Text style={styles.actionText}>⚡ Prioridad & Tiempo</Text>
-                  </TouchableOpacity>
 
-                  {reporte.estReporte === 'Pendiente' && (
-                    <TouchableOpacity
-                      style={[styles.statusButton, { backgroundColor: '#21D0B2' }]}
-                      onPress={() => cambiarEstado(reporte.idReporte, 'En Proceso')}
-                    >
-                      <Text style={styles.statusButtonText}>Iniciar</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {reporte.estReporte === 'En Proceso' && (
-                    <TouchableOpacity
-                      style={[styles.statusButton, { backgroundColor: '#34F5C5' }]}
-                      onPress={() => cambiarEstado(reporte.idReporte, 'Resuelto')}
-                    >
-                      <Text style={styles.statusButtonText}>Completar</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
               </View>
             ))
           )}
         </View>
       </ScrollView>
       
-      {/* ======= MODAL DE PRIORIDAD ====== */}
-      {/* Modal para Prioridad y Tiempo */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Establecer Prioridad y Tiempo</Text>
 
-            <Text style={styles.label}>Prioridad</Text>
-            <View style={styles.priorityOptions}>
-              {['Baja', 'Media', 'Alta', 'Urgente'].map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  style={[
-                    styles.priorityOption,
-                    prioridad === p && styles.priorityOptionActive
-                  ]}
-                  onPress={() => setPrioridad(p)}
-                >
-                  <Text style={[
-                    styles.priorityOptionText,
-                    prioridad === p && styles.priorityOptionTextActive
-                  ]}>
-                    {p}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Tiempo Estimado (horas)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej: 2.5"
-              keyboardType="decimal-pad"
-              value={tiempoEstimado}
-              onChangeText={setTiempoEstimado}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={guardarPrioridadYTiempo}
-              >
-                <Text style={styles.saveButtonText}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   )
 }

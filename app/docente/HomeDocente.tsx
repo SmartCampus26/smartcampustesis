@@ -14,7 +14,7 @@ import {
 // Iconos
 import { Ionicons } from '@expo/vector-icons'
 // Navegación entre pantallas
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 // Servicios para obtener datos desde la base de datos
 import { obtenerReportes } from '../../src/services/ReporteService'
 import { obtenerSesion } from '../../src/util/Session'
@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function HomeDocente() {
   // ESTADOS (variables reactivas)
+
 
   // Información del usuario logueado
   const [usuario, setUsuario] = useState<any>(null)
@@ -54,6 +55,7 @@ export default function HomeDocente() {
       // Obtener la sesión del usuario
       const sesion = await obtenerSesion()
       setUsuario(sesion?.data)
+      
 
       // Obtener todos los reportes
       const { data: reportesData, error: reportesError } = await obtenerReportes()
@@ -92,11 +94,21 @@ export default function HomeDocente() {
     cargarDatos()
   }
 
-  // FUNCIÓN: Ir a la pantalla de crear reporte
   const handleCrearReporte = () => {
-    router.push('/docente/ReporteUsuario')
+    if (!usuario?.idUser) {
+      Alert.alert('Error', 'No se pudo identificar al usuario')
+      return
+    }
+    
+    router.push({
+      pathname: '/docente/ReporteUsuario',
+      params: {
+        idUser: usuario.idUser,
+        nombreUsuario: usuario.nomUser || 'Usuario'
+      }
+    })
   }
-
+  
   // PANTALLA DE CARGA
   if (cargando) {
     return (

@@ -103,18 +103,18 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
             <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
           ) : (
             <View style={styles.iconContainer}>
-              <Camera size={120} color="#3B82F6" strokeWidth={1.5} />
+              <Camera size={120} color="#34F5C5" strokeWidth={1.5} />
             </View>
           )}
 
           {/* 💚 Indicador visual de guardar */}
           <Animated.View style={[styles.overlay, styles.leftOverlay, heartStyle]}>
-            <Heart size={80} color="#10B981" fill="#10B981" />
+            <Heart size={80} color="#34F5C5" fill="#34F5C5" />
           </Animated.View>
 
           {/* ❌ Indicador visual de descartar */}
           <Animated.View style={[styles.overlay, styles.rightOverlay, xStyle]}>
-            <X size={80} color="#EF4444" strokeWidth={3} />
+            <X size={80} color="#2F455C" strokeWidth={3} />
           </Animated.View>
         </Animated.View>
       </GestureDetector>
@@ -137,14 +137,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    // Sombra dramática con degradado azul-morado
-    shadowColor: '#6366F1',
+    shadowColor: '#1DCDFE',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowRadius: 30,
     elevation: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(29, 205, 254, 0.15)',
   },
   photo: {
     width: '100%',
@@ -153,7 +152,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+    backgroundColor: 'linear-gradient(135deg, #1DCDFE 0%, #21D0B2 100%)',
     width: '100%',
     height: '100%',
   },
@@ -170,12 +169,12 @@ const styles = StyleSheet.create({
     top: 80,
     left: 30,
     borderWidth: 4,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(52, 245, 197, 0.4)',
   },
   rightOverlay: {
     top: 80,
     right: 30,
     borderWidth: 4,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(47, 69, 92, 0.3)',
   },
 });

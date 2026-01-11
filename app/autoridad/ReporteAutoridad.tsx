@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 // Router de Expo para navegación entre pantallas
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 // Cliente de Supabase para interactuar con la base de datos
 import { supabase } from '../../src/lib/Supabase'
 // Iconos de Ionicons para mejorar la interfaz visual
@@ -55,7 +55,10 @@ const CATEGORIAS_OBJETOS = [
   { id: 'otros', nombre: 'Otros', icono: 'ellipsis-horizontal-outline' },
 ]
 
-export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProps) {
+export default function CrearReporte({ }: CrearReporteProps) {
+  const params = useLocalSearchParams()
+  const idUser = parseInt(params.idUser as string)
+  const nombreUsuario = params.nombreUsuario as string
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [departamento, setDepartamento] = useState<'mantenimiento' | 'sistemas'>('mantenimiento')
@@ -99,24 +102,44 @@ export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProp
   }
 
   const crearReporte = async () => {
+    console.log('=== DEBUGGER CREAR REPORTE ===')
+    console.log('idUser recibido:', idUser)
+    console.log('Tipo de idUser:', typeof idUser)
+    console.log('nombreUsuario:', nombreUsuario)
+    console.log('params completos:', params)
+  
     if (!validarFormulario()) return
-
+  
     setCargando(true)
     try {
       const pisoNumero = parseInt(pisoLugar)
-
-      // 1. Verificar si el lugar existe en la base de datos
+  
+      // 1. Obtener empleado aleatorio del departamento
+      const { data: empleados, error: errorEmpleados } = await supabase
+        .from('empleado')
+        .select('idEmpl')
+        .eq('deptEmpl', departamento)
+  
+      if (errorEmpleados) throw errorEmpleados
+  
+      let idEmplAleatorio = null
+      if (empleados && empleados.length > 0) {
+        const indiceAleatorio = Math.floor(Math.random() * empleados.length)
+        idEmplAleatorio = empleados[indiceAleatorio].idEmpl
+        console.log(`Empleado asignado: ${idEmplAleatorio} del departamento ${departamento}`)
+      }
+  
+      // 2. Verificar/crear lugar
       let { data: lugarExistente, error: errorBuscarLugar } = await supabase
         .from('lugar')
         .select('idLugar')
         .eq('nomLugar', lugarSeleccionado)
         .eq('pisoLugar', pisoNumero)
         .single()
-
+  
       let idLugarDB: number
-
+  
       if (errorBuscarLugar || !lugarExistente) {
-        // El lugar no existe con ese piso, crearlo
         const { data: nuevoLugar, error: errorCrearLugar } = await supabase
           .from('lugar')
           .insert([
@@ -127,14 +150,14 @@ export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProp
           ])
           .select()
           .single()
-
+  
         if (errorCrearLugar) throw errorCrearLugar
         idLugarDB = nuevoLugar.idLugar
       } else {
         idLugarDB = lugarExistente.idLugar
       }
-
-      // 2. Crear el reporte primero
+  
+      // 3. Crear el reporte
       const { data, error } = await supabase
         .from('reporte')
         .insert([
@@ -145,28 +168,35 @@ export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProp
             prioReporte: 'no asignada',
             comentReporte: '',
             imgReporte: '',
-            idEmpl: null,
+            idEmpl: idEmplAleatorio,
+            idUser: idUser,
           }
         ])
         .select('idReporte')
-
+  
       if (error) throw error
       if (!data || data.length === 0) {
         throw new Error('No se devolvió el reporte')
       }
-
+  
       const idReporte = data[0].idReporte
-    
-      await supabase
-      .from('reporte_usuario')
-      .insert([
-        {
-          idReporte,
-          idUser,
-        }
-      ])
-
-      // 3. Crear el objeto vinculado al reporte
+  
+      // 4. Vincular reporte con usuario
+      const { error: errorReporteUsuario } = await supabase
+        .from('reporte_usuario')
+        .insert([
+          {
+            idReporte,
+            idUser,
+          }
+        ])
+  
+      if (errorReporteUsuario) {
+        console.error('Error al vincular usuario:', errorReporteUsuario)
+        throw errorReporteUsuario
+      }
+  
+      // 5. Crear el objeto
       const { error: objetoError } = await supabase
         .from('objeto')
         .insert([
@@ -177,17 +207,16 @@ export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProp
             idReporte,
           }
         ])
-
+  
       if (objetoError) throw objetoError
-
+  
       Alert.alert(
         'Éxito',
-        'Reporte creado correctamente',
+        `Reporte creado y asignado a empleado ${idEmplAleatorio || 'sin asignar'}`,
         [
           {
             text: 'OK',
             onPress: () => {
-              // Limpiar formulario
               setTitulo('')
               setDescripcion('')
               setDepartamento('mantenimiento')
@@ -195,7 +224,7 @@ export default function CrearReporte({ idUser, nombreUsuario }: CrearReporteProp
               setPisoLugar('')
               setNombreObjeto('')
               setCategoriaObjeto('')
-              // router.back()
+              router.back()
             }
           }
         ]
