@@ -1,12 +1,29 @@
+// Sistema de navegación por pestañas de Expo Router
+// Permite organizar la interfaz en secciones accesibles desde una barra inferior
 import { Tabs } from 'expo-router'
+// Conjunto de íconos vectoriales usados en la barra de navegación
+// Se utilizan para representar visualmente cada sección de la interfaz
 import { Ionicons } from '@expo/vector-icons'
 
+/**
+ * AutoridadesLayout
+ * 
+ * Componente contenedor de navegación para el módulo de autoridades / empleados.
+ * Define una barra de pestañas inferior con acceso a las principales funcionalidades:
+ * - Inicio
+ * - Perfil
+ * - Búsqueda
+ * - Reportes
+ * - Creación de usuarios y empleados
+ */
 export default function AutoridadesLayout() {
   return (
     <Tabs
       screenOptions={{
+        // Colores activos e inactivos de los íconos
         tabBarActiveTintColor: '#1DCDFE',
         tabBarInactiveTintColor: '#8B9BA8',
+        // Estilos generales de la barra inferior
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
@@ -15,10 +32,12 @@ export default function AutoridadesLayout() {
           paddingBottom: 8,
           paddingTop: 8,
         },
+        // Estilo del texto debajo de cada ícono
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
+        // Estilos del encabezado superior
         headerStyle: {
           backgroundColor: '#2F455C',
         },
@@ -28,6 +47,7 @@ export default function AutoridadesLayout() {
         },
       }}
     >
+      {/* Pantalla principal */}
       <Tabs.Screen
         name="HomeEmpleado"
         options={{
@@ -39,6 +59,7 @@ export default function AutoridadesLayout() {
         }}
       />
 
+      {/* Perfil del empleado */}
       <Tabs.Screen
         name="ProfileEmpleado"
         options={{
@@ -50,6 +71,7 @@ export default function AutoridadesLayout() {
         }}
       />
 
+      {/* Búsqueda de usuarios y empleados */}
       <Tabs.Screen
         name="ListadoEmpleado"
         options={{
@@ -61,6 +83,7 @@ export default function AutoridadesLayout() {
         }}
       />
 
+      {/* Gestión de reportes */}
       <Tabs.Screen
         name="ReportesPendientes"
         options={{
@@ -71,7 +94,6 @@ export default function AutoridadesLayout() {
           ),
         }}
       />
-
 
       <Tabs.Screen
         name="CrearMenu"
@@ -86,7 +108,7 @@ export default function AutoridadesLayout() {
       
 
       {/* Pantallas ocultas de la barra de tabs pero accesibles */}
-      
+      {/* Creación de usuarios o empleados */}
       <Tabs.Screen
         name="UsuarioNuevo"
         options={{

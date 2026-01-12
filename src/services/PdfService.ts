@@ -122,6 +122,11 @@ export async function generarPDF(
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${tituloPDF}</title>
+        <!-- ================================
+            LIBRERÍA PARA GRÁFICOS
+            Chart.js se usa para generar el gráfico estadístico
+            ================================ -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
           /* ================================
              RESET Y ESTILOS BASE
@@ -204,7 +209,22 @@ export async function generarPDF(
           .stat-value {
             font-size: 36px;
             font-weight: bold;
+          } 
+          
+          /* ================================
+             GRAFICOS ESTADISTICOS
+             ================================ */
+
+          .graficos {
+            margin-top: 40px;
+            text-align: center;
           }
+
+          .graficos img {
+            max-width: 400px;
+            margin: auto;
+          }
+
           
           /* ================================
              SECCIÓN DE DETALLE
@@ -379,6 +399,62 @@ export async function generarPDF(
             </div>
           </div>
         </div>
+        <!-- ================================
+             GRAFICO DE ESTADISTICAS
+             ================================ -->
+         <!-- ================================
+              GRÁFICO ESTADÍSTICO REAL
+              Se genera con Chart.js y luego
+              se convierte en imagen para el PDF
+              ================================ -->
+        ${opciones.mostrarGraficos ? `
+        <div class="graficos">
+          <h2>Distribución de Reportes por Estado</h2>
+
+          <!-- Canvas necesario para Chart.js -->
+          <canvas id="graficoEstados" width="400" height="400"></canvas>
+
+          <!-- Imagen final que se imprimirá en el PDF -->
+          <img id="graficoImagen" style="display:none;" />
+        </div>
+
+        <script>
+          // Obtener el contexto del canvas
+          const ctx = document.getElementById('graficoEstados').getContext('2d');
+
+          // Crear gráfico de pastel con datos estadísticos
+          const chart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+              labels: ['Pendientes', 'En Proceso', 'Resueltos'],
+              datasets: [{
+                data: [
+                  ${stats.pendientes},
+                  ${stats.enProceso},
+                  ${stats.resueltos}
+                ],
+                backgroundColor: ['#FFA726', '#21D0B2', '#34F5C5']
+              }]
+            },
+            options: {
+              responsive: false,
+              animation: false
+            }
+          });
+
+          // Convertir el gráfico a imagen Base64
+          // Esto es necesario porque expo-print
+          // NO renderiza canvas directamente
+          setTimeout(() => {
+            const imagen = document.getElementById('graficoImagen');
+            imagen.src = chart.toBase64Image();
+            imagen.style.display = 'block';
+
+            // Ocultar el canvas y dejar solo la imagen
+            document.getElementById('graficoEstados').style.display = 'none';
+          }, 500);
+        </script>
+        ` : ''}
 
         <!-- ================================
              TABLA DE DETALLE

@@ -1,4 +1,6 @@
+// React y hooks para manejar estado y efectos de ciclo de vida
 import React, { useState, useEffect } from 'react'
+// Componentes básicos de React Native para construir la interfaz
 import {
   View,
   Text,
@@ -8,30 +10,49 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native'
+// Hook de Expo Router para navegación entre pantallas
 import { useRouter } from 'expo-router'
+// Iconos de Ionicons para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
+// Funciones para manejar la sesión del usuario
 import { obtenerSesion, eliminarSesion } from '../../src/util/Session'
+// Servicio para obtener reportes desde la base de datos
 import { obtenerReportes } from '../../src/services/ReporteService'
+// Tipos TypeScript que representan las tablas de la base de datos
 import { Usuario, Empleado, Reporte } from '../../src/types/Database'
 
+/**
+ * Componente ProfileAutoridad
+ * Muestra el perfil del usuario o empleado autenticado,
+ * junto con estadísticas de reportes y opciones de configuración.
+ */
 export default function ProfileAutoridad() {
+  // Router para navegación
   const router = useRouter()
+  // Datos del usuario autenticado (usuario o empleado)
   const [usuario, setUsuario] = useState<Usuario | Empleado | null>(null)
+  // Define si la sesión corresponde a un usuario o a un empleado
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
+  // Estado de carga general de la pantalla
   const [cargando, setCargando] = useState(true)
   
-  // Estadísticas de reportes
+  // Estadísticas de los reportes del usuario
   const [stats, setStats] = useState({
     total: 0,
     pendientes: 0,
     enProceso: 0,
     resueltos: 0,
   })
-
+  
+  // Se ejecuta una sola vez al cargar la pantalla
   useEffect(() => {
     cargarDatos()
   }, [])
 
+  /**
+   * Obtiene la sesión activa, carga los datos del usuario
+   * y calcula las estadísticas de los reportes asociados.
+   */
   const cargarDatos = async () => {
     try {
       const sesion = await obtenerSesion()
@@ -59,6 +80,10 @@ export default function ProfileAutoridad() {
     }
   }
 
+  /**
+   * Muestra una alerta de confirmación
+   * y elimina la sesión del usuario
+   */
   const handleCerrarSesion = () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -84,15 +109,17 @@ export default function ProfileAutoridad() {
     )
   }
 
-
+  // Muestra alerta de configuración de notificaciones
   const handleNotificaciones = () => {
     Alert.alert('Notificaciones', 'Configuración de notificaciones próximamente')
   }
 
+  // Muestra información de ayuda y soporte
   const handleAyuda = () => {
     Alert.alert('Ayuda y Soporte', 'Contacta al administrador para asistencia (098 467 2753)')
   }
 
+  // Muestra información general de la aplicación
   const handleAcercaDe = () => {
     Alert.alert(
       'Acerca de la App',
@@ -101,6 +128,7 @@ export default function ProfileAutoridad() {
     )
   }
 
+  // Muestra un indicador mientras se cargan los datos
   if (cargando) {
     return (
       <View style={styles.centeredContainer}>
@@ -109,7 +137,7 @@ export default function ProfileAutoridad() {
     )
   }
 
-  // Obtener nombre y email según tipo de usuario
+  // Obtiene el nombre completo según el tipo de usuario
   const getNombre = () => {
     if (tipoUsuario === 'usuario') {
       return (usuario as Usuario)?.nomUser || 'Usuario'
@@ -118,12 +146,14 @@ export default function ProfileAutoridad() {
     return `${emp?.nomEmpl || ''} ${emp?.apeEmpl || ''}`.trim()
   }
 
+  // Obtiene el correo electrónico
   const getEmail = () => {
     return tipoUsuario === 'usuario'
       ? (usuario as Usuario)?.correoUser
       : (usuario as Empleado)?.correoEmpl
   }
 
+  // Obtiene el rol o cargo
   const getRol = () => {
     return tipoUsuario === 'usuario'
       ? (usuario as Usuario)?.rolUser
@@ -132,30 +162,34 @@ export default function ProfileAutoridad() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header con Avatar */}
+      {/* Header con avatar e información básica */}
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={48} color="#FFFFFF" />
           </View>
         </View>
+        {/* Nombre y correo del usuario */}
         <Text style={styles.userName}>{getNombre()}</Text>
         <Text style={styles.userEmail}>{getEmail()}</Text>
+        {/* Badge que indica el rol */}
         <View style={styles.userBadge}>
           <Ionicons name="school" size={14} color="#21C0B2" />
           <Text style={styles.userBadgeText}>Docente</Text>
         </View>
       </View>
 
-      {/* Estadísticas */}
+      {/* Tarjeta con estadísticas de reportes */}
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Mis Estadísticas</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
+            {/* Total de reportes */}
             <Text style={styles.statNumber}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </View>
           <View style={styles.statDivider} />
+          {/* Reportes pendientes */}
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#FFA726' }]}>
               {stats.pendientes}
@@ -163,6 +197,7 @@ export default function ProfileAutoridad() {
             <Text style={styles.statLabel}>Pendientes</Text>
           </View>
           <View style={styles.statDivider} />
+          {/* Reportes en proceso */}
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#21D0B2' }]}>
               {stats.enProceso}
@@ -170,6 +205,7 @@ export default function ProfileAutoridad() {
             <Text style={styles.statLabel}>En Proceso</Text>
           </View>
           <View style={styles.statDivider} />
+          {/* Reportes resueltos */}
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#34F5C5' }]}>
               {stats.resueltos}
@@ -184,6 +220,7 @@ export default function ProfileAutoridad() {
         <Text style={styles.sectionTitle}>Información Personal</Text>
         
         <View style={styles.infoCard}>
+          {/* Nombre completo */}
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -193,7 +230,7 @@ export default function ProfileAutoridad() {
           </View>
 
           <View style={styles.divider} />
-
+          {/* Correo electrónico */}
           <View style={styles.infoRow}>
             <Ionicons name="mail-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -203,7 +240,7 @@ export default function ProfileAutoridad() {
           </View>
 
           <View style={styles.divider} />
-
+          {/* Rol o cargo */}
           <View style={styles.infoRow}>
             <Ionicons name="briefcase-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -211,7 +248,8 @@ export default function ProfileAutoridad() {
               <Text style={styles.infoValue}>{getRol()}</Text>
             </View>
           </View>
-
+          
+          {/* Departamento solo si es empleado */}
           {tipoUsuario === 'empleado' && (
             <>
               <View style={styles.divider} />
@@ -234,6 +272,7 @@ export default function ProfileAutoridad() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferencias</Text>
         
+        {/* Opción de notificaciones */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleNotificaciones}
@@ -252,6 +291,7 @@ export default function ProfileAutoridad() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Soporte</Text>
         
+        {/* Ayuda */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleAyuda}
@@ -265,6 +305,7 @@ export default function ProfileAutoridad() {
           <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
         </TouchableOpacity>
 
+        {/* Acerca de */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleAcercaDe}
@@ -294,7 +335,8 @@ export default function ProfileAutoridad() {
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Versión 1.0.0</Text>
       </View>
-
+      
+      {/* Espacio inferior para evitar cortes */}
       <View style={styles.bottomSpacer} />
     </ScrollView>
   )

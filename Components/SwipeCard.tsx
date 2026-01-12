@@ -1,7 +1,10 @@
 // 🎯 SwipeCard: Tarjeta interactiva con gestos de deslizamiento
+// Permite guardar o descartar una imagen mediante swipe horizontal
 import React from 'react';
 import { StyleSheet, View, Dimensions, Image } from 'react-native';
+// Manejo de gestos táctiles
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+// Animaciones de alto rendimiento
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,55 +12,63 @@ import Animated, {
   runOnJS,
   interpolate,
 } from 'react-native-reanimated';
+// Iconos visuales
 import { Heart, X, Camera } from 'lucide-react-native';
 
+// Ancho de pantalla para cálculos de swipe
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Distancia mínima para considerar un swipe válido
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
+//Props del componente SwipeCard
 interface SwipeCardProps {
-  photoUri?: string;
-  onSwipeLeft: () => void;
-  onSwipeRight: () => void;
+  photoUri?: string; // Imagen a mostrar en la tarjeta
+  onSwipeLeft: () => void; // Acción al deslizar a la izquierda (guardar)
+  onSwipeRight: () => void; // Acción al deslizar a la derecha (descartar)
 }
 
 /**
- * 🎯 Tarjeta con gestos de swipe para guardar o descartar fotos
- * 
- * Izquierda ❤️ = Guardar | Derecha ❌ = Descartar
- * Incluye animaciones fluidas y feedback visual en tiempo real
+ * Componente SwipeCard
+ * Renderiza una tarjeta interactiva que permite guardar o descartar
+ * una imagen mediante gestos de deslizamiento (swipe).
  */
-
 export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
-  // 📍 Valores compartidos para animaciones suaves
+  // Valores compartidos que controlan la posición de la tarjeta
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  // 👆 Gesto de arrastre con lógica de decisión
+  /**
+   * Gesto de arrastre (Pan)
+   * Detecta el desplazamiento y decide la acción al soltar la tarjeta
+   */
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
-      // Actualizar posición mientras se arrastra
+      // Actualiza la posición de la tarjeta mientras se arrastra
       translateX.value = event.translationX;
       translateY.value = event.translationY;
     })
     .onEnd((event) => {
-      // Guardar: swipe izquierda
+      // Swipe a la izquierda → Guardar
       if (event.translationX < -SWIPE_THRESHOLD) {
         translateX.value = withSpring(-SCREEN_WIDTH);
         runOnJS(onSwipeLeft)();
       }
-      // Descartar: swipe derecha
+      // Swipe a la derecha → Descartar
       else if (event.translationX > SWIPE_THRESHOLD) {
         translateX.value = withSpring(SCREEN_WIDTH);
         runOnJS(onSwipeRight)();
       }
-      // Volver al centro
+      // Swipe insuficiente → Regresa al centro
       else {
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
       }
     });
 
-  // 🎨 Animación de la tarjeta con rotación dinámica
+   /**
+   * Estilo animado de la tarjeta
+   * Incluye traslación y rotación según la posición horizontal
+   */
   const animatedCardStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
       translateX.value,
@@ -74,7 +85,10 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
     };
   });
 
-  // 💚 Overlay de corazón (guardar)
+  /**
+   * Estilo del ícono de guardar (corazón)
+   * Aparece progresivamente al deslizar a la izquierda
+   */
   const heartStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       translateX.value,
@@ -84,7 +98,10 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
     return { opacity };
   });
 
-  // ❌ Overlay de X (descartar)
+  /**
+   * Estilo del ícono de descartar (X)
+   * Aparece progresivamente al deslizar a la derecha
+   */
   const xStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       translateX.value,
@@ -98,7 +115,7 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
     <View style={styles.container}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.card, animatedCardStyle]}>
-          {/* 📸 Mostrar foto o placeholder */}
+          {/* Muestra la imagen capturada o un icono de cámara */}
           {photoUri ? (
             <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
           ) : (

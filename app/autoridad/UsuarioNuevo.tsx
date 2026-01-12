@@ -1,4 +1,6 @@
+// React y hook para manejar estado del formulario
 import React, { useState } from 'react'
+// Componentes nativos para la interfaz del usuario, estilos y control del teclado
 import {
   Alert,
   KeyboardAvoidingView,
@@ -10,11 +12,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+// Íconos de Ionicons usados en inputs y botones
 import { Ionicons } from '@expo/vector-icons'
+// Router de Expo para navegación entre pantalla
 import { router } from 'expo-router'
+// Cliente de Supabase para operaciones con la base de datos
 import { supabase } from '../../src/lib/Supabase'
 
+//COMPONENTE
+/**
+ * Pantalla para registrar un nuevo usuario (docente o autoridad)
+ * Permite ingresar datos personales y guardarlos en la base de datos
+ */
 export default function UsuarioNuevo() {
+   // Estado que almacena los datos del nuevo usuario
   const [nuevoUsuario, setNuevoUsuario] = useState({
     nomUser: '',
     apeUser: '',
@@ -23,9 +34,12 @@ export default function UsuarioNuevo() {
     tlfUser: '',
     rolUser: 'docente',
   })
+  // Estado para controlar el indicador de carga
   const [cargando, setCargando] = useState(false)
 
+  // Función que valida los datos y registra el usuario en Supabase
   const crearUsuario = async () => {
+    // Validación de campos obligatorios
     if (
       !nuevoUsuario.nomUser ||
       !nuevoUsuario.apeUser ||
@@ -36,14 +50,17 @@ export default function UsuarioNuevo() {
       return
     }
 
-    // Validar email
+    // Validación del formato del correo electrónico
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(nuevoUsuario.correoUser)) {
       Alert.alert('Email Inválido', 'Por favor ingresa un correo electrónico válido')
       return
     }
 
+    // Activar estado de carga
     setCargando(true)
+    
+     // Inserción del usuario en la tabla "usuario" de Supabase
     const { error } = await supabase.from('usuario').insert([
       {
         ...nuevoUsuario,
@@ -52,18 +69,22 @@ export default function UsuarioNuevo() {
       },
     ])
 
+    // Desactivar estado de carga
     setCargando(false)
 
+    // Manejo de error
     if (error) {
       Alert.alert('Error al Crear', error.message)
       return
     }
 
+    // Confirmación y retorno a la pantalla anterior
     Alert.alert('¡Éxito!', 'Usuario creado correctamente', [
       { text: 'OK', onPress: () => router.back() }
     ])
   }
 
+  //RENDER PRINCIPAL
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

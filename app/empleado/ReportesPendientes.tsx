@@ -1,11 +1,23 @@
+// Librerías base de React y hooks para manejar estado y ciclo de vida
 import React, { useState, useEffect } from 'react'
+// Componentes visuales de React Native
 import { View, Text, ScrollView, Image, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native'
+// Almacenamiento local para recuperar la sesión guardada
 import AsyncStorage from '@react-native-async-storage/async-storage'
+// Cliente de Supabase configurado previamente
 import { supabase } from '../../src/lib/Supabase'
+// Tipos TypeScript que representan las tablas de la base de datos
 import { Reporte, Empleado, Usuario, Objeto, Lugar, Sesion } from '../../src/types/Database'
+// Iconos de Expo
 import { Ionicons } from '@expo/vector-icons'
 
-// Interfaz extendida para manejar los datos completos del reporte con relaciones
+
+/**
+ * ================================
+ * INTERFAZ EXTENDIDA
+ * ================================
+ * Representa un reporte con todas sus relaciones cargadas
+ */
 interface ReporteCompleto extends Reporte {
   empleado: Empleado
   usuario: Usuario
@@ -13,27 +25,38 @@ interface ReporteCompleto extends Reporte {
   lugar: Lugar | null
 }
 
+//COMPONENTE PRINCIPAL
 const ReportesPendientes: React.FC = () => {
+  //ESTADOS DEL COMPONENTE
+  // Lista de reportes asignados al empleado
   const [reportes, setReportes] = useState<ReporteCompleto[]>([])
+  // Control de carga y errores
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // ID del empleado autenticado
   const [empleadoActual, setEmpleadoActual] = useState<number | null>(null)
 
+  // Estados para edición de reportes
   const [editando, setEditando] = useState<number | null>(null)
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [nuevaPrioridad, setNuevaPrioridad] = useState('')
   const [nuevoEstado, setNuevoEstado] = useState('')
 
+  //EFECTOS
+  // Obtener el empleado autenticado al iniciar el componente
   useEffect(() => {
     obtenerEmpleadoActual()
   }, [])
 
+  // Cargar reportes cuando se obtiene el ID del empleado
   useEffect(() => {
     if (empleadoActual) {
       cargarReportes()
     }
   }, [empleadoActual])
 
+  //FUNCIONES
+  //Obtiene la sesión almacenada y valida que sea un empleado
   const obtenerEmpleadoActual = async (): Promise<void> => {
     try {
       const sesionGuardada = await AsyncStorage.getItem('sesion')
@@ -54,11 +77,12 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  // Carga los reportes asignados al empleado desde Supabase
   const cargarReportes = async (): Promise<void> => {
     try {
       setLoading(true)
 
-      // Consulta filtrando por el ID del empleado actual
+      // Consulta principal de reportes con relaciones
       const { data, error: supabaseError } = await supabase
         .from('reporte')
         .select(`
@@ -85,7 +109,7 @@ const ReportesPendientes: React.FC = () => {
 
       if (supabaseError) throw supabaseError
 
-      // Para cada reporte, obtener el objeto y lugar relacionados
+      // Cargar objeto y lugar asociados a cada reporte
       const reportesConDatos = await Promise.all(
         (data || []).map(async (reporte: any) => {
           // Obtener el objeto asociado al reporte
@@ -122,6 +146,7 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  // Activa el modo edición para un reporte
   const iniciarEdicion = (reporte: ReporteCompleto): void => {
     setEditando(reporte.idReporte)
     setNuevoComentario(reporte.comentReporte || '')
@@ -129,6 +154,7 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado(reporte.estReporte)
   }
 
+  // Cancela la edición
   const cancelarEdicion = (): void => {
     setEditando(null)
     setNuevoComentario('')
@@ -136,6 +162,7 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado('')
   }
 
+  // Guarda los cambios del reporte en la base de datos
   const guardarCambios = async (idReporte: number): Promise<void> => {
     try {
       const { error: updateError } = await supabase
@@ -156,6 +183,7 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  // Devuelve un color según el estado del reporte
   const getColorEstado = (estado: string): string => {
     switch (estado) {
       case 'Pendiente':
@@ -169,6 +197,7 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  // Devuelve un color según la prioridad del reporte
   const getColorPrioridad = (prioridad: string): string => {
     switch (prioridad) {
       case 'Alta':
@@ -182,6 +211,8 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  //RENDER CONDICIONAL
+  // Pantalla de carga
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -191,6 +222,7 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
+  // Pantalla de error
   if (error) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -200,29 +232,36 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
+  //RENDER PRINCIPAL
   return (
+    //// Contenedor principal con scroll vertical
     <ScrollView style={styles.container}>
       <View style={styles.contentWrapper}>
         <Text style={styles.title}>Mis Reportes Asignados</Text>
 
+        {/* Si no existen reportes asignados */}
         {reportes.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="folder-open-outline" size={80} color="#1DCDFE" />
             <Text style={styles.emptyText}>No tienes reportes asignados</Text>
           </View>
         ) : (
+          /* Contenedor tipo grid para los reportes */
           <View style={styles.reportesGrid}>
             {reportes.map((reporte) => (
+              // Tarjeta individual del reporte
               <View key={reporte.idReporte} style={styles.card}>
-                {reporte.imgReporte && (
+                {/* Imagen del reporte */}
+                {reporte.imgReporte?.length > 0 && (
                   <Image
-                    source={{ uri: reporte.imgReporte }}
+                  source={{ uri: reporte.imgReporte[0] }}
                     style={styles.cardImage}
                     resizeMode="cover"
                   />
                 )}
 
                 <View style={styles.cardContent}>
+                  {/* Información del usuario que reportó */}
                   <View style={styles.userSection}>
                     <Text style={styles.sectionLabel}>Reportado por:</Text>
                     <Text style={styles.userName}>
@@ -231,11 +270,13 @@ const ReportesPendientes: React.FC = () => {
                     <Text style={styles.userEmail}>{reporte.usuario?.correoUser}</Text>
                   </View>
 
+                  {/* Título y descripción del reporte */}
                   <Text style={styles.cardTitle}>
                     {reporte.objeto?.nomObj || 'Sin título'}
                   </Text>
                   <Text style={styles.cardDescription}>{reporte.descriReporte}</Text>
 
+                  {/* Información de ubicación*/}
                   {reporte.lugar && (
                     <View style={styles.locationContainer}>
                       <Ionicons name="location" size={18} color="#2F455C" />
@@ -248,6 +289,7 @@ const ReportesPendientes: React.FC = () => {
                     </View>
                   )}
 
+                  {/* Información del objeto relacionado */}
                   {reporte.objeto && (
                     <View style={styles.objectContainer}>
                       <Ionicons name="cube-outline" size={18} color="#2F455C" />
@@ -260,15 +302,18 @@ const ReportesPendientes: React.FC = () => {
                     </View>
                   )}
 
+                  {/* Fecha de creación del reporte */}
                   <View style={styles.dateContainer}>
                     <Ionicons name="calendar-outline" size={16} color="#1a1a1a" />
                     <Text style={styles.dateText}>
                       {new Date(reporte.fecReporte).toLocaleDateString()}
                     </Text>
                   </View>
-
+                  
+                  {/* Vista normal*/}
                   {editando !== reporte.idReporte ? (
                     <>
+                      {/* Estado y prioridad del reporte */}
                       <View style={styles.statusContainer}>
                         <View style={styles.statusRow}>
                           <Text style={styles.statusLabel}>Estado:</Text>
@@ -293,7 +338,8 @@ const ReportesPendientes: React.FC = () => {
                           </View>
                         </View>
                       </View>
-
+                      
+                      {/* Comentario del empleado */}
                       {reporte.comentReporte && (
                         <View style={styles.commentContainer}>
                           <View style={styles.commentHeader}>
@@ -304,6 +350,7 @@ const ReportesPendientes: React.FC = () => {
                         </View>
                       )}
 
+                      {/* Botón para activar edición */}
                       <TouchableOpacity
                         style={styles.editButton}
                         onPress={() => iniciarEdicion(reporte)}
@@ -313,7 +360,9 @@ const ReportesPendientes: React.FC = () => {
                       </TouchableOpacity>
                     </>
                   ) : (
+                    /* Formulario de edición del reporte */
                     <View style={styles.editForm}>
+                       {/* Selector de estado */}
                       <View style={styles.formGroup}>
                         <Text style={styles.formLabel}>Estado:</Text>
                         <View style={styles.pickerContainer}>
@@ -367,7 +416,8 @@ const ReportesPendientes: React.FC = () => {
                           </TouchableOpacity>
                         </View>
                       </View>
-
+                      
+                      {/* Selector de prioridad */}
                       <View style={styles.formGroup}>
                         <Text style={styles.formLabel}>Prioridad:</Text>
                         <View style={styles.pickerContainer}>
@@ -421,7 +471,8 @@ const ReportesPendientes: React.FC = () => {
                           </TouchableOpacity>
                         </View>
                       </View>
-
+                      
+                      {/* Campo de comentario */}
                       <View style={styles.formGroup}>
                         <Text style={styles.formLabel}>Comentario:</Text>
                         <TextInput
@@ -434,7 +485,8 @@ const ReportesPendientes: React.FC = () => {
                           textAlignVertical="top"
                         />
                       </View>
-
+                      
+                      {/* Botones de acción */}
                       <View style={styles.actionButtons}>
                         <TouchableOpacity
                           style={styles.saveButton}

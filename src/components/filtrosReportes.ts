@@ -1,7 +1,14 @@
+// UTILIDADES DE FILTRADO, ORDENAMIENTO Y ESTADÍSTICAS
+// PARA REPORTES DEL SISTEMA
+
+// Importación de tipos
 import { Reporte, Empleado, Usuario, Lugar, Objeto } from '../types/Database'
 
+// INTERFAZ DE FILTROS
+// Define todos los criterios posibles de filtrado
+
 export interface FiltrosReporte {
-  // Filtros de fecha
+  // Filtros por rango de fechas
   fechaInicio?: Date
   fechaFin?: Date
   
@@ -17,20 +24,25 @@ export interface FiltrosReporte {
   descripcion?: string
   comentario?: string
   
-  // Búsqueda general (busca en todos los campos de texto)
+  // Búsqueda general en múltiples campos
   busquedaGeneral?: string
 }
 
 /**
- * Filtra reportes según los criterios especificados
- * Todos los filtros son opcionales y se combinan con lógica AND
+ * Filtra una lista de reportes según los criterios especificados.
+ * Todos los filtros son opcionales y se aplican con lógica AND.
+ *
+ * @param reportes - Lista de reportes
+ * @param filtros - Objeto con criterios de filtrado
+ * @returns Lista de reportes filtrados
  */
 export function filtrarReportes(
   reportes: Reporte[],
   filtros: FiltrosReporte
 ): Reporte[] {
   if (!reportes || reportes.length === 0) return []
-  
+
+  // FILTROS BÁSICOS
   return reportes.filter(r => {
     // Filtro por estado
     if (filtros.estado && r.estReporte !== filtros.estado) {
@@ -52,6 +64,7 @@ export function filtrarReportes(
       return false
     }
     
+    // FILTROS DE TEXTO
     // Filtro por descripción (case-insensitive y búsqueda parcial)
     if (filtros.descripcion && r.descriReporte) {
       const descripcionReporte = r.descriReporte.toLowerCase()
@@ -70,6 +83,7 @@ export function filtrarReportes(
       }
     }
     
+    // FILTROS POR FECHA
     // Filtro por rango de fechas - fecha inicio
     if (filtros.fechaInicio) {
       const fechaReporte = new Date(r.fecReporte)
@@ -118,9 +132,9 @@ export function filtrarReportes(
   })
 }
 
-/**
- * Filtra reportes por múltiples estados
- */
+///* FILTROS
+
+// Filtra reportes por múltiples estados
 export function filtrarPorEstados(
   reportes: Reporte[],
   estados: string[]
@@ -129,9 +143,7 @@ export function filtrarPorEstados(
   return reportes.filter(r => estados.includes(r.estReporte))
 }
 
-/**
- * Filtra reportes por múltiples prioridades
- */
+// Filtra reportes por múltiples prioridades
 export function filtrarPorPrioridades(
   reportes: Reporte[],
   prioridades: string[]
@@ -140,9 +152,7 @@ export function filtrarPorPrioridades(
   return reportes.filter(r => prioridades.includes(r.prioReporte))
 }
 
-/**
- * Filtra reportes de un usuario específico
- */
+// Filtra reportes creados por un usuario específico
 export function filtrarPorUsuario(
   reportes: Reporte[],
   idUser: number
@@ -150,9 +160,7 @@ export function filtrarPorUsuario(
   return reportes.filter(r => r.idUser === idUser)
 }
 
-/**
- * Filtra reportes asignados a un empleado específico
- */
+//Filtra reportes asignados a un empleado específico
 export function filtrarPorEmpleado(
   reportes: Reporte[],
   idEmpl: number
@@ -160,9 +168,7 @@ export function filtrarPorEmpleado(
   return reportes.filter(r => r.idEmpl === idEmpl)
 }
 
-/**
- * Filtra reportes por departamento del empleado asignado
- */
+// Filtra reportes por departamento del empleado asignado
 export function filtrarPorDepartamento(
   reportes: Reporte[],
   departamento: string
@@ -172,9 +178,7 @@ export function filtrarPorDepartamento(
   )
 }
 
-/**
- * Filtra reportes por nombre de usuario (creador)
- */
+//Filtra reportes por nombre de usuario creador
 export function filtrarPorNombreUsuario(
   reportes: Reporte[],
   nombre: string
@@ -186,9 +190,7 @@ export function filtrarPorNombreUsuario(
   })
 }
 
-/**
- * Filtra reportes por nombre de empleado (asignado)
- */
+// Filtra reportes por nombre de empleado asignado
 export function filtrarPorNombreEmpleado(
   reportes: Reporte[],
   nombre: string
@@ -200,9 +202,7 @@ export function filtrarPorNombreEmpleado(
   })
 }
 
-/**
- * Filtra reportes creados en un rango de fechas
- */
+// Filtra reportes dentro de un rango de fechas
 export function filtrarPorRangoFechas(
   reportes: Reporte[],
   fechaInicio: Date,
@@ -220,9 +220,7 @@ export function filtrarPorRangoFechas(
   })
 }
 
-/**
- * Filtra reportes creados hoy
- */
+// Filtra reportes creados hoy
 export function filtrarReportesHoy(reportes: Reporte[]): Reporte[] {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
@@ -236,9 +234,7 @@ export function filtrarReportesHoy(reportes: Reporte[]): Reporte[] {
   })
 }
 
-/**
- * Filtra reportes de la última semana
- */
+// Filtra reportes de la última semana
 export function filtrarReportesSemana(reportes: Reporte[]): Reporte[] {
   const hace7Dias = new Date()
   hace7Dias.setDate(hace7Dias.getDate() - 7)
@@ -250,9 +246,7 @@ export function filtrarReportesSemana(reportes: Reporte[]): Reporte[] {
   })
 }
 
-/**
- * Filtra reportes del último mes
- */
+//Filtra reportes del último mes
 export function filtrarReportesMes(reportes: Reporte[]): Reporte[] {
   const hace30Dias = new Date()
   hace30Dias.setDate(hace30Dias.getDate() - 30)
@@ -264,23 +258,22 @@ export function filtrarReportesMes(reportes: Reporte[]): Reporte[] {
   })
 }
 
-/**
- * Filtra reportes que tienen imagen
- */
+// Filtra reportes que tienen imagen
 export function filtrarConImagen(reportes: Reporte[]): Reporte[] {
-  return reportes.filter(r => r.imgReporte && r.imgReporte.trim() !== '')
+  return reportes.filter(r => 
+    r.imgReporte && 
+    Array.isArray(r.imgReporte) && 
+    r.imgReporte.length > 0
+  )
 }
 
-/**
- * Filtra reportes sin asignar (sin empleado)
- */
+// Filtra reportes sin asignar (sin empleado)
 export function filtrarSinAsignar(reportes: Reporte[]): Reporte[] {
   return reportes.filter(r => !r.idEmpl || r.idEmpl === 0)
 }
 
-/**
- * Ordena reportes por fecha (más recientes primero)
- */
+//ORDENAMIENTO
+// Ordena reportes por fecha (más recientes primero)
 export function ordenarPorFecha(
   reportes: Reporte[],
   orden: 'asc' | 'desc' = 'desc'
@@ -292,9 +285,7 @@ export function ordenarPorFecha(
   })
 }
 
-/**
- * Ordena reportes por prioridad (alta, media, baja)
- */
+// Ordena reportes por prioridad (alta, media, baja)
 export function ordenarPorPrioridad(reportes: Reporte[]): Reporte[] {
   const prioridadValor: Record<string, number> = {
     'alta': 3,
@@ -309,9 +300,7 @@ export function ordenarPorPrioridad(reportes: Reporte[]): Reporte[] {
   })
 }
 
-/**
- * Ordena reportes por estado (pendiente > en proceso > resuelto)
- */
+//Ordena reportes por estado (pendiente > en proceso > resuelto)
 export function ordenarPorEstado(reportes: Reporte[]): Reporte[] {
   const estadoValor: Record<string, number> = {
     'pendiente': 3,
@@ -325,10 +314,8 @@ export function ordenarPorEstado(reportes: Reporte[]): Reporte[] {
     return valorB - valorA
   })
 }
-
-/**
- * Cuenta reportes agrupados por estado
- */
+// ESTADÍSTICAS
+// Cuenta reportes agrupados por estado
 export function contarPorEstado(reportes: Reporte[]): Record<string, number> {
   return reportes.reduce((acc, r) => {
     acc[r.estReporte] = (acc[r.estReporte] || 0) + 1
@@ -336,9 +323,7 @@ export function contarPorEstado(reportes: Reporte[]): Record<string, number> {
   }, {} as Record<string, number>)
 }
 
-/**
- * Cuenta reportes agrupados por prioridad
- */
+// Cuenta reportes agrupados por prioridad
 export function contarPorPrioridad(reportes: Reporte[]): Record<string, number> {
   return reportes.reduce((acc, r) => {
     acc[r.prioReporte] = (acc[r.prioReporte] || 0) + 1
@@ -346,9 +331,7 @@ export function contarPorPrioridad(reportes: Reporte[]): Record<string, number> 
   }, {} as Record<string, number>)
 }
 
-/**
- * Cuenta reportes agrupados por departamento
- */
+// Cuenta reportes agrupados por departamento
 export function contarPorDepartamento(reportes: Reporte[]): Record<string, number> {
   return reportes.reduce((acc, r) => {
     const dept = r.empleado?.deptEmpl || 'Sin asignar'
@@ -357,9 +340,7 @@ export function contarPorDepartamento(reportes: Reporte[]): Record<string, numbe
   }, {} as Record<string, number>)
 }
 
-/**
- * Cuenta reportes agrupados por empleado
- */
+// Cuenta reportes agrupados por empleado
 export function contarPorEmpleado(reportes: Reporte[]): Record<string, number> {
   return reportes.reduce((acc, r) => {
     if (r.empleado) {
@@ -372,9 +353,7 @@ export function contarPorEmpleado(reportes: Reporte[]): Record<string, number> {
   }, {} as Record<string, number>)
 }
 
-/**
- * Obtiene estadísticas generales de los reportes
- */
+// Obtiene estadísticas generales de los reportes
 export function obtenerEstadisticas(reportes: Reporte[]) {
   return {
     total: reportes.length,
@@ -384,7 +363,11 @@ export function obtenerEstadisticas(reportes: Reporte[]) {
     prioridadAlta: reportes.filter(r => r.prioReporte.toLowerCase() === 'alta').length,
     prioridadMedia: reportes.filter(r => r.prioReporte.toLowerCase() === 'media').length,
     prioridadBaja: reportes.filter(r => r.prioReporte.toLowerCase() === 'baja').length,
-    conImagen: reportes.filter(r => r.imgReporte && r.imgReporte.trim() !== '').length,
+    conImagen: reportes.filter(r => 
+      r.imgReporte && 
+      Array.isArray(r.imgReporte) && 
+      r.imgReporte.length > 0
+    ).length, // 🔥 CAMBIAR AQUÍ
     sinAsignar: reportes.filter(r => !r.idEmpl || r.idEmpl === 0).length,
     porEstado: contarPorEstado(reportes),
     porPrioridad: contarPorPrioridad(reportes),
@@ -393,9 +376,8 @@ export function obtenerEstadisticas(reportes: Reporte[]) {
   }
 }
 
-/**
- * Limpia filtros vacíos del objeto de filtros
- */
+// UTILIDADES
+// Limpia filtros vacíos del objeto de filtros
 export function limpiarFiltros(filtros: FiltrosReporte): FiltrosReporte {
   const filtrosLimpios: FiltrosReporte = {}
   
@@ -408,17 +390,13 @@ export function limpiarFiltros(filtros: FiltrosReporte): FiltrosReporte {
   return filtrosLimpios
 }
 
-/**
- * Verifica si hay filtros activos
- */
+// Verifica si hay filtros activos
 export function tieneFiltrosActivos(filtros: FiltrosReporte): boolean {
   const filtrosLimpios = limpiarFiltros(filtros)
   return Object.keys(filtrosLimpios).length > 0
 }
 
-/**
- * Obtiene el top N de empleados con más reportes asignados
- */
+// Obtiene el top N de empleados con más reportes asignados
 export function obtenerTopEmpleados(reportes: Reporte[], limite: number = 5) {
   const conteo = contarPorEmpleado(reportes)
   return Object.entries(conteo)
@@ -427,9 +405,7 @@ export function obtenerTopEmpleados(reportes: Reporte[], limite: number = 5) {
     .map(([nombre, cantidad]) => ({ nombre, cantidad }))
 }
 
-/**
- * Obtiene el top N de usuarios con más reportes creados
- */
+// Obtiene el top N de usuarios con más reportes creados
 export function obtenerTopUsuarios(reportes: Reporte[], limite: number = 5) {
   const conteo = reportes.reduce((acc, r) => {
     if (r.usuario) {

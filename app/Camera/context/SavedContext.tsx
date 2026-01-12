@@ -94,7 +94,7 @@ export function SavedProvider({ children }: { children: ReactNode }) {
    */
   const uploadPhotosToSupabase = async (idReporte: number): Promise<string[]> => {
     const urls: string[] = [];
-
+  
     for (const foto of savedPhotos) {
       try {
         // Leer imagen como blob
@@ -106,55 +106,69 @@ export function SavedProvider({ children }: { children: ReactNode }) {
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onloadend = () => {
             const base64 = reader.result as string;
-            // Remover prefijo "data:image/jpeg;base64,"
             const base64Clean = base64.split(',')[1];
-            resolve(base64Clean); // Quitar encabezado
+            resolve(base64Clean);
           };
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-
+  
         // Generar nombre único para el archivo
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
         const fileName = `reporte_${idReporte}_${timestamp}_${random}.jpg`;
         const filePath = `reportes/${fileName}`;
-
+  
         // Subir imagen a Supabase Storage
         const { data, error } = await supabase.storage
-          .from('imagenes-reportes') // Nombre del bucket
+          .from('imgReporte')
           .upload(filePath, decode(base64Data), {
             contentType: 'image/jpeg',
             cacheControl: '3600',
             upsert: false,
           });
-
+  
         if (error) throw error;
-
+  
         // Obtener URL pública
         const { data: urlData } = supabase.storage
-          .from('imagenes-reportes')
+          .from('imgReporte')
           .getPublicUrl(filePath);
-
+  
         urls.push(urlData.publicUrl);
-
+  
         // Actualizar foto local con URL de Supabase
         setSavedPhotos((prev) =>
           prev.map((p) =>
             p.id === foto.id ? { ...p, supabaseUrl: urlData.publicUrl } : p
           )
         );
-
+  
         console.log(`✅ Foto subida a Supabase: ${fileName}`);
       } catch (error) {
         console.error('❌ Error al subir foto a Supabase:', error);
         throw error;
       }
     }
-
+  
+    // 🆕 AQUÍ VA LA ACTUALIZACIÓN A LA BASE DE DATOS
+    // Después de subir TODAS las fotos
+    if (urls.length > 0) {
+      const { error } = await supabase
+        .from('reporte')
+        .update({ imgReporte: urls })
+        .eq('idReporte', idReporte);
+  
+        if (error) {
+          console.error('❌ Error al guardar URLs en BD:', error);
+          throw error;
+        }
+        
+        console.log(`✅ ${urls.length} URLs guardadas en BD para reporte ${idReporte}`);
+      }
+  
     return urls;
   };
-
   // FUNCIÓN: limpiar fotos guardadas
   /**
    * 🔥 chore(cleanup): limpia todas las fotos guardadas (reset)

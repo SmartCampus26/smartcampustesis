@@ -1,4 +1,6 @@
+// Librerías base de React y hooks para estado y ciclo de vida
 import React, { useState, useEffect } from 'react'
+// Componentes visuales de React Native
 import {
   View,
   Text,
@@ -8,19 +10,29 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native'
+// Hook de navegación de Expo Router
 import { useRouter } from 'expo-router'
+// Iconos de Expo
 import { Ionicons } from '@expo/vector-icons'
+// Utilidades para manejo de sesión almacenamiento local
 import { obtenerSesion, eliminarSesion } from '../../src/util/Session'
+// Servicio para obtener reportes desde la base de datos
 import { obtenerReportes } from '../../src/services/ReporteService'
+// Tipos TypeScript para tipado seguro de datos
 import { Usuario, Empleado, Reporte } from '../../src/types/Database'
 
+//COMPONENTE PRINCIPAL
 export default function ProfileAutoridad() {
+  // Hook de navegación
   const router = useRouter()
+  // Estado del usuario autenticado (usuario o empleado)
   const [usuario, setUsuario] = useState<Usuario | Empleado | null>(null)
+  // Tipo de usuario autenticado
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
+  // Control de carga inicial
   const [cargando, setCargando] = useState(true)
   
-  // Estadísticas de reportes
+  // Estadísticas de reportes del usuario autenticado
   const [stats, setStats] = useState({
     total: 0,
     pendientes: 0,
@@ -28,10 +40,12 @@ export default function ProfileAutoridad() {
     resueltos: 0,
   })
 
+  // Cargar datos al iniciar el componente
   useEffect(() => {
     cargarDatos()
   }, [])
 
+  // Obtiene la sesión activa y calcula estadísticas de reportes
   const cargarDatos = async () => {
     try {
       const sesion = await obtenerSesion()
@@ -39,12 +53,14 @@ export default function ProfileAutoridad() {
         setUsuario(sesion.data)
         setTipoUsuario(sesion.tipo)
         
-        // Cargar estadísticas de reportes
+        // Obtener todos los reportes
         const { data: reportesData } = await obtenerReportes()
+        // Filtrar reportes según el usuario autenticado
         const misReportes = (reportesData || []).filter(
           (r: Reporte) => sesion.tipo === 'usuario' ? r.idUser === sesion.id : r.idEmpl === sesion.id
         )
-
+        
+        // Calcular estadísticas
         setStats({
           total: misReportes.length,
           pendientes: misReportes.filter((r: Reporte) => r.estReporte === 'Pendiente').length,
@@ -59,6 +75,7 @@ export default function ProfileAutoridad() {
     }
   }
 
+  // Cierre de sesión del usuario
   const handleCerrarSesion = () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -85,6 +102,7 @@ export default function ProfileAutoridad() {
   }
 
 
+  //Acciones informativas
   const handleNotificaciones = () => {
     Alert.alert('Notificaciones', 'Configuración de notificaciones próximamente')
   }
@@ -101,6 +119,7 @@ export default function ProfileAutoridad() {
     )
   }
 
+  //Pantalla de carga
   if (cargando) {
     return (
       <View style={styles.centeredContainer}>
@@ -109,7 +128,7 @@ export default function ProfileAutoridad() {
     )
   }
 
-  // Obtener nombre y email según tipo de usuario
+  // Funciones auxiliares para obtener datos del usuario
   const getNombre = () => {
     if (tipoUsuario === 'usuario') {
       return (usuario as Usuario)?.nomUser || 'Usuario'
@@ -130,15 +149,17 @@ export default function ProfileAutoridad() {
       : (usuario as Empleado)?.cargEmpl
   }
 
+  // RENDER PRINCIPAL
   return (
     <ScrollView style={styles.container}>
-      {/* Header con Avatar */}
+      {/* Encabezado del perfil */}
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={48} color="#FFFFFF" />
           </View>
         </View>
+        
         <Text style={styles.userName}>{getNombre()}</Text>
         <Text style={styles.userEmail}>{getEmail()}</Text>
         <View style={styles.userBadge}>
@@ -279,7 +300,7 @@ export default function ProfileAutoridad() {
         </TouchableOpacity>
       </View>
 
-      {/* Botón de Cerrar Sesión */}
+      {/* Cerrar sesión */}
       <View style={styles.section}>
         <TouchableOpacity 
           style={styles.logoutButton}

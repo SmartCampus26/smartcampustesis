@@ -1,4 +1,6 @@
+// Importa React para poder definir componentes funcionales
 import React from 'react'
+// Componentes básicos de React Native para estructura, texto y botones táctiles
 import {
   ScrollView,
   StyleSheet,
@@ -6,12 +8,24 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+// Librería de íconos utilizada para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
+// Router de Expo para navegación entre pantallas
 import { router } from 'expo-router'
 
+/**
+ * CrearMenu
+ * 
+ * Pantalla de menú para la gestión de creación de cuentas.
+ * Permite al personal autorizado seleccionar si desea crear:
+ * - Un usuario (docente o autoridad)
+ * - Un empleado (personal administrativo o técnico)
+ */
 export default function CrearMenu() {
   return (
+    // Contenedor principal con desplazamiento vertical
     <ScrollView style={styles.container}>
+      {/* Encabezado informativo */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Gestión de Accesos</Text>
         <Text style={styles.headerSubtitle}>
@@ -19,22 +33,26 @@ export default function CrearMenu() {
         </Text>
       </View>
 
+      {/* Contenedor de tarjetas */}
       <View style={styles.cardsContainer}>
-        {/* Card Usuario */}
+        {/* Tarjeta: Crear Usuario */}
         <TouchableOpacity
           style={[styles.card, styles.cardUsuario]}
           onPress={() => router.push('/empleado/UsuarioNuevo')}
           activeOpacity={0.8}
         >
+          {/* Ícono representativo */}
           <View style={styles.iconContainer}>
             <Ionicons name="school" size={40} color="#1DCDFE" />
           </View>
           
+          {/* Información principal */}
           <Text style={styles.cardTitle}>Crear Usuario</Text>
           <Text style={styles.cardDescription}>
             Docentes y autoridades del sistema educativo
           </Text>
 
+          {/* Características del tipo de cuenta */}
           <View style={styles.cardFeatures}>
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#21D0B2" />
@@ -50,27 +68,31 @@ export default function CrearMenu() {
             </View>
           </View>
 
+          {/* Botón de acción */}
           <View style={styles.cardButton}>
             <Text style={styles.cardButtonText}>Crear Usuario</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </View>
         </TouchableOpacity>
 
-        {/* Card Empleado */}
+        {/* Tarjeta: Crear Empleado */}
         <TouchableOpacity
           style={[styles.card, styles.cardEmpleado]}
           onPress={() => router.push('/empleado/EmpleadoNuevo')}
           activeOpacity={0.8}
         >
+          {/* Ícono representativo */}
           <View style={styles.iconContainer}>
             <Ionicons name="construct" size={40} color="#2F455C" />
           </View>
-          
+
+          {/* Información principal */}
           <Text style={styles.cardTitle}>Crear Empleado</Text>
           <Text style={styles.cardDescription}>
             Personal de mantenimiento y sistemas
           </Text>
 
+          {/* Características del tipo de cuenta */}
           <View style={styles.cardFeatures}>
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#1DCDFE" />
@@ -86,6 +108,7 @@ export default function CrearMenu() {
             </View>
           </View>
 
+          {/* Botón de acción */}
           <View style={styles.cardButton}>
             <Text style={styles.cardButtonText}>Crear Empleado</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFF" />

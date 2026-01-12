@@ -11,22 +11,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '../../src/lib/Supabase'
-
-interface Empleado {
-  id_empl: number
-  nomEmpl: string
-  apeEmpl: string
-  correoEmpl: string
-  deptEmpl: string
-  cargEmpl: string
-}
-
-interface Reporte {
-  id_rep: number
-  titulo_rep?: string
-  desc_rep?: string
-  id_empl?: number
-}
+import { Empleado, Reporte } from '../../src/types/Database'
 
 export default function ReasignarEmpleado() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -53,7 +38,7 @@ export default function ReasignarEmpleado() {
       .order('nomEmpl', { ascending: true })
 
     if (empError) {
-      Alert.alert('Error', 'No se pudieron cargar los empleados')
+      Alert.alert('Error', 'No se pudieron cargar los empleados: ' + empError.message)
       setCargando(false)
       return
     }
@@ -62,10 +47,10 @@ export default function ReasignarEmpleado() {
     const { data: repData, error: repError } = await supabase
       .from('reporte')
       .select('*')
-      .order('id_rep', { ascending: false })
+      .order('idReporte', { ascending: false })
 
     if (repError) {
-      Alert.alert('Error', 'No se pudieron cargar los reportes')
+      Alert.alert('Error', 'No se pudieron cargar los reportes: ' + repError.message)
     }
 
     setEmpleados(empData || [])
@@ -83,11 +68,11 @@ export default function ReasignarEmpleado() {
 
     const { error } = await supabase
       .from('reporte')
-      .update({ id_empl: empleadoId })
-      .eq('id_rep', reporteSeleccionado.id_rep)
+      .update({ idEmpl: empleadoId })
+      .eq('idReporte', reporteSeleccionado.idReporte)
 
     if (error) {
-      Alert.alert('Error', 'No se pudo reasignar el reporte')
+      Alert.alert('Error', 'No se pudo reasignar el reporte: ' + error.message)
       return
     }
 
@@ -104,7 +89,7 @@ export default function ReasignarEmpleado() {
 
   const getEmpleadoNombre = (idEmpl?: number) => {
     if (!idEmpl) return 'Sin asignar'
-    const emp = empleados.find(e => e.id_empl === idEmpl)
+    const emp = empleados.find(e => e.idEmpl === idEmpl)
     return emp ? `${emp.nomEmpl} ${emp.apeEmpl}` : 'Desconocido'
   }
 
@@ -147,25 +132,34 @@ export default function ReasignarEmpleado() {
           </View>
         ) : (
           reportes.map((reporte) => (
-            <View key={reporte.id_rep} style={styles.reportCard}>
+            <View key={reporte.idReporte} style={styles.reportCard}>
               <View style={styles.reportHeader}>
                 <View style={styles.reportBadge}>
-                  <Text style={styles.reportBadgeText}>#{reporte.id_rep}</Text>
+                  <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
                 </View>
                 <Ionicons name="document-text-outline" size={24} color="#2F455C" />
               </View>
 
               <Text style={styles.reportTitle}>
-                {reporte.titulo_rep || 'Sin título'}
+                Reporte #{reporte.idReporte}
               </Text>
               <Text style={styles.reportDesc} numberOfLines={2}>
-                {reporte.desc_rep || 'Sin descripción'}
+                {reporte.descriReporte || 'Sin descripción'}
               </Text>
+
+              <View style={styles.statusBadges}>
+                <View style={[styles.badge, styles.badgeEstado]}>
+                  <Text style={styles.badgeText}>{reporte.estReporte}</Text>
+                </View>
+                <View style={[styles.badge, styles.badgePrioridad]}>
+                  <Text style={styles.badgeText}>{reporte.prioReporte}</Text>
+                </View>
+              </View>
 
               <View style={styles.assignedContainer}>
                 <Ionicons name="person-outline" size={16} color="#6B7280" />
                 <Text style={styles.assignedText}>
-                  Asignado a: {getEmpleadoNombre(reporte.id_empl)}
+                  Asignado a: {getEmpleadoNombre(reporte.idEmpl)}
                 </Text>
               </View>
 
@@ -318,7 +312,7 @@ export default function ReasignarEmpleado() {
               ) : (
                 empleadosFiltrados.map((empleado) => (
                   <TouchableOpacity
-                    key={empleado.id_empl}
+                    key={empleado.idEmpl}
                     style={styles.empleadoCard}
                     onPress={() => {
                       Alert.alert(
@@ -328,7 +322,7 @@ export default function ReasignarEmpleado() {
                           { text: 'Cancelar', style: 'cancel' },
                           { 
                             text: 'Confirmar', 
-                            onPress: () => reasignarReporte(empleado.id_empl) 
+                            onPress: () => reasignarReporte(empleado.idEmpl) 
                           }
                         ]
                       )
@@ -475,6 +469,17 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 12,
     lineHeight: 20,
+  },
+  statusBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  badgeEstado: {
+    backgroundColor: '#DCFCE7',
+  },
+  badgePrioridad: {
+    backgroundColor: '#FEF3C7',
   },
   assignedContainer: {
     flexDirection: 'row',

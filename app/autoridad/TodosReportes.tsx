@@ -1,4 +1,6 @@
+// React y hooks para manejo de estado y ciclo de vida
 import React, { useState, useEffect } from 'react'
+// Componentes nativos para interfaz, scroll, alertas y carga
 import {
   Alert,
   ScrollView,
@@ -9,59 +11,80 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native'
+// Librería de íconos para reforzar la experiencia visual
 import { Ionicons } from '@expo/vector-icons'
+// Cliente de Supabase para consultas a la base de datos
 import { supabase } from '../../src/lib/Supabase'
 
-interface Usuario {
-  id_user: number
+// INTERFACES
+// Estructura de datos del usuario
+interface usuario {
+  idUser: number
   nomUser: string
   apeUser: string
   rolUser: string
 }
 
-interface Reporte {
-  id_rep: number
-  titulo_rep?: string
-  desc_rep?: string
-  fec_crea_rep?: string
-  estado_rep?: string
-  id_user?: number
-  ubicacion_rep?: string
-  prioridad_rep?: string
+// Estructura de datos del reporte
+interface reporte {
+  idReporte: number
+  descriReporte?: string
+  fecReporte?: string
+  estReporte?: string
+  idUser?: number
+  prioReporte?: string
+  imgReporte?: string
+  comentReporte?: string
 }
 
+// COMPONENTE
+/**
+ * Pantalla que muestra todos los reportes del sistema
+ * Permite buscar, filtrar y visualizar reportes en modo solo lectura
+ */
 export default function TodosReportes() {
-  const [reportes, setReportes] = useState<Reporte[]>([])
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  // Lista de reportes obtenidos desde la base de datos
+  const [reportes, setReportes] = useState<reporte[]>([])
+  // Lista de usuarios para asociarlos a los reportes
+  const [usuarios, setUsuarios] = useState<usuario[]>([])
+  // Estado de carga general
   const [cargando, setCargando] = useState(true)
+  // Texto de búsqueda
   const [busqueda, setBusqueda] = useState('')
+  // Filtros por rol y estado
   const [filtroRol, setFiltroRol] = useState<string>('todos')
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
 
+  // EFECTOS
+  // Carga inicial de usuarios y reportes
   useEffect(() => {
     cargarDatos()
   }, [])
 
+  // FUNCIONES
+  // Obtiene usuarios y reportes desde Supabase
   const cargarDatos = async () => {
     setCargando(true)
 
-    // Cargar usuarios
+    // Consulta de usuarios
     const { data: usuData, error: usuError } = await supabase
       .from('usuario')
       .select('*')
 
     if (usuError) {
-      Alert.alert('Error', 'No se pudieron cargar los usuarios')
+      Alert.alert('Error', 'No se pudieron cargar los usuarios: ' + usuError.message)
+      console.error(usuError)
     }
 
-    // Cargar reportes
+    // Consulta de reportes
     const { data: repData, error: repError } = await supabase
       .from('reporte')
       .select('*')
-      .order('fec_crea_rep', { ascending: false })
+      .order('fecReporte', { ascending: false })
 
     if (repError) {
-      Alert.alert('Error', 'No se pudieron cargar los reportes')
+      Alert.alert('Error', 'No se pudieron cargar los reportes: ' + repError.message)
+      console.error(repError)
     }
 
     setUsuarios(usuData || [])
@@ -69,9 +92,10 @@ export default function TodosReportes() {
     setCargando(false)
   }
 
+  // Obtiene nombre y rol del usuario asociado a un reporte
   const getUsuarioInfo = (idUser?: number) => {
     if (!idUser) return { nombre: 'Sin asignar', rol: 'N/A' }
-    const usuario = usuarios.find(u => u.id_user === idUser)
+    const usuario = usuarios.find(u => u.idUser === idUser)
     if (!usuario) return { nombre: 'Desconocido', rol: 'N/A' }
     return {
       nombre: `${usuario.nomUser} ${usuario.apeUser}`,
@@ -79,19 +103,20 @@ export default function TodosReportes() {
     }
   }
 
+  // Filtrado de reportes por búsqueda, rol y estado
   const reportesFiltrados = reportes.filter(rep => {
-    const usuarioInfo = getUsuarioInfo(rep.id_user)
+    const usuarioInfo = getUsuarioInfo(rep.idUser)
     const pasaBusqueda = 
-      (rep.titulo_rep?.toLowerCase().includes(busqueda.toLowerCase())) ||
-      (rep.desc_rep?.toLowerCase().includes(busqueda.toLowerCase())) ||
+      (rep.descriReporte?.toLowerCase().includes(busqueda.toLowerCase())) ||
       (usuarioInfo.nombre.toLowerCase().includes(busqueda.toLowerCase()))
     
     const pasaRol = filtroRol === 'todos' || usuarioInfo.rol === filtroRol
-    const pasaEstado = filtroEstado === 'todos' || rep.estado_rep === filtroEstado
+    const pasaEstado = filtroEstado === 'todos' || rep.estReporte === filtroEstado
 
     return pasaBusqueda && pasaRol && pasaEstado
   })
 
+  // Devuelve el color según el estado del reporte
   const getEstadoColor = (estado?: string) => {
     switch(estado) {
       case 'pendiente': return '#FCD34D'
@@ -102,6 +127,7 @@ export default function TodosReportes() {
     }
   }
 
+  // Devuelve el texto legible del estado
   const getEstadoTexto = (estado?: string) => {
     switch(estado) {
       case 'pendiente': return 'Pendiente'
@@ -112,6 +138,7 @@ export default function TodosReportes() {
     }
   }
 
+  //  Devuelve el color según la prioridad del reporte
   const getPrioridadColor = (prioridad?: string) => {
     switch(prioridad) {
       case 'alta': return '#EF4444'
@@ -121,6 +148,7 @@ export default function TodosReportes() {
     }
   }
 
+  // Muestra un indicador de carga mientras se obtienen los datos
   if (cargando) {
     return (
       <View style={styles.loadingContainer}>
@@ -130,9 +158,11 @@ export default function TodosReportes() {
     )
   }
 
+  // RENDER PRINCIPAL
   return (
     <View style={styles.container}>
       {/* Header con estadísticas */}
+      {/* Muestra el total de reportes, docentes y autoridades */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Ionicons name="document-text" size={28} color="#1DCDFE" />
@@ -156,14 +186,16 @@ export default function TodosReportes() {
       </View>
 
       {/* Búsqueda */}
+      {/* Permite buscar reportes por descripción o nombre del usuario */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#6B7280" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por título, descripción o usuario..."
+          placeholder="Buscar por descripción o usuario..."
           value={busqueda}
           onChangeText={setBusqueda}
         />
+        {/* Botón para limpiar búsqueda */}
         {busqueda.length > 0 && (
           <TouchableOpacity onPress={() => setBusqueda('')}>
             <Ionicons name="close-circle" size={20} color="#9CA3AF" />
@@ -172,6 +204,7 @@ export default function TodosReportes() {
       </View>
 
       {/* Filtros */}
+      {/* Filtros por rol (docente / autoridad) y estado del reporte */}
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {/* Filtro Rol */}
@@ -246,6 +279,7 @@ export default function TodosReportes() {
       </View>
 
       {/* Lista de Reportes */}
+      {/* Muestra los reportes filtrados o un mensaje si no hay resultados */}
       <ScrollView style={styles.reportesList}>
         {reportesFiltrados.length === 0 ? (
           <View style={styles.emptyState}>
@@ -261,36 +295,37 @@ export default function TodosReportes() {
               Mostrando {reportesFiltrados.length} de {reportes.length} reportes
             </Text>
 
+            {/* Renderizado individual de cada reporte */}
             {reportesFiltrados.map((reporte) => {
-              const usuarioInfo = getUsuarioInfo(reporte.id_user)
+              const usuarioInfo = getUsuarioInfo(reporte.idUser)
               return (
-                <View key={reporte.id_rep} style={styles.reportCard}>
+                <View key={reporte.idReporte} style={styles.reportCard}>
                   {/* Header del Reporte */}
                   <View style={styles.reportHeader}>
                     <View style={styles.reportBadge}>
-                      <Text style={styles.reportBadgeText}>#{reporte.id_rep}</Text>
+                      <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
                     </View>
                     
                     <View style={styles.statusBadges}>
-                      {reporte.prioridad_rep && (
-                        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioridad_rep) }]}>
+                      {reporte.prioReporte && (
+                        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioReporte) }]}>
                           <Text style={styles.prioridadText}>
-                            {reporte.prioridad_rep === 'alta' ? '🔴 Alta' : 
-                             reporte.prioridad_rep === 'media' ? '🟡 Media' : '🟢 Baja'}
+                            {reporte.prioReporte === 'alta' ? '🔴 Alta' : 
+                             reporte.prioReporte === 'media' ? '🟡 Media' : '🟢 Baja'}
                           </Text>
                         </View>
                       )}
                       
-                      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estado_rep) }]}>
-                        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estado_rep)}</Text>
+                      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estReporte) }]}>
+                        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estReporte)}</Text>
                       </View>
                     </View>
                   </View>
 
                   {/* Contenido del Reporte */}
-                  <Text style={styles.reportTitle}>{reporte.titulo_rep || 'Sin título'}</Text>
+                  <Text style={styles.reportTitle}>Reporte #{reporte.idReporte}</Text>
                   <Text style={styles.reportDesc} numberOfLines={3}>
-                    {reporte.desc_rep || 'Sin descripción'}
+                    {reporte.descriReporte || 'Sin descripción'}
                   </Text>
 
                   {/* Info del Usuario */}
@@ -314,19 +349,19 @@ export default function TodosReportes() {
 
                   {/* Metadata */}
                   <View style={styles.metadata}>
-                    {reporte.ubicacion_rep && (
-                      <View style={styles.metadataItem}>
-                        <Ionicons name="location" size={14} color="#6B7280" />
-                        <Text style={styles.metadataText}>{reporte.ubicacion_rep}</Text>
-                      </View>
-                    )}
-                    
-                    {reporte.fec_crea_rep && (
+                    {reporte.fecReporte && (
                       <View style={styles.metadataItem}>
                         <Ionicons name="calendar" size={14} color="#6B7280" />
                         <Text style={styles.metadataText}>
-                          {new Date(reporte.fec_crea_rep).toLocaleDateString('es-ES')}
+                          {new Date(reporte.fecReporte).toLocaleDateString('es-ES')}
                         </Text>
+                      </View>
+                    )}
+                    
+                    {reporte.comentReporte && (
+                      <View style={styles.metadataItem}>
+                        <Ionicons name="chatbox-ellipses" size={14} color="#6B7280" />
+                        <Text style={styles.metadataText}>Con comentarios</Text>
                       </View>
                     )}
                   </View>

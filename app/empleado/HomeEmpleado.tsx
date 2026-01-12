@@ -250,20 +250,21 @@ export default function HomeEmpleados() {
 // Devuelve color según estado
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Pendiente': return '#FFA726'
-    case 'En Proceso': return '#21D0B2'
-    case 'Resuelto': return '#34F5C5'
-    default: return '#8B9BA8'
+    case 'Pendiente': return '#FFA726' //amarillo
+    case 'En Proceso': return '#21D0B2' //celeste oscuro
+    case 'Resuelto': return '#34F5C5' //celeste claro
+    default: return '#8B9BA8'//gris
   }
 }
 
+// Devuelve color según la prioridad
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'Urgente': return '#FF5252'
-    case 'Alta': return '#FFA726'
-    case 'Media': return '#21D0B2'
-    case 'Baja': return '#8B9BA8'
-    default: return '#8B9BA8'
+    case 'Urgente': return '#FF5252'// rojo
+    case 'Alta': return '#FFA726' //amarillo
+    case 'Media': return '#21D0B2' //celeste oscuro
+    case 'Baja': return '#8B9BA8'//gris
+    default: return '#8B9BA8'//gris
   }
 }
 

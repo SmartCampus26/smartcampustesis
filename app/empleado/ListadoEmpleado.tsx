@@ -1,4 +1,6 @@
+// Importa React y hooks para manejar estado y ciclo de vida del componente
 import React, { useState, useEffect } from 'react'
+// Componentes de React Native para la interfaz del usuario, formularios, carga y refresco
 import {
   View,
   Text,
@@ -10,27 +12,51 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native'
+// Router de Expo para navegación entre pantallas
 import { router } from 'expo-router'
+// Cliente Supabase configurado para consultas a la base de datos
 import { supabase } from '../../src/lib/Supabase'
+// Tipos de datos para usuarios y empleados
 import { Usuario, Empleado } from '../../src/types/Database'
 
+// Tipo para controlar el filtro activo del listado
 type TipoPersonal = 'todos' | 'usuarios' | 'empleados'
 
+/**
+ * ListadoMaxAutoridad
+ * 
+ * Pantalla destinada a la máxima autoridad del sistema.
+ * Permite visualizar, buscar, filtrar y eliminar usuarios y empleados,
+ * obteniendo la información directamente desde la base de datos.
+ */
 export default function ListadoMaxAutoridad() {
+  // Estados para almacenar usuarios y empleados
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
+  // Estados para búsqueda, filtros y control de carga
   const [busqueda, setBusqueda] = useState('')
   const [filtroActivo, setFiltroActivo] = useState<TipoPersonal>('todos')
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
 
+  /**
+   * useEffect
+   * 
+   * Carga los datos al montar la pantalla.
+   */
   useEffect(() => {
     cargarDatos()
   }, [])
 
+  /**
+   * cargarDatos
+   * 
+   * Obtiene usuarios y empleados desde Supabase,
+   * ordenándolos alfabéticamente
+   */
   const cargarDatos = async () => {
     try {
-      // Cargar usuarios
+      // Obtener usuarios
       const { data: dataUsuarios, error: errorUsuarios } = await supabase
         .from('usuario')
         .select('*')
@@ -42,7 +68,7 @@ export default function ListadoMaxAutoridad() {
         setUsuarios(dataUsuarios || [])
       }
 
-      // Cargar empleados
+      // Obtener empleados
       const { data: dataEmpleados, error: errorEmpleados } = await supabase
         .from('empleado')
         .select('*')
@@ -62,11 +88,21 @@ export default function ListadoMaxAutoridad() {
     }
   }
 
+  /**
+   * onRefresh
+   * 
+   * Recarga los datos al hacer pull-to-refresh
+   */
   const onRefresh = () => {
     setRefrescando(true)
     cargarDatos()
   }
 
+  /**
+   * eliminarUsuario
+   * 
+   * Elimina un usuario del sistema previa confirmación
+   */
   const eliminarUsuario = (id: number, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
@@ -99,6 +135,11 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
+  /**
+   * eliminarEmpleado
+   * 
+   * Elimina un empleado del sistema previa confirmación
+   */
   const eliminarEmpleado = (id: number, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
@@ -131,7 +172,7 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
-  // Filtrar usuarios según búsqueda
+  // Filtrado de usuarios según término de búsqueda
   const usuariosFiltrados = usuarios.filter(usuario => {
     const terminoBusqueda = busqueda.toLowerCase()
     return (
@@ -143,7 +184,7 @@ export default function ListadoMaxAutoridad() {
     )
   })
 
-  // Filtrar empleados según búsqueda
+  // Filtrado de empleados según término de búsqueda
   const empleadosFiltrados = empleados.filter(empleado => {
     const terminoBusqueda = busqueda.toLowerCase()
     return (
@@ -156,8 +197,10 @@ export default function ListadoMaxAutoridad() {
     )
   })
 
+  // Renderizado de tarjeta de usuario
   const renderUsuario = (usuario: Usuario) => (
     <View key={usuario.idUser} style={[styles.card, styles.usuarioCard]}>
+    {/* Información del usuario */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.cardName}>
@@ -203,8 +246,10 @@ export default function ListadoMaxAutoridad() {
     </View>
   )
 
+  // Renderizado de tarjeta de empleado
   const renderEmpleado = (empleado: Empleado) => (
     <View key={empleado.idEmpl} style={[styles.card, styles.empleadoCard]}>
+      {/* Información del empleado */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.cardName}>
@@ -251,6 +296,7 @@ export default function ListadoMaxAutoridad() {
     </View>
   )
 
+  // Indicador de carga inicia
   if (cargando) {
     return (
       <View style={styles.loadingContainer}>
@@ -260,21 +306,36 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
+  // Total de usuarios luego de aplicar el filtro de búsqueda
   const totalUsuarios = usuariosFiltrados.length
+  // Total de empleados luego de aplicar el filtro de búsqueda
   const totalEmpleados = empleadosFiltrados.length
+  // Total general de personas
   const totalGeneral = totalUsuarios + totalEmpleados
 
+  /**
+   * Render principal del componente
+   * 
+   * Incluye:
+   * - Encabezado con botón de retorno y contador total
+   * - Barra de búsqueda
+   * - Filtros por tipo de personal
+   * - Listado dinámico con refresco manual
+   */
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Botón para regresar a la pantalla anterior */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <Text style={styles.backButtonText}>← Volver</Text>
         </TouchableOpacity>
+        {/* Título principal de la pantalla */}
         <Text style={styles.title}>Listado de Personal</Text>
+        {/* Contador total de personas */}
         <Text style={styles.subtitle}>Total: {totalGeneral} personas</Text>
       </View>
 
@@ -291,6 +352,7 @@ export default function ListadoMaxAutoridad() {
 
       {/* Filtros */}
       <View style={styles.filterContainer}>
+        {/* Filtro: Todos */}
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -305,7 +367,8 @@ export default function ListadoMaxAutoridad() {
             Todos ({totalGeneral})
           </Text>
         </TouchableOpacity>
-
+        
+        {/* Filtro: Usuarios */}
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -320,7 +383,8 @@ export default function ListadoMaxAutoridad() {
             Usuarios ({totalUsuarios})
           </Text>
         </TouchableOpacity>
-
+        
+         {/* Filtro: Empleados */}
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -376,10 +440,12 @@ export default function ListadoMaxAutoridad() {
           </>
         )}
 
+        {/* Mensaje general cuando no hay resultados */}
         {totalGeneral === 0 && busqueda !== '' && (
           <Text style={styles.noResults}>No se encontraron resultados</Text>
         )}
 
+        {/* Espaciado inferior para scroll */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

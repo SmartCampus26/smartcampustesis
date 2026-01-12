@@ -24,7 +24,7 @@ import { Reporte } from '../../src/types/Database'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 
-export default function HomeDocente() {
+export default function HomeAutoridad() {
   // ESTADOS (variables reactivas)
 
 
@@ -101,7 +101,7 @@ export default function HomeDocente() {
     }
     
     router.push({
-      pathname: '/docente/ReporteUsuario',
+      pathname: '/autoridad/ReporteAutoridad',
       params: {
         idUser: usuario.idUser,
         nombreUsuario: usuario.nomUser || 'Usuario'
@@ -180,7 +180,7 @@ export default function HomeDocente() {
         </View>
 
         {/* ==== BOTÓN CREAR REPORTE ===== */}
-        {/* Permite al docente acceder al formulario de creación de reportes */}
+        {/* Permite a la autoridad acceder al formulario de creación de reportes */}
         <View style={styles.createSection}>
           <TouchableOpacity style={styles.createButton} onPress={handleCrearReporte}>
             <View style={styles.createButtonContent}>
@@ -200,13 +200,13 @@ export default function HomeDocente() {
         </View>
         
         {/* ==== SECCIÓN: REPORTES RECIENTES ==== */}
-        {/* Muestra los últimos reportes creados por el docente */}
+        {/* Muestra los últimos reportes creados por la autoridad */}
         <View style={styles.section}>
           {/* Encabezado de la sección */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Reportes Recientes</Text>
             {/* Botón para ver todos los reportes */}
-            <TouchableOpacity onPress={() => router.push('/docente/MisReportes')}>
+            <TouchableOpacity onPress={() => router.push('/autoridad/MisReportes')}>
               <Text style={styles.seeAllText}>Ver todos →</Text>
             </TouchableOpacity>
           </View>

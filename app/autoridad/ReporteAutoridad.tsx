@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native'
 // Router de Expo para navegación entre pantallas
 import { router, useLocalSearchParams } from 'expo-router'
@@ -17,13 +18,13 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../src/lib/Supabase'
 // Iconos de Ionicons para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
+// 🔥 Importar el contexto de fotos
+import { useSaved } from '../Camera/context/SavedContext'
 
 // INTERFAZ DE PROPIEDADES
-
-// Define los datos que recibe este componente desde otra pantalla
 interface CrearReporteProps {
-  idUser: number // ID del usuario que crea el reporte
-  nombreUsuario: string // Nombre del usuario solo para mostrar
+  idUser: number
+  nombreUsuario: string
 }
 
 // Lugares predefinidos del colegio
@@ -41,9 +42,6 @@ const LUGARES_PREDEFINIDOS = [
   'Coliseo',
 ]
 
-// DATOS ESTÁTICOS
-
-// Lista de lugares disponibles en el colegio
 const CATEGORIAS_OBJETOS = [
   { id: 'electricidad', nombre: 'Electricidad', icono: 'flash-outline' },
   { id: 'plomeria', nombre: 'Plomería', icono: 'water-outline' },
@@ -59,6 +57,10 @@ export default function CrearReporte({ }: CrearReporteProps) {
   const params = useLocalSearchParams()
   const idUser = parseInt(params.idUser as string)
   const nombreUsuario = params.nombreUsuario as string
+  
+  // 🔥 Obtener fotos del contexto
+  const { savedPhotos, uploadPhotosToSupabase, clearSavedPhotos } = useSaved()
+  
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [departamento, setDepartamento] = useState<'mantenimiento' | 'sistemas'>('mantenimiento')
@@ -101,12 +103,15 @@ export default function CrearReporte({ }: CrearReporteProps) {
     return true
   }
 
+  // 🔥 NUEVA FUNCIÓN: Ir a la cámara
+  const handleGoToCamera = () => {
+    router.push('/Camera') // O la ruta donde está tu cámara (index.tsx)
+  }
+
   const crearReporte = async () => {
     console.log('=== DEBUGGER CREAR REPORTE ===')
     console.log('idUser recibido:', idUser)
-    console.log('Tipo de idUser:', typeof idUser)
-    console.log('nombreUsuario:', nombreUsuario)
-    console.log('params completos:', params)
+    console.log('Fotos guardadas:', savedPhotos.length)
   
     if (!validarFormulario()) return
   
@@ -167,7 +172,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
             estReporte: 'pendiente',
             prioReporte: 'no asignada',
             comentReporte: '',
-            imgReporte: '',
+            imgReporte: [], // 🔥 INICIALIZAR COMO ARRAY VACÍO
             idEmpl: idEmplAleatorio,
             idUser: idUser,
           }
@@ -180,8 +185,25 @@ export default function CrearReporte({ }: CrearReporteProps) {
       }
   
       const idReporte = data[0].idReporte
+      console.log('✅ Reporte creado con ID:', idReporte)
+
+      // 🔥 4. SUBIR FOTOS A SUPABASE (SI HAY)
+      if (savedPhotos.length > 0) {
+        console.log(`📤 Subiendo ${savedPhotos.length} fotos...`)
+        try {
+          await uploadPhotosToSupabase(idReporte)
+          console.log('✅ Fotos subidas correctamente')
+        } catch (photoError) {
+          console.error('❌ Error al subir fotos:', photoError)
+          // No fallar todo el reporte si las fotos fallan
+          Alert.alert(
+            'Advertencia',
+            'El reporte se creó pero hubo un problema al subir las fotos'
+          )
+        }
+      }
   
-      // 4. Vincular reporte con usuario
+      // 5. Vincular reporte con usuario
       const { error: errorReporteUsuario } = await supabase
         .from('reporte_usuario')
         .insert([
@@ -196,7 +218,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
         throw errorReporteUsuario
       }
   
-      // 5. Crear el objeto
+      // 6. Crear el objeto
       const { error: objetoError } = await supabase
         .from('objeto')
         .insert([
@@ -210,9 +232,12 @@ export default function CrearReporte({ }: CrearReporteProps) {
   
       if (objetoError) throw objetoError
   
+      // 🔥 7. LIMPIAR FOTOS DEL CONTEXTO
+      clearSavedPhotos()
+      
       Alert.alert(
         'Éxito',
-        `Reporte creado y asignado a empleado ${idEmplAleatorio || 'sin asignar'}`,
+        `Reporte creado${savedPhotos.length > 0 ? ` con ${savedPhotos.length} foto(s)` : ''} y asignado a empleado ${idEmplAleatorio || 'sin asignar'}`,
         [
           {
             text: 'OK',
@@ -253,6 +278,43 @@ export default function CrearReporte({ }: CrearReporteProps) {
       </View>
 
       <View style={styles.formContainer}>
+        {/* 🔥 SECCIÓN DE FOTOS */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="camera" size={20} color="#21D0B2" />
+            <Text style={styles.sectionTitle}>Fotografías del Problema</Text>
+          </View>
+
+          {/* Botón para ir a la cámara */}
+          <TouchableOpacity 
+            style={styles.cameraButton}
+            onPress={handleGoToCamera}
+          >
+            <Ionicons name="camera" size={24} color="#FFFFFF" />
+            <Text style={styles.cameraButtonText}>
+              {savedPhotos.length > 0 ? 'Agregar más fotos' : 'Tomar Fotos'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Preview de fotos guardadas */}
+          {savedPhotos.length > 0 && (
+            <View style={styles.photosPreview}>
+              <Text style={styles.photosCount}>
+                {savedPhotos.length} foto{savedPhotos.length !== 1 ? 's' : ''} lista{savedPhotos.length !== 1 ? 's' : ''} para subir
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {savedPhotos.map((photo) => (
+                  <Image
+                    key={photo.id}
+                    source={{ uri: photo.uri }}
+                    style={styles.photoThumbnail}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
         {/* Título */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Título del Reporte *</Text>
@@ -512,6 +574,44 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     padding: 20,
+  },
+  // 🔥 Estilos para la sección de fotos
+  cameraButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1DCDFE',
+    borderRadius: 12,
+    paddingVertical: 16,
+    gap: 10,
+    marginBottom: 16,
+    shadowColor: '#1DCDFE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  cameraButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  photosPreview: {
+    marginTop: 8,
+  },
+  photosCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#21D0B2',
+    marginBottom: 12,
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#21D0B2',
   },
   section: {
     backgroundColor: '#FFFFFF',

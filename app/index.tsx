@@ -1,34 +1,46 @@
-// Pantalla de inicio de sesión para usuarios y empleados
-// Permite autenticar, validar credenciales y redirigir según rol y tipo de usuario
-
+// React y hook useState para manejar el estado del componente
 import React, { useState } from 'react'
+// Componentes nativos de React Native para construir la interfaz
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View,                 // Contenedor básico de la interfaz
+  Text,                 // Muestra texto en pantalla
+  TextInput,            // Campo de entrada de texto
+  TouchableOpacity,     // Botón táctil personalizable
+  Image,                // Visualización de imágenes
+  StyleSheet,           // Definición de estilos
+  Alert,                // Ventanas emergentes de alerta
+  ActivityIndicator,    // Indicador de carga
+  KeyboardAvoidingView, // Ajusta la vista al mostrar el teclado
+  Platform,             // Detecta el sistema operativo
+  ScrollView,           // Permite desplazamiento vertical
 } from 'react-native'
-import { router } from 'expo-router' 
+// Navegación y redirección entre pantallas
+import { router } from 'expo-router'
+// Servicio personalizado de autenticación encapsula la lógica de login y validación en Supabase
 import { loginPersonalizado } from '../src/services/AuthService'
+// Tipo de datos de sesión
 import { Sesion } from '../src/types/Database'
+// Librería de íconos para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
 
-// Estados del formulario y control de la interfaz
+/**
+ * Componente LoginScreen
+ * Gestiona la autenticación y redirección según
+ * el tipo de usuario y su rol dentro del sistema
+ */
 export default function LoginScreen() {
+  // Estados del formulario
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
+  // Estados de control de interfaz
   const [cargando, setCargando] = useState(false)
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
-  // Función que gestiona el proceso de inicio de sesión
+  /**
+   * Maneja el proceso completo de inicio de sesión:
+   * validación, autenticación y redirección
+   */
   const handleLogin = async () => {
 
     // Validación de campos vacíos
@@ -40,7 +52,7 @@ export default function LoginScreen() {
     setCargando(true)
 
     try {
-      // Llamada al servicio de autenticación personalizada
+      // Autenticación mediante servicio personalizado
       const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
       
       // Acceso total para super administrador
@@ -61,7 +73,10 @@ export default function LoginScreen() {
         } else {
           throw new Error('Rol de usuario no reconocido')
         }
-      } else if (sesion.tipo === 'empleado') {
+      }
+       // Redirección para empleados
+       else if (sesion.tipo === 'empleado') {
+        // Manejo de errores de autenticación
         Alert.alert('Bienvenido', `Hola ${sesion.data.nomEmpl}`)
         router.replace('/empleado/HomeEmpleado')
       }
@@ -74,7 +89,7 @@ export default function LoginScreen() {
   }
 
   return (
-    // Ajusta la vista cuando aparece el teclado
+    // Ajusta la vista automáticamente cuando aparece el teclado
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
