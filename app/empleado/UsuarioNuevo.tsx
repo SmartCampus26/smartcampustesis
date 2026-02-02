@@ -1,29 +1,29 @@
-// Importa React y el hook useState para manejar estados del formulario
+// React y hook para manejar estado del formulario
 import React, { useState } from 'react'
-// Componentes y utilidades de React Native
+// Componentes nativos para la interfaz del usuario, estilos y control del teclado
 import {
-  Alert,                    // Muestra mensajes emergentes
-  KeyboardAvoidingView,      // Evita que el teclado tape los inputs
-  Platform,                  // Detecta el sistema operativo
-  ScrollView,                // Permite desplazamiento vertical,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+Alert,
+KeyboardAvoidingView,
+Platform,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+TouchableOpacity,
+View,
 } from 'react-native'
-// Iconos de Expo
+// Íconos de Ionicons usados en inputs y botones
 import { Ionicons } from '@expo/vector-icons'
-// Navegación con Expo Router
+// Router de Expo para navegación entre pantalla
 import { router } from 'expo-router'
-// Cliente de Supabase para base de datos
+// Cliente de Supabase para operaciones con la base de datos
 import { supabase } from '../../src/lib/Supabase'
 
+
+//COMPONENTE
 /**
- * ================================
- * COMPONENTE: UsuarioNuevo
- * Pantalla para crear un nuevo usuario
- * ================================
+ * Pantalla para registrar un nuevo usuario (docente o autoridad)
+ * Permite ingresar datos personales y guardarlos en la base de datos
  */
 export default function UsuarioNuevo() {
   // Estado que almacena los datos del nuevo usuario
@@ -35,70 +35,70 @@ export default function UsuarioNuevo() {
     tlfUser: '',
     rolUser: 'docente',
   })
-  // Estado para controlar la carga del botón
+  // Estado para controlar el indicador de carga
   const [cargando, setCargando] = useState(false)
 
-   /**
-   * ================================
-   * FUNCIÓN: crearUsuario
-   * Valida datos e inserta el usuario en Supabase
-   * ================================
-   */
+  // Función que valida los datos y registra el usuario en Supabase 
   const crearUsuario = async () => {
-    // Validar campos obligatorios
     if (
       !nuevoUsuario.nomUser ||
       !nuevoUsuario.apeUser ||
       !nuevoUsuario.correoUser ||
       !nuevoUsuario.contraUser
     ) {
-      Alert.alert('Campos Incompletos', 'Por favor completa todos los campos obligatorios')
+      Alert.alert('Campos incompletos', 'Completa todos los campos obligatorios')
       return
     }
-
-    // Validar formato del correo electrónico
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(nuevoUsuario.correoUser)) {
-      Alert.alert('Email Inválido', 'Por favor ingresa un correo electrónico válido')
-      return
-    }
-
-    // Activar estado de carga
+  
     setCargando(true)
-
-    // Insertar usuario en la base de datos
-    const { error } = await supabase.from('usuario').insert([
-      {
-        ...nuevoUsuario,
-        tlfUser: nuevoUsuario.tlfUser ? parseInt(nuevoUsuario.tlfUser) : null,
-        fec_reg_user: new Date().toISOString(),
-      },
-    ])
-
-    // Desactivar carga
-    setCargando(false)
-
-    // Manejo de error
-    if (error) {
-      Alert.alert('Error al Crear', error.message)
-      return
+  
+    try {
+      // 1️⃣ Crear usuario en SUPABASE AUTH
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: nuevoUsuario.correoUser,
+        password: nuevoUsuario.contraUser,
+      })
+  
+      if (authError) throw authError
+      if (!data.user) throw new Error('No se pudo crear el usuario')
+  
+      // 2️⃣ Guardar datos extra en TU tabla
+      const { error: dbError } = await supabase.from('usuario').insert([
+        {
+          idUser: data.user.id,
+          nomUser: nuevoUsuario.nomUser,
+          apeUser: nuevoUsuario.apeUser,
+          correoUser: nuevoUsuario.correoUser,
+          tlfUser: nuevoUsuario.tlfUser
+            ? parseInt(nuevoUsuario.tlfUser)
+            : null,
+          rolUser: nuevoUsuario.rolUser,
+          fec_reg_user: new Date().toISOString(),
+        },
+      ])
+  
+      if (dbError) throw dbError
+  
+      Alert.alert(
+        'Usuario creado',
+        'Se envió un correo para verificar la cuenta',
+        [{ text: 'OK', onPress: () => router.back() }]
+      )
+  
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo crear el usuario')
+    } finally {
+      setCargando(false)
     }
-
-    // Confirmación y regreso a la pantalla anterior
-    Alert.alert('¡Éxito!', 'Usuario creado correctamente', [
-      { text: 'OK', onPress: () => router.back() }
-    ])
-  }
-
-  //RENDER DEL COMPONENTE
+  }    
+  
+  //RENDER PRINCIPAL
   return (
-    // Ajusta la vista cuando aparece el teclado
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Encabezado */}
         <View style={styles.header}>
           <Ionicons name="person-add" size={50} color="#1DCDFE" />
           <Text style={styles.title}>Nuevo Usuario</Text>
@@ -107,7 +107,6 @@ export default function UsuarioNuevo() {
           </Text>
         </View>
 
-        {/* Formulario */}
         <View style={styles.form}>
           {/* Nombre */}
           <View style={styles.inputGroup}>
@@ -188,7 +187,6 @@ export default function UsuarioNuevo() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Rol del Usuario *</Text>
             <View style={styles.roleContainer}>
-              {/* Rol Docente */}
               <TouchableOpacity
                 style={[
                   styles.roleButton,
@@ -210,8 +208,7 @@ export default function UsuarioNuevo() {
                   Docente
                 </Text>
               </TouchableOpacity>
-              
-              {/* Rol Autoridad */}
+
               <TouchableOpacity
                 style={[
                   styles.roleButton,
@@ -236,7 +233,7 @@ export default function UsuarioNuevo() {
             </View>
           </View>
 
-          {/* Botón Crear */}
+          {/* Botones */}
           <TouchableOpacity
             style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
             onPress={crearUsuario}
@@ -246,8 +243,7 @@ export default function UsuarioNuevo() {
               {cargando ? 'Creando Usuario...' : 'Crear Usuario'}
             </Text>
           </TouchableOpacity>
-          
-          {/* Botón Cancelar */}
+
           <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
@@ -365,4 +361,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-})
+}) 
+

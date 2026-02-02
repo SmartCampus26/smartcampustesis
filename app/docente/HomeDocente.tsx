@@ -148,35 +148,60 @@ export default function HomeDocente() {
           </TouchableOpacity>
         </View>
 
-        {/* ===== TARJETAS DE ESTADÍSTICAS ====== */}
+    {/* ===== TARJETAS DE ESTADÍSTICAS ====== */}
         <View style={styles.statsContainer}>
           {/* Total */}
-          <View style={[styles.statCard, { backgroundColor: '#21D0B2' }]}>
-            <Ionicons name="documents-outline" size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
+          <TouchableOpacity
+        style={[styles.statCard, { backgroundColor: '#13947F' }]}
+        onPress={() => router.push({
+        pathname: '/docente/MisReportes',
+        params: { filtro: 'todos' }
+        })}
+        >
+        <Ionicons name="time-outline" size={32} color="#FFFFFF" />
+        <Text style={styles.statNumber}>{stats.total}</Text>
+      <Text style={styles.statLabel}>Totales</Text>
+      </TouchableOpacity>
           
           {/* Pendientes */}
-          <View style={[styles.statCard, { backgroundColor: '#FFA726' }]}>
-            <Ionicons name="time-outline" size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>{stats.pendientes}</Text>
-            <Text style={styles.statLabel}>Pendientes</Text>
-          </View>
+          <TouchableOpacity
+        style={[styles.statCard, { backgroundColor: '#FFA726' }]}
+        onPress={() => router.push({
+        pathname: '/docente/MisReportes',
+        params: { filtro: 'pendiente' }
+        })}
+        >
+        <Ionicons name="time-outline" size={32} color="#FFFFFF" />
+        <Text style={styles.statNumber}>{stats.pendientes}</Text>
+      <Text style={styles.statLabel}>Pendientes</Text>
+      </TouchableOpacity>
+
           
           {/* En proceso */}
-          <View style={[styles.statCard, { backgroundColor: '#42A5F5' }]}>
-            <Ionicons name="sync-outline" size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>{stats.enProceso}</Text>
-            <Text style={styles.statLabel}>En Proceso</Text>
-          </View>
+          <TouchableOpacity
+        style={[styles.statCard, { backgroundColor: '#42A5F5' }]}
+        onPress={() => router.push({
+        pathname: '/docente/MisReportes',
+        params: { filtro: 'en proceso' }
+        })}
+        >
+        <Ionicons name="time-outline" size={32} color="#FFFFFF" />
+        <Text style={styles.statNumber}>{stats.enProceso}</Text>
+      <Text style={styles.statLabel}>En Proceso</Text>
+      </TouchableOpacity>
           
           {/* Resueltos */}
-          <View style={[styles.statCard, { backgroundColor: '#66BB6A' }]}>
-            <Ionicons name="checkmark-circle-outline" size={32} color="#FFFFFF" />
-            <Text style={styles.statNumber}>{stats.resueltos}</Text>
-            <Text style={styles.statLabel}>Resueltos</Text>
-          </View>
+          <TouchableOpacity
+        style={[styles.statCard, { backgroundColor: '#66BB6A' }]}
+        onPress={() => router.push({
+        pathname: '/docente/MisReportes',
+        params: { filtro: 'resuelto' }
+        })}
+        >
+        <Ionicons name="time-outline" size={32} color="#FFFFFF" />
+        <Text style={styles.statNumber}>{stats.resueltos}</Text>
+      <Text style={styles.statLabel}>Resueltos</Text>
+      </TouchableOpacity>
         </View>
 
         {/* ==== BOTÓN CREAR REPORTE ===== */}

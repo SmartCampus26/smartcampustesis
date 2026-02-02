@@ -22,23 +22,40 @@ import { obtenerSesion } from '../../src/util/Session'
 import { Reporte } from '../../src/types/Database'
 // TIPO PARA FILTRO DE ESTADOS
 // Define los valores válidos para filtrar reportes
-type FiltroEstado = 'todos' | 'pendiente' | 'en proceso' | 'resuelto'
+type FiltroEstado = 'todos' | 'pendiente' | 'en proceso' | 'resuelto' 
+import { useLocalSearchParams } from 'expo-router'
+
+
 
 // COMPONENTE PRINCIPAL
 export default function MisReportes() {
+  // Recibe filtro desde la ruta
+  const { filtro } = useLocalSearchParams<{ filtro?: string }>()
+
   // ESTADOS
-  // Lista completa de reportes del usuario
   const [reportes, setReportes] = useState<Reporte[]>([])
-  // Lista de reportes luego de aplicar filtros y búsqueda
   const [reportesFiltrados, setReportesFiltrados] = useState<Reporte[]>([])
-  // Control de carga inicial
   const [cargando, setCargando] = useState(true)
-  // Control del gesto de refrescar 
   const [refrescando, setRefrescando] = useState(false)
-  // Estado del filtro seleccionado
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
-  // Texto ingresado en la barra de búsqueda
   const [busqueda, setBusqueda] = useState('')
+
+  // EFECTO: si llega un filtro desde la ruta, aplicarlo al inicio
+  useEffect(() => {
+    if (filtro && ['todos','pendiente','en proceso','resuelto'].includes(filtro)) {
+      setFiltroEstado(filtro as FiltroEstado)
+    }
+  }, [filtro])
+
+  // EFECTO: carga reportes al iniciar
+  useEffect(() => {
+    cargarReportes()
+  }, [])
+
+  // EFECTO: aplica filtros cuando cambian datos, filtro o búsqueda
+  useEffect(() => {
+    aplicarFiltros()
+  }, [reportes, filtroEstado, busqueda])
 
   // EFECTOS
   // Carga los reportes al iniciar la pantalla

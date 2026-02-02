@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { obtenerSesion, eliminarSesion } from '../../src/util/Session'
 import { obtenerReportes } from '../../src/services/ReporteService'
 import { Usuario, Empleado, Reporte } from '../../src/types/Database'
+import { useSaved } from '../Camera/context/SavedContext'
 
 export default function ProfileAutoridad() {
   const router = useRouter()
@@ -20,6 +21,7 @@ export default function ProfileAutoridad() {
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
   const [cargando, setCargando] = useState(true)
   
+  const { clearSavedPhotos } = useSaved()  // ✅ acceso al contexto de fotos
   // Estadísticas de reportes
   const [stats, setStats] = useState({
     total: 0,
@@ -74,6 +76,7 @@ export default function ProfileAutoridad() {
           onPress: async () => {
             try {
               await eliminarSesion()
+              clearSavedPhotos()  
               router.replace('/')
             } catch (error: any) {
               Alert.alert('Error', 'No se pudo cerrar la sesión')

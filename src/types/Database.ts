@@ -8,7 +8,7 @@
   export interface Usuario {
     idUser: number
     rolUser: string
-    contraUser: string
+    contraUser?: string
     correoUser: string
     nomUser: string
     apeUser: string
@@ -24,7 +24,7 @@
     idEmpl: number
     nomEmpl: string
     apeEmpl: string
-    contraEmpl: string
+    contraEmpl?: string
     deptEmpl: string
     cargEmpl: string
     tlfEmpl?: number

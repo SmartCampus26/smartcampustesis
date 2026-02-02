@@ -20,6 +20,9 @@ import { obtenerReportes } from '../../src/services/ReporteService'
 import { obtenerSesion } from '../../src/util/Session'
 // Tipo de dato Reporte estructura de la base de datos
 import { Reporte } from '../../src/types/Database'
+
+import { useLocalSearchParams } from 'expo-router'
+
 // TIPO PARA FILTRO DE ESTADOS
 // Define los valores válidos para filtrar reportes
 type FiltroEstado = 'todos' | 'pendiente' | 'en proceso' | 'resuelto'
@@ -39,6 +42,14 @@ export default function MisReportes() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
   // Texto ingresado en la barra de búsqueda
   const [busqueda, setBusqueda] = useState('')
+
+  const { filtro } = useLocalSearchParams<{ filtro?: FiltroEstado }>()
+
+  useEffect(() => {
+    if (filtro && ['pendiente', 'en proceso', 'resuelto', 'todos'].includes(filtro)) {
+      setFiltroEstado(filtro)
+    }
+  }, [filtro])  
 
   // EFECTOS
   // Carga los reportes al iniciar la pantalla

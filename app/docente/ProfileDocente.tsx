@@ -20,6 +20,8 @@ import { obtenerSesion, eliminarSesion } from '../../src/util/Session'
 import { obtenerReportes } from '../../src/services/ReporteService'
 // Tipos TypeScript que representan las tablas de la base de datos
 import { Usuario, Empleado, Reporte } from '../../src/types/Database'
+import { useSaved } from '../Camera/context/SavedContext'
+
 
 /**
  * Componente ProfileAutoridad
@@ -35,6 +37,9 @@ export default function ProfileAutoridad() {
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
   // Estado de carga general de la pantalla
   const [cargando, setCargando] = useState(true)
+
+  const { clearSavedPhotos } = useSaved()  // ✅ acceso al contexto de fotos
+
   
   // Estadísticas de los reportes del usuario
   const [stats, setStats] = useState({
@@ -99,6 +104,7 @@ export default function ProfileAutoridad() {
           onPress: async () => {
             try {
               await eliminarSesion()
+              clearSavedPhotos()  
               router.replace('/')
             } catch (error: any) {
               Alert.alert('Error', 'No se pudo cerrar la sesión')

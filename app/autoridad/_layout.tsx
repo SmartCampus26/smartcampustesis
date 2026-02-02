@@ -14,6 +14,7 @@ export default function AutoridadesLayout() {
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
+          marginBottom: 20,
         },
         tabBarLabelStyle: {
           fontSize: 12,

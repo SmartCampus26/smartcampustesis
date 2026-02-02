@@ -5,13 +5,18 @@
   # Canal estable de nixpkgs a utilizar
   channel = "stable-25.05";
   # Paquetes necesarios para el proyecto
-  packages = [ pkgs.nodejs_22 ];
+  packages = 
+  [ pkgs.nodejs_22
+    pkgs.deno
+    pkgs.supabase-cli
+   ];
   # Variables de entorno del workspace
   env = { EXPO_USE_FAST_RESOLVER = 1; };
   idx = {
     # Extensiones de VS Code recomendadas para el proyecto
     extensions = [
       "msjsdiag.vscode-react-native"
+      "denoland.vscode-deno"
     ];
     workspace = {
       # Comandos que se ejecutan al crear el workspace por primera vez

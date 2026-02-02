@@ -47,47 +47,77 @@ export default function EmpleadoNuevo() {
    * en la base de datos. Muestra mensajes de error o éxito según el resultado.
    */
   const crearEmpleado = async () => {
-    // Validación de campos obligatorios
     if (
       !nuevoEmpleado.nomEmpl ||
       !nuevoEmpleado.apeEmpl ||
       !nuevoEmpleado.correoEmpl ||
       !nuevoEmpleado.contraEmpl
     ) {
-      Alert.alert('Campos Incompletos', 'Por favor completa todos los campos obligatorios')
+      Alert.alert('Campos Incompletos', 'Completa todos los campos obligatorios')
       return
     }
-
-    // Validación del formato de correo electrónico
+  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(nuevoEmpleado.correoEmpl)) {
-      Alert.alert('Email Inválido', 'Por favor ingresa un correo electrónico válido')
+      Alert.alert('Email inválido', 'Ingresa un correo válido')
       return
     }
-    
+  
     setCargando(true)
-
-    // Inserción del nuevo empleado en la base de datos
-    const { error } = await supabase.from('empleado').insert([
+  
+    // 1️⃣ Crear usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: nuevoEmpleado.correoEmpl,
+      password: nuevoEmpleado.contraEmpl,
+      options: {
+        emailRedirectTo: 'http://localhost:8081', // luego lo cambias
+      },
+    })
+  
+    if (authError) {
+      setCargando(false)
+      Alert.alert('Error Auth', authError.message)
+      return
+    }
+  
+    const userId = authData.user?.id
+  
+    if (!userId) {
+      setCargando(false)
+      Alert.alert('Error', 'No se pudo obtener el usuario creado')
+      return
+    }
+  
+    // 2️⃣ Guardar datos del empleado (CON contraseña – solo pruebas)
+    const { error: empleadoError } = await supabase.from('empleado').insert([
       {
-        ...nuevoEmpleado,
-        tlfEmpl: nuevoEmpleado.tlfEmpl ? parseInt(nuevoEmpleado.tlfEmpl) : null,
+        user_id: userId,
+        nomEmpl: nuevoEmpleado.nomEmpl,
+        apeEmpl: nuevoEmpleado.apeEmpl,
+        correoEmpl: nuevoEmpleado.correoEmpl,
+        contraEmpl: nuevoEmpleado.contraEmpl, // ⚠️ SOLO PRUEBAS
+        tlfEmpl: nuevoEmpleado.tlfEmpl
+          ? parseInt(nuevoEmpleado.tlfEmpl)
+          : null,
+        deptEmpl: nuevoEmpleado.deptEmpl,
+        cargEmpl: nuevoEmpleado.cargEmpl,
       },
     ])
-
+  
     setCargando(false)
-    
-    // Manejo de error en la inserción
-    if (error) {
-      Alert.alert('Error al Crear', error.message)
+  
+    if (empleadoError) {
+      Alert.alert('Error DB', empleadoError.message)
       return
     }
-
-    // Confirmación de éxito y retorno a la pantalla anterior
-    Alert.alert('¡Éxito!', 'Empleado creado correctamente', [
-      { text: 'OK', onPress: () => router.back() }
-    ])
+  
+    Alert.alert(
+      'Empleado creado',
+      'Se envió un correo para verificar la cuenta',
+      [{ text: 'OK', onPress: () => router.back() }]
+    )
   }
+  
 
   return (
     // Ajusta la vista cuando el teclado está visible

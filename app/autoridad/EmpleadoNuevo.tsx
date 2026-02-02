@@ -1,4 +1,6 @@
+// Importa React y el hook useState para manejar estados del formulario
 import React, { useState } from 'react'
+// Componentes de React Native para estructura, formularios y control del teclado
 import {
   Alert,
   KeyboardAvoidingView,
@@ -10,11 +12,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+// Librería de íconos para reforzar la experiencia visual
 import { Ionicons } from '@expo/vector-icons'
+// Router de Expo para navegación entre pantallas
 import { router } from 'expo-router'
+// Cliente configurado de Supabase para operaciones con la base de datos
 import { supabase } from '../../src/lib/Supabase'
 
+/**
+ * EmpleadoNuevo
+ * 
+ * Pantalla para la creación de nuevos empleados del sistema.
+ * Permite registrar personal de mantenimiento o sistemas,
+ * validando datos y almacenándolos en la base de datos mediante Supabase.
+ */
 export default function EmpleadoNuevo() {
+  // Estado que almacena los datos del nuevo empleado
   const [nuevoEmpleado, setNuevoEmpleado] = useState({
     nomEmpl: '',
     apeEmpl: '',
@@ -24,8 +37,15 @@ export default function EmpleadoNuevo() {
     deptEmpl: 'mantenimiento',
     cargEmpl: 'empleado',
   })
+  // Estado para controlar el indicador de carga
   const [cargando, setCargando] = useState(false)
 
+  /**
+   * crearEmpleado
+   * 
+   * Valida los campos del formulario y registra un nuevo empleado
+   * en la base de datos. Muestra mensajes de error o éxito según el resultado.
+   */
   const crearEmpleado = async () => {
     if (
       !nuevoEmpleado.nomEmpl ||
@@ -33,43 +53,80 @@ export default function EmpleadoNuevo() {
       !nuevoEmpleado.correoEmpl ||
       !nuevoEmpleado.contraEmpl
     ) {
-      Alert.alert('Campos Incompletos', 'Por favor completa todos los campos obligatorios')
+      Alert.alert('Campos Incompletos', 'Completa todos los campos obligatorios')
       return
     }
-
-    // Validar email
+  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(nuevoEmpleado.correoEmpl)) {
-      Alert.alert('Email Inválido', 'Por favor ingresa un correo electrónico válido')
+      Alert.alert('Email inválido', 'Ingresa un correo válido')
       return
     }
-
+  
     setCargando(true)
-    const { error } = await supabase.from('empleado').insert([
+  
+    // 1️⃣ Crear usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: nuevoEmpleado.correoEmpl,
+      password: nuevoEmpleado.contraEmpl,
+      options: {
+        emailRedirectTo: 'http://localhost:8081', // luego lo cambias
+      },
+    })
+  
+    if (authError) {
+      setCargando(false)
+      Alert.alert('Error Auth', authError.message)
+      return
+    }
+  
+    const userId = authData.user?.id
+  
+    if (!userId) {
+      setCargando(false)
+      Alert.alert('Error', 'No se pudo obtener el usuario creado')
+      return
+    }
+  
+    // 2️⃣ Guardar datos del empleado (CON contraseña – solo pruebas)
+    const { error: empleadoError } = await supabase.from('empleado').insert([
       {
-        ...nuevoEmpleado,
-        tlfEmpl: nuevoEmpleado.tlfEmpl ? parseInt(nuevoEmpleado.tlfEmpl) : null,
+        user_id: userId,
+        nomEmpl: nuevoEmpleado.nomEmpl,
+        apeEmpl: nuevoEmpleado.apeEmpl,
+        correoEmpl: nuevoEmpleado.correoEmpl,
+        contraEmpl: nuevoEmpleado.contraEmpl, // ⚠️ SOLO PRUEBAS
+        tlfEmpl: nuevoEmpleado.tlfEmpl
+          ? parseInt(nuevoEmpleado.tlfEmpl)
+          : null,
+        deptEmpl: nuevoEmpleado.deptEmpl,
+        cargEmpl: nuevoEmpleado.cargEmpl,
       },
     ])
-
+  
     setCargando(false)
-
-    if (error) {
-      Alert.alert('Error al Crear', error.message)
+  
+    if (empleadoError) {
+      Alert.alert('Error DB', empleadoError.message)
       return
     }
-
-    Alert.alert('¡Éxito!', 'Empleado creado correctamente', [
-      { text: 'OK', onPress: () => router.back() }
-    ])
+  
+    Alert.alert(
+      'Empleado creado',
+      'Se envió un correo para verificar la cuenta',
+      [{ text: 'OK', onPress: () => router.back() }]
+    )
   }
+  
 
   return (
+    // Ajusta la vista cuando el teclado está visible
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Encabezado informativo */}
         <View style={styles.header}>
           <Ionicons name="construct" size={50} color="#2F455C" />
           <Text style={styles.title}>Nuevo Empleado</Text>
@@ -77,7 +134,9 @@ export default function EmpleadoNuevo() {
             Completa la información del personal de mantenimiento o sistemas
           </Text>
         </View>
-
+        {/* Formulario de registro */}
+        {/* Los campos del formulario capturan la información básica del empleado */}
+        {/* Cada input actualiza el estado nuevoEmpleado */}
         <View style={styles.form}>
           {/* Nombre */}
           <View style={styles.inputGroup}>
@@ -218,7 +277,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Info Box */}
+          {/* Mensaje informativo */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1DCDFE" />
             <Text style={styles.infoText}>
@@ -226,7 +285,7 @@ export default function EmpleadoNuevo() {
             </Text>
           </View>
 
-          {/* Botones */}
+          {/* Botón para crear empleado */}
           <TouchableOpacity
             style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
             onPress={crearEmpleado}
@@ -236,7 +295,8 @@ export default function EmpleadoNuevo() {
               {cargando ? 'Creando Empleado...' : 'Crear Empleado'}
             </Text>
           </TouchableOpacity>
-
+          
+          {/* Botón para cancelar y regresar */}
           <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>

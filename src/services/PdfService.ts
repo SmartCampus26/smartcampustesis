@@ -57,6 +57,85 @@ const PRIORIDAD_COLORES = {
 }
 
 // ============================================
+// FUNCIÓN: GENERAR GRÁFICO PIE como SVG
+// ============================================
+function generarGraficoPieSVG(stats: {
+  pendientes: number
+  enProceso: number
+  resueltos: number
+}): string {
+  const datos = [
+    { label: 'Pendientes', valor: stats.pendientes, color: '#FFA726' },
+    { label: 'En Proceso', valor: stats.enProceso, color: '#42A5F5' },
+    { label: 'Resueltos', valor: stats.resueltos, color: '#66BB6A' }
+  ]
+
+  const total = datos.reduce((sum, d) => sum + d.valor, 0)
+  const cx = 150
+  const cy = 150
+  const radio = 120
+
+  // Sin datos
+  if (total === 0) {
+    return `
+      <svg width="300" height="430" viewBox="0 0 300 430" xmlns="http://www.w3.org/2000/svg">
+        <text x="150" y="25" text-anchor="middle" font-size="16" font-weight="bold" font-family="sans-serif" fill="#1e40af">Distribución por Estado</text>
+        <circle cx="${cx}" cy="${cy}" r="${radio}" fill="#e5e7eb" stroke="#d1d5db" stroke-width="2"/>
+        <text x="150" y="155" text-anchor="middle" fill="#6b7280" font-size="16" font-family="sans-serif">Sin datos</text>
+      </svg>
+    `
+  }
+
+  const datosConValor = datos.filter(d => d.valor > 0)
+  let segmentosHTML = ''
+  let porcentajesHTML = ''
+
+  if (datosConValor.length === 1) {
+    // UN SOLO dato -> círculo sólido (no se puede hacer con path)
+    segmentosHTML = `<circle cx="${cx}" cy="${cy}" r="${radio}" fill="${datosConValor[0].color}" stroke="white" stroke-width="2"/>`
+    porcentajesHTML = `<text x="${cx}" y="${cy - 50}" text-anchor="middle" font-size="18" font-weight="bold" font-family="sans-serif" fill="white">100%</text>`
+  } else {
+    // VARIOS datos -> paths normales
+    let anguloActual = -Math.PI / 2
+    segmentosHTML = datosConValor.map((dato) => {
+      const proporcion = dato.valor / total
+      const anguloSegmento = proporcion * 2 * Math.PI
+      const x1 = cx + radio * Math.cos(anguloActual)
+      const y1 = cy + radio * Math.sin(anguloActual)
+      anguloActual += anguloSegmento
+      const x2 = cx + radio * Math.cos(anguloActual)
+      const y2 = cy + radio * Math.sin(anguloActual)
+      const largeArc = anguloSegmento > Math.PI ? 1 : 0
+      const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radio} ${radio} 0 ${largeArc} 1 ${x2} ${y2} Z`
+      return `<path d="${path}" fill="${dato.color}" stroke="white" stroke-width="2"/>`
+    }).join('')
+
+    let anguloActual2 = -Math.PI / 2
+    porcentajesHTML = datosConValor.map((dato) => {
+      const proporcion = dato.valor / total
+      const anguloSegmento = proporcion * 2 * Math.PI
+      anguloActual2 += anguloSegmento
+      const anguloMedio = anguloActual2 - anguloSegmento / 2
+      const radioEtiqueta = radio * 0.6
+      const labelX = cx + radioEtiqueta * Math.cos(anguloMedio)
+      const labelY = cy + radioEtiqueta * Math.sin(anguloMedio)
+      const porcentaje = Math.round(proporcion * 100)
+      if (porcentaje <= 5) return ''
+      return `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="bold" font-family="sans-serif" fill="white">${porcentaje}%</text>`
+    }).join('')
+  }
+
+  // Leyenda
+  const leyenda = datos.map((dato, i) => {
+    const porcentaje = total > 0 ? Math.round((dato.valor / total) * 100) : 0
+    const yPos = 340 + i * 28
+    return `<rect x="30" y="${yPos}" width="16" height="16" rx="3" fill="${dato.color}" opacity="${dato.valor > 0 ? 1 : 0.3}"/><text x="52" y="${yPos + 13}" font-size="14" font-family="sans-serif" fill="${dato.valor > 0 ? '#374151' : '#9ca3af'}">${dato.label}: ${dato.valor} (${porcentaje}%)</text>`
+  }).join('')
+
+  return `<svg width="300" height="430" viewBox="0 0 300 430" xmlns="http://www.w3.org/2000/svg"><text x="150" y="25" text-anchor="middle" font-size="16" font-weight="bold" font-family="sans-serif" fill="#1e40af">Distribución por Estado</text>${segmentosHTML}${porcentajesHTML}<circle cx="${cx}" cy="${cy}" r="35" fill="white"/><text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="11" font-family="sans-serif" fill="#6b7280">Total</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="16" font-weight="bold" font-family="sans-serif" fill="#1f2937">${total}</text>${leyenda}</svg>`
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL: GENERAR PDF
 // ============================================
 
@@ -80,7 +159,7 @@ const PRIORIDAD_COLORES = {
  */
 export async function generarPDF(
   reportes: Reporte[], 
-  opciones: OpcionesPDF = {}
+  opciones: OpcionesPDF = { mostrarGraficos: true }
 ) {
   try {
     // ========================================
@@ -111,6 +190,9 @@ export async function generarPDF(
     // Título del documento (personalizable o por defecto)
     const tituloPDF = opciones.titulo || 'Informe de Reportes'
 
+    // PRE-GENERAR el SVG antes de meter en el HTML
+    const graficoSVG = generarGraficoPieSVG(stats)
+
     // ========================================
     // CONSTRUCCIÓN DEL HTML
     // ========================================
@@ -122,11 +204,6 @@ export async function generarPDF(
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${tituloPDF}</title>
-        <!-- ================================
-            LIBRERÍA PARA GRÁFICOS
-            Chart.js se usa para generar el gráfico estadístico
-            ================================ -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
           /* ================================
              RESET Y ESTILOS BASE
@@ -399,62 +476,11 @@ export async function generarPDF(
             </div>
           </div>
         </div>
-        <!-- ================================
-             GRAFICO DE ESTADISTICAS
-             ================================ -->
-         <!-- ================================
-              GRÁFICO ESTADÍSTICO REAL
-              Se genera con Chart.js y luego
-              se convierte en imagen para el PDF
-              ================================ -->
-        ${opciones.mostrarGraficos ? `
+
+        <!-- GRÁFICO: se mete directamente como SVG, sin condicional -->
         <div class="graficos">
-          <h2>Distribución de Reportes por Estado</h2>
-
-          <!-- Canvas necesario para Chart.js -->
-          <canvas id="graficoEstados" width="400" height="400"></canvas>
-
-          <!-- Imagen final que se imprimirá en el PDF -->
-          <img id="graficoImagen" style="display:none;" />
+          ${graficoSVG}
         </div>
-
-        <script>
-          // Obtener el contexto del canvas
-          const ctx = document.getElementById('graficoEstados').getContext('2d');
-
-          // Crear gráfico de pastel con datos estadísticos
-          const chart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-              labels: ['Pendientes', 'En Proceso', 'Resueltos'],
-              datasets: [{
-                data: [
-                  ${stats.pendientes},
-                  ${stats.enProceso},
-                  ${stats.resueltos}
-                ],
-                backgroundColor: ['#FFA726', '#21D0B2', '#34F5C5']
-              }]
-            },
-            options: {
-              responsive: false,
-              animation: false
-            }
-          });
-
-          // Convertir el gráfico a imagen Base64
-          // Esto es necesario porque expo-print
-          // NO renderiza canvas directamente
-          setTimeout(() => {
-            const imagen = document.getElementById('graficoImagen');
-            imagen.src = chart.toBase64Image();
-            imagen.style.display = 'block';
-
-            // Ocultar el canvas y dejar solo la imagen
-            document.getElementById('graficoEstados').style.display = 'none';
-          }, 500);
-        </script>
-        ` : ''}
 
         <!-- ================================
              TABLA DE DETALLE
@@ -630,7 +656,8 @@ export async function generarPDFPorEstado(
   
   // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
-    titulo: `Reportes ${estado.charAt(0).toUpperCase() + estado.slice(1)}`
+    titulo: `Reportes ${estado.charAt(0).toUpperCase() + estado.slice(1)}`,
+    mostrarGraficos: true
   })
 }
 
@@ -673,7 +700,8 @@ export async function generarPDFPorFechas(
   
   // Generar PDF con título que incluye el rango de fechas
   return generarPDF(reportesFiltrados, {
-    titulo: `Reportes del ${rangoTexto}`
+    titulo: `Reportes del ${rangoTexto}`,
+    mostrarGraficos: true
   })
 }
 
@@ -703,7 +731,8 @@ export async function generarPDFPorEmpleado(
   // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreEmpleado}`,
-    incluirEmpleado: false // No mostrar columna de empleado (ya sabemos cuál es)
+    incluirEmpleado: false, // No mostrar columna de empleado (ya sabemos cuál es)
+    mostrarGraficos: true
   })
 }
 
@@ -733,7 +762,8 @@ export async function generarPDFPorUsuario(
   // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreUsuario}`,
-    incluirUsuario: false // No mostrar columna de usuario (ya sabemos quién es)
+    incluirUsuario: false, // No mostrar columna de usuario (ya sabemos quién es)
+    mostrarGraficos: true
   })
 }
 
@@ -753,6 +783,7 @@ export async function generarPDFDetallado(reportes: Reporte[]) {
     titulo: 'Informe Detallado de Reportes',
     incluirDescripcion: true, // Mostrar descripción completa
     incluirUsuario: true,
-    incluirEmpleado: true
+    incluirEmpleado: true,
+    mostrarGraficos: true
   })
 }

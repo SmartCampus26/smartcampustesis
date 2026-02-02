@@ -2,14 +2,13 @@
 import { Tabs } from 'expo-router'
 // Se importa Íconos de Ionicons
 import { Ionicons } from '@expo/vector-icons'
-import { SavedProvider } from '../Camera/context/SavedContext'
+
 
 // Estructura de navegación del Docente
 // Organiza las pantallas principales mediante pestañas
 export default function DocenteLayout() {
   return (
-    // ✅ ENVOLVER TODO CON SavedProvider
-    <SavedProvider>
+
       <Tabs
         // Configuración general de la barra inferior
         screenOptions={{
@@ -25,6 +24,7 @@ export default function DocenteLayout() {
             height: 60,
             paddingBottom: 8,
             paddingTop: 8,
+            marginBottom: 20,
           },
           // Oculta el header superior
           headerShown: false,
@@ -94,14 +94,7 @@ export default function DocenteLayout() {
           }}
         />
         
-        {/* Fotos guardadas desde la cámara */}
-        <Tabs.Screen
-          name="saved"
-          options={{
-            href: null, // Fotos guardadas (accesible desde la cámara)
-          }}
-        />
+
       </Tabs>
-    </SavedProvider>
   )
 }
