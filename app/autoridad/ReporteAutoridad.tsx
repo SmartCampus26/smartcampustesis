@@ -55,7 +55,7 @@ const CATEGORIAS_OBJETOS = [
 
 export default function CrearReporte({ }: CrearReporteProps) {
   const params = useLocalSearchParams()
-  const idUser = parseInt(params.idUser as string)
+  const idUser = params.idUser as string 
   const nombreUsuario = params.nombreUsuario as string
   
   // 🔥 Obtener fotos del contexto
@@ -185,7 +185,37 @@ export default function CrearReporte({ }: CrearReporteProps) {
       }
   
       const idReporte = data[0].idReporte
-      console.log('✅ Reporte creado con ID:', idReporte)
+      console.log('✅ Reporte creado con ID:', idReporte) 
+
+      // 🔥 NUEVO: Notificar al empleado asignado
+if (idEmplAleatorio) {
+  try {
+    console.log('📧 Enviando notificación al empleado...')
+    
+    const { error: notifError } = await supabase.functions.invoke('notificar-nuevo-reporte', {
+      body: {
+        idReporte: idReporte,
+        idEmpleado: idEmplAleatorio,
+        nombreUsuario: nombreUsuario,
+        descripcion: descripcion,
+        nombreObjeto: nombreObjeto,
+        categoriaObjeto: categoriaObjeto,
+        lugar: lugarSeleccionado,
+        piso: pisoNumero,
+        fotos: savedPhotos.map(p => p.uri) // URLs de las fotos subidas
+      }
+    })
+
+    if (notifError) {
+      console.error('Error al enviar notificación:', notifError)
+      // No fallar todo el reporte si la notificación falla
+    } else {
+      console.log('✅ Notificación enviada al empleado')
+    }
+  } catch (notifError) {
+    console.error('Error al enviar notificación:', notifError)
+  }
+}
 
       // 🔥 4. SUBIR FOTOS A SUPABASE (SI HAY)
       if (savedPhotos.length > 0) {

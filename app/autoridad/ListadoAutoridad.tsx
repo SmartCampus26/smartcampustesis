@@ -67,7 +67,7 @@ export default function ListadoMaxAutoridad() {
     cargarDatos()
   }
 
-  const eliminarUsuario = (id: number, nombre: string) => {
+  const eliminarUsuario = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
       `¿Estás segura de eliminar a ${nombre}?`,
@@ -99,7 +99,7 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
-  const eliminarEmpleado = (id: number, nombre: string) => {
+  const eliminarEmpleado = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
       `¿Estás segura de eliminar a ${nombre}?`,

@@ -10,11 +10,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Modal,
-  TextInput,
 } from 'react-native'
 // Servicios para manejar reportes
-import { obtenerReportes, actualizarReporte } from '../../src/services/ReporteService'
+import { obtenerReportes } from '../../src/services/ReporteService'
 // Manejo de sesión del empleado
 import { obtenerSesion } from '../../src/util/Session'
 // Tipo de datos Reporte
@@ -33,26 +31,6 @@ export default function HomeEmpleados() {
   // Estados de carga
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
-
-  // ===== ESTADOS DEL MODAL =====
-
-  // Modal para establecer prioridad y tiempo
-  // Controla visibilidad del modal
-  const [modalVisible, setModalVisible] = useState(false)
-  // Reporte seleccionado para asignar prioridad
-  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
-   // Datos del formulario
-  const [prioridad, setPrioridad] = useState('')
-  const [, setTiempoEstimado] = useState('')
-
-  // ===== ESTADÍSTICAS =====
-  // Estadísticas de reportes asignados al empleado
-  const [stats, setStats] = useState({
-    total: 0,
-    pendientes: 0,
-    enProceso: 0,
-    resueltos: 0,
-  })
 
   // Se ejecuta al cargar la pantalla
   useEffect(() => {
@@ -76,7 +54,6 @@ export default function HomeEmpleados() {
       )
 
       setReportes(misReportes)
-      calcularEstadisticas(misReportes)
 
     } catch (error: any) {
       Alert.alert('Error', error.message)
@@ -85,18 +62,6 @@ export default function HomeEmpleados() {
       setRefrescando(false)
     }
   }
-
-  // CÁLCULO DE ESTADÍSTICAS
-  const calcularEstadisticas = (data: Reporte[]) => {
-    setStats({
-      total: data.length,
-      pendientes: data.filter(r => r.estReporte === 'Pendiente').length,
-      enProceso: data.filter(r => r.estReporte === 'En Proceso').length,
-      resueltos: data.filter(r => r.estReporte === 'Resuelto').length,
-    })
-  }
-
-
 
   // Refrescar con gesto de deslizamiento
   const onRefresh = () => {
@@ -109,7 +74,7 @@ export default function HomeEmpleados() {
     try {
       await generarPDF(reportes, {
         titulo: 'Mis Tareas Asignadas',
-        incluirEmpleado: false, // porque es el empleado actual
+        incluirEmpleado: false, 
         incluirUsuario: true,
       })
     } catch (error: any) {
@@ -129,7 +94,6 @@ export default function HomeEmpleados() {
     )
   }
 
-  // PANTALLA DE CARGA
   return (
     <>
       <ScrollView
@@ -142,29 +106,6 @@ export default function HomeEmpleados() {
         <View style={styles.header}>
           <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Empleado'}</Text>
           <Text style={styles.role}>Tareas Asignadas</Text>
-        </View>
-
-        {/* TARJETAS DE ESTADÍSTICAS */}
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#1DCDFE' }]}>
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Asignadas</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#FFA726' }]}>
-            <Text style={styles.statNumber}>{stats.pendientes}</Text>
-            <Text style={styles.statLabel}>Pendientes</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#21D0B2' }]}>
-            <Text style={styles.statNumber}>{stats.enProceso}</Text>
-            <Text style={styles.statLabel}>En Proceso</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: '#34F5C5' }]}>
-            <Text style={styles.statNumber}>{stats.resueltos}</Text>
-            <Text style={styles.statLabel}>Completadas</Text>
-          </View>
         </View>
 
         {/* ===== Botón Imprimir PDF ===== */}
@@ -189,7 +130,6 @@ export default function HomeEmpleados() {
           <Text style={styles.sectionTitle}>Mis Tareas</Text>
           {reportes.length === 0 ? (
             <View style={styles.emptyState}>
-              {/* Encabezado del reporte */}
               <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
               <Text style={styles.emptySubtext}>Las nuevas tareas aparecerán aquí</Text>
             </View>
@@ -206,12 +146,10 @@ export default function HomeEmpleados() {
                   </View>
                 </View>
 
-                {/* Descripción */}
                 <Text style={styles.reportDesc} numberOfLines={2}>
                   {reporte.descriReporte}
                 </Text>
                 
-                {/* Acciones */}
                 <View style={styles.reportFooter}>
                   <Text style={styles.reportDate}>
                     {new Date(reporte.fecReporte).toLocaleDateString()}
@@ -224,7 +162,6 @@ export default function HomeEmpleados() {
                   </Text>
                 </View>
 
-                {/* Solicitante */}
                 {reporte.usuario && (
                   <View style={styles.requesterInfo}>
                     <Text style={styles.requesterLabel}>
@@ -232,39 +169,32 @@ export default function HomeEmpleados() {
                     </Text>
                   </View>
                 )}
-
-                
-
               </View>
             ))
           )}
         </View>
       </ScrollView>
-      
-
     </>
   )
 }
 
 // FUNCIONES AUXILIARES
-// Devuelve color según estado
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Pendiente': return '#FFA726' //amarillo
-    case 'En Proceso': return '#21D0B2' //celeste oscuro
-    case 'Resuelto': return '#34F5C5' //celeste claro
-    default: return '#8B9BA8'//gris
+    case 'Pendiente': return '#FFA726'
+    case 'En Proceso': return '#21D0B2'
+    case 'Resuelto': return '#34F5C5'
+    default: return '#8B9BA8'
   }
 }
 
-// Devuelve color según la prioridad
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'Urgente': return '#FF5252'// rojo
-    case 'Alta': return '#FFA726' //amarillo
-    case 'Media': return '#21D0B2' //celeste oscuro
-    case 'Baja': return '#8B9BA8'//gris
-    default: return '#8B9BA8'//gris
+    case 'Urgente': return '#FF5252'
+    case 'Alta': return '#FFA726'
+    case 'Media': return '#21D0B2'
+    case 'Baja': return '#8B9BA8'
+    default: return '#8B9BA8'
   }
 }
 
@@ -296,6 +226,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#34F5C5',
   },
+  // Mantengo estos estilos por si los necesitas después, aunque ya no se usan en el JSX
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -410,116 +341,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2F455C',
     fontWeight: '500',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priorityButton: {
-    flex: 1,
-    backgroundColor: '#1DCDFE',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statusButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  statusButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2F455C',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2F455C',
-    marginBottom: 8,
-  },
-  priorityOptions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  priorityOption: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    alignItems: 'center',
-  },
-  priorityOptionActive: {
-    borderColor: '#1DCDFE',
-    backgroundColor: '#1DCDFE',
-  },
-  priorityOptionText: {
-    fontSize: 12,
-    color: '#2F455C',
-    fontWeight: '600',
-  },
-  priorityOptionTextActive: {
-    color: '#FFFFFF',
-  },
-  input: {
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#2F455C',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#F5F7FA',
-  },
-  cancelButtonText: {
-    color: '#2F455C',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#21D0B2',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 })

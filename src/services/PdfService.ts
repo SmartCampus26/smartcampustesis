@@ -1,8 +1,9 @@
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
 import { Alert } from 'react-native'
-import { Reporte } from '../types/Database'
+import { obtenerSesion } from '../../src/util/Session'
 import { obtenerEstadisticas } from '../components/filtrosReportes'
+import { Reporte } from '../types/Database'
 
 // ============================================
 // INTERFACES Y TIPOS
@@ -28,7 +29,8 @@ interface OpcionesPDF {
   incluirEmpleado?: boolean // Si se debe mostrar empleado asignado
   incluirUsuario?: boolean // Si se debe mostrar usuario creador
   incluirDescripcion?: boolean // Si se debe mostrar descripción completa
-  mostrarGraficos?: boolean // Para futuras implementaciones
+  mostrarGraficos?: boolean // Para mostrar gráficos
+  nombreGenerador?: string // Nombre de quien genera el PDF
 }
 
 // ============================================
@@ -136,6 +138,56 @@ function generarGraficoPieSVG(stats: {
 }
 
 // ============================================
+// FUNCIÓN: GENERAR GRÁFICO DE BARRAS POR PRIORIDAD
+// ============================================
+function generarGraficoBarrasPrioridad(reportes: Reporte[]): string {
+  const conteo = {
+    alta: reportes.filter(r => r.prioReporte?.toLowerCase() === 'alta').length,
+    media: reportes.filter(r => r.prioReporte?.toLowerCase() === 'media').length,
+    baja: reportes.filter(r => r.prioReporte?.toLowerCase() === 'baja').length
+  }
+
+  const maxValor = Math.max(conteo.alta, conteo.media, conteo.baja, 1)
+  const alturaMaxBarra = 200
+
+  return `
+    <svg width="400" height="350" viewBox="0 0 400 350" xmlns="http://www.w3.org/2000/svg">
+      <text x="200" y="25" text-anchor="middle" font-size="16" font-weight="bold" font-family="sans-serif" fill="#1e40af">
+        Distribución por Prioridad
+      </text>
+      
+      <!-- Barras -->
+      <rect x="40" y="${280 - (conteo.alta / maxValor * alturaMaxBarra)}" 
+            width="80" height="${conteo.alta / maxValor * alturaMaxBarra}" 
+            fill="#EF4444" rx="4"/>
+      <text x="80" y="${270 - (conteo.alta / maxValor * alturaMaxBarra)}" 
+            text-anchor="middle" font-size="16" font-weight="bold" fill="#1f2937">
+        ${conteo.alta}
+      </text>
+      <text x="80" y="305" text-anchor="middle" font-size="14" fill="#374151">Alta</text>
+      
+      <rect x="160" y="${280 - (conteo.media / maxValor * alturaMaxBarra)}" 
+            width="80" height="${conteo.media / maxValor * alturaMaxBarra}" 
+            fill="#F59E0B" rx="4"/>
+      <text x="200" y="${270 - (conteo.media / maxValor * alturaMaxBarra)}" 
+            text-anchor="middle" font-size="16" font-weight="bold" fill="#1f2937">
+        ${conteo.media}
+      </text>
+      <text x="200" y="305" text-anchor="middle" font-size="14" fill="#374151">Media</text>
+      
+      <rect x="280" y="${280 - (conteo.baja / maxValor * alturaMaxBarra)}" 
+            width="80" height="${conteo.baja / maxValor * alturaMaxBarra}" 
+            fill="#6366F1" rx="4"/>
+      <text x="320" y="${270 - (conteo.baja / maxValor * alturaMaxBarra)}" 
+            text-anchor="middle" font-size="16" font-weight="bold" fill="#1f2937">
+        ${conteo.baja}
+      </text>
+      <text x="320" y="305" text-anchor="middle" font-size="14" fill="#374151">Baja</text>
+    </svg>
+  `
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL: GENERAR PDF
 // ============================================
 
@@ -145,17 +197,6 @@ function generarGraficoPieSVG(stats: {
  * @param reportes - Array de reportes a incluir (puede estar previamente filtrado)
  * @param opciones - Configuración opcional para personalizar el PDF
  * @returns URI del archivo PDF generado
- * 
- * Ejemplo de uso:
- * ```typescript
- * // Generar PDF con todos los reportes
- * const reportes = await obtenerReportes()
- * await generarPDF(reportes)
- * 
- * // Generar PDF con reportes filtrados
- * const reportesPendientes = filtrarReportes(reportes, { estado: 'pendiente' })
- * await generarPDF(reportesPendientes, { titulo: 'Reportes Pendientes' })
- * ```
  */
 export async function generarPDF(
   reportes: Reporte[], 
@@ -178,6 +219,25 @@ export async function generarPDF(
     // Calcular estadísticas automáticamente usando la función del filtro
     const stats = obtenerEstadisticas(reportes)
 
+    // ⭐ OBTENER NOMBRE DEL USUARIO DE LA SESIÓN SI NO SE PROPORCIONÓ ⭐
+    let nombreGenerador = opciones.nombreGenerador
+
+    if (!nombreGenerador) {
+      try {
+        const sesion = await obtenerSesion()
+
+        if (sesion && 'nomEmpl' in sesion.data) {
+          const e = sesion.data
+          nombreGenerador =
+            `${e.nomEmpl} ${e.apeEmpl}`.trim() || 'Empleado'
+        } else {
+          nombreGenerador = 'Empleado'
+        }
+      } catch (error) {
+        nombreGenerador = 'Empleado'
+      }
+    }
+        
     // Formatear fecha de generación en español
     const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
       year: 'numeric',
@@ -190,8 +250,9 @@ export async function generarPDF(
     // Título del documento (personalizable o por defecto)
     const tituloPDF = opciones.titulo || 'Informe de Reportes'
 
-    // PRE-GENERAR el SVG antes de meter en el HTML
+    // PRE-GENERAR los SVGs antes de meter en el HTML
     const graficoSVG = generarGraficoPieSVG(stats)
+    const graficoBarras = generarGraficoBarrasPrioridad(reportes)
 
     // ========================================
     // CONSTRUCCIÓN DEL HTML
@@ -222,6 +283,14 @@ export async function generarPDF(
           }
           
           /* ================================
+             SALTOS DE PÁGINA
+             ================================ */
+          .page-break {
+            page-break-after: always;
+            break-after: page;
+          }
+          
+          /* ================================
              HEADER (ENCABEZADO)
              ================================ */
           .header {
@@ -241,6 +310,13 @@ export async function generarPDF(
             color: #6b7280;
             font-size: 14px;
             margin-top: 8px;
+          }
+
+          .generado-por {
+            color: #059669;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 12px;
           }
           
           /* ================================
@@ -289,19 +365,39 @@ export async function generarPDF(
           } 
           
           /* ================================
-             GRAFICOS ESTADISTICOS
+             PÁGINA DE GRÁFICOS ESTADÍSTICOS
              ================================ */
+          .pagina-graficos {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+          }
 
-          .graficos {
-            margin-top: 40px;
+          .pagina-graficos h2 {
+            color: #1e40af;
+            font-size: 28px;
+            margin-bottom: 60px;
             text-align: center;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 15px;
+            width: 100%;
           }
 
-          .graficos img {
-            max-width: 400px;
-            margin: auto;
+          .graficos-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: center;
+            width: 100%;
           }
 
+          .grafico-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
           
           /* ================================
              SECCIÓN DE DETALLE
@@ -440,16 +536,22 @@ export async function generarPDF(
             body { padding: 20px; }
             .stat-card { break-inside: avoid; }
             tr { break-inside: avoid; }
+            .page-break { page-break-after: always; }
           }
         </style>
       </head>
       <body>
         <!-- ================================
-             ENCABEZADO DEL DOCUMENTO
+             PÁGINA 1: ENCABEZADO Y RESUMEN
              ================================ -->
         <div class="header">
           <h1>📊 ${tituloPDF}</h1>
           <p class="fecha-generacion">Generado el ${fechaGeneracion}</p>
+          ${nombreGenerador ? `
+            <p class="generado-por">
+              👤 Generado por: ${nombreGenerador}
+            </p>
+          ` : ''}
         </div>
 
         <!-- ================================
@@ -476,15 +578,7 @@ export async function generarPDF(
             </div>
           </div>
         </div>
-
-        <!-- GRÁFICO: se mete directamente como SVG, sin condicional -->
-        <div class="graficos">
-          ${graficoSVG}
-        </div>
-
-        <!-- ================================
-             TABLA DE DETALLE
-             ================================ -->
+        
         <div class="detalle">
           <h2>Detalle de Reportes</h2>
           
@@ -569,14 +663,37 @@ export async function generarPDF(
             </div>
           `}
         </div>
+        <!-- ================================
+                PIE DE PÁGINA
+                ================================ -->
+            <div class="footer">
+              <p>Informe generado automáticamente | Total de reportes: ${stats.total}</p>
+              ${nombreGenerador ? `<p>Generado por: ${nombreGenerador}</p>` : ''}
+              <p>© ${new Date().getFullYear()} - Sistema de Gestión de Reportes</p>
+            </div>
+        <!-- ⭐ SALTO DE PÁGINA ANTES DE LOS GRÁFICOS ⭐ -->
+        <div class="page-break"></div>
 
         <!-- ================================
-             PIE DE PÁGINA
+             PÁGINA 2: GRÁFICOS ESTADÍSTICOS
              ================================ -->
-        <div class="footer">
-          <p>Informe generado automáticamente | Total de reportes: ${stats.total}</p>
-          <p>© ${new Date().getFullYear()} - Sistema de Gestión de Reportes</p>
-        </div>
+        ${opciones.mostrarGraficos !== false ? `
+          <div class="pagina-graficos">
+            <h2>📈 Análisis Estadístico</h2>
+
+            <div class="graficos-container">
+              <!-- Gráfico de Pastel -->
+              <div class="grafico-wrapper">
+                ${graficoSVG}
+              </div>
+
+              <!-- Gráfico de Barras -->
+              <div class="grafico-wrapper">
+                ${graficoBarras}
+              </div>
+            </div>
+          </div>
+        `   : ''}
       </body>
       </html>
     `
@@ -636,154 +753,109 @@ export async function generarPDF(
 
 /**
  * Genera un PDF solo con reportes de un estado específico
- * 
- * @param reportes - Array completo de reportes
- * @param estado - Estado a filtrar ('pendiente', 'en proceso', 'resuelto')
- * 
- * Ejemplo:
- * ```typescript
- * await generarPDFPorEstado(reportes, 'pendiente')
- * ```
  */
 export async function generarPDFPorEstado(
   reportes: Reporte[], 
-  estado: string
+  estado: string,
+  nombreGenerador?: string
 ) {
-  // Filtrar reportes por el estado solicitado (case-insensitive)
   const reportesFiltrados = reportes.filter(
     r => r.estReporte.toLowerCase() === estado.toLowerCase()
   )
   
-  // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes ${estado.charAt(0).toUpperCase() + estado.slice(1)}`,
-    mostrarGraficos: true
+    mostrarGraficos: true,
+    nombreGenerador
   })
 }
 
 /**
  * Genera un PDF con reportes en un rango de fechas
- * 
- * @param reportes - Array completo de reportes
- * @param fechaInicio - Fecha de inicio del rango
- * @param fechaFin - Fecha de fin del rango
- * 
- * Ejemplo:
- * ```typescript
- * await generarPDFPorFechas(
- *   reportes, 
- *   new Date('2026-01-01'), 
- *   new Date('2026-01-31')
- * )
- * ```
  */
 export async function generarPDFPorFechas(
   reportes: Reporte[],
   fechaInicio: Date,
-  fechaFin: Date
+  fechaFin: Date,
+  nombreGenerador?: string
 ) {
-  // Normalizar fechas (inicio a las 00:00:00, fin a las 23:59:59)
   const inicio = new Date(fechaInicio)
   inicio.setHours(0, 0, 0, 0)
   
   const fin = new Date(fechaFin)
   fin.setHours(23, 59, 59, 999)
   
-  // Filtrar reportes dentro del rango
   const reportesFiltrados = reportes.filter(r => {
     const fecha = new Date(r.fecReporte)
     return fecha >= inicio && fecha <= fin
   })
   
-  // Formatear rango de fechas para el título
   const rangoTexto = `${fechaInicio.toLocaleDateString('es-ES')} - ${fechaFin.toLocaleDateString('es-ES')}`
   
-  // Generar PDF con título que incluye el rango de fechas
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes del ${rangoTexto}`,
-    mostrarGraficos: true
+    mostrarGraficos: true,
+    nombreGenerador
   })
 }
 
 /**
  * Genera un PDF con reportes asignados a un empleado específico
- * 
- * @param reportes - Array completo de reportes
- * @param idEmpl - ID del empleado
- * 
- * Ejemplo:
- * ```typescript
- * await generarPDFPorEmpleado(reportes, 123)
- * ```
  */
 export async function generarPDFPorEmpleado(
   reportes: Reporte[],
-  idEmpl: number
+  idEmpl: number,
+  nombreGenerador?: string
 ) {
-  // Filtrar reportes asignados al empleado
   const reportesFiltrados = reportes.filter(r => r.idEmpl === idEmpl)
   
-  // Obtener nombre del empleado del primer reporte (si existe)
   const nombreEmpleado = reportesFiltrados[0]?.empleado
     ? `${reportesFiltrados[0].empleado.nomEmpl} ${reportesFiltrados[0].empleado.apeEmpl}`
     : 'Empleado Desconocido'
   
-  // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreEmpleado}`,
-    incluirEmpleado: false, // No mostrar columna de empleado (ya sabemos cuál es)
-    mostrarGraficos: true
+    incluirEmpleado: false,
+    mostrarGraficos: true,
+    nombreGenerador
   })
 }
 
 /**
  * Genera un PDF con reportes creados por un usuario específico
- * 
- * @param reportes - Array completo de reportes
- * @param idUser - ID del usuario
- * 
- * Ejemplo:
- * ```typescript
- * await generarPDFPorUsuario(reportes, 456)
- * ```
  */
 export async function generarPDFPorUsuario(
   reportes: Reporte[],
-  idUser: number
+  idUser: number,
+  nombreGenerador?: string
 ) {
-  // Filtrar reportes creados por el usuario
   const reportesFiltrados = reportes.filter(r => r.idUser === idUser)
   
-  // Obtener nombre del usuario del primer reporte (si existe)
   const nombreUsuario = reportesFiltrados[0]?.usuario
     ? `${reportesFiltrados[0].usuario.nomUser} ${reportesFiltrados[0].usuario.apeUser}`
     : 'Usuario Desconocido'
   
-  // Generar PDF con título personalizado
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreUsuario}`,
-    incluirUsuario: false, // No mostrar columna de usuario (ya sabemos quién es)
-    mostrarGraficos: true
+    incluirUsuario: false,
+    mostrarGraficos: true,
+    nombreGenerador
   })
 }
 
 /**
  * Genera un PDF detallado con descripción completa de cada reporte
- * Útil para reportes con mucho texto
- * 
- * @param reportes - Array de reportes
- * 
- * Ejemplo:
- * ```typescript
- * await generarPDFDetallado(reportes)
- * ```
  */
-export async function generarPDFDetallado(reportes: Reporte[]) {
+export async function generarPDFDetallado(
+  reportes: Reporte[],
+  nombreGenerador?: string
+) {
   return generarPDF(reportes, {
     titulo: 'Informe Detallado de Reportes',
-    incluirDescripcion: true, // Mostrar descripción completa
+    incluirDescripcion: true,
     incluirUsuario: true,
     incluirEmpleado: true,
-    mostrarGraficos: true
+    mostrarGraficos: true,
+    nombreGenerador
   })
 }

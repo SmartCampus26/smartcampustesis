@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '../../src/lib/Supabase'
 import { Empleado, Reporte } from '../../src/types/Database'
+import { obtenerSesion } from '@/src/util/Session'
 
 export default function ReasignarEmpleado() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -20,17 +21,45 @@ export default function ReasignarEmpleado() {
   const [modalVisible, setModalVisible] = useState(false)
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   
+  // Estado para la autoridad que realiza la acción
+  const [nombreAutoridad, setNombreAutoridad] = useState<string>('Sistema')
+
   // Filtros
   const [filtroDepto, setFiltroDepto] = useState<string>('todos')
   const [filtroCargo, setFiltroCargo] = useState<string>('todos')
 
+  // CARGA INICIAL: Unificada para optimizar el rendimiento
   useEffect(() => {
-    cargarDatos()
+    const inicializarPantalla = async () => {
+      setCargando(true)
+      // Ejecutamos ambas cargas en paralelo
+      await Promise.all([
+        cargarDatos(),
+        cargarDatosSesion()
+      ])
+      setCargando(false)
+    }
+
+    inicializarPantalla()
   }, [])
 
+  const cargarDatosSesion = async () => {
+    try {
+      const sesion = await obtenerSesion()
+      if (sesion) {
+        // Usamos tus interfaces Usuario y Empleado según el tipo de sesión
+        if (sesion.tipo === 'usuario') {
+          setNombreAutoridad(`${sesion.data.nomUser} ${sesion.data.apeUser}`)
+        } else if (sesion.tipo === 'empleado') {
+          setNombreAutoridad(`${sesion.data.nomEmpl} ${sesion.data.apeEmpl}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error al recuperar sesión:', error)
+    }
+  }
+
   const cargarDatos = async () => {
-    setCargando(true)
-    
     // Cargar empleados
     const { data: empData, error: empError } = await supabase
       .from('empleado')
@@ -39,7 +68,6 @@ export default function ReasignarEmpleado() {
 
     if (empError) {
       Alert.alert('Error', 'No se pudieron cargar los empleados: ' + empError.message)
-      setCargando(false)
       return
     }
 
@@ -55,7 +83,6 @@ export default function ReasignarEmpleado() {
 
     setEmpleados(empData || [])
     setReportes(repData || [])
-    setCargando(false)
   }
 
   const abrirModalReasignacion = (reporte: Reporte) => {
@@ -63,22 +90,37 @@ export default function ReasignarEmpleado() {
     setModalVisible(true)
   }
 
-  const reasignarReporte = async (empleadoId: number) => {
+  const reasignarReporte = async (empleadoId: string) => {
     if (!reporteSeleccionado) return
 
+    // 1. Actualización en la base de datos
     const { error } = await supabase
       .from('reporte')
       .update({ idEmpl: empleadoId })
       .eq('idReporte', reporteSeleccionado.idReporte)
 
     if (error) {
-      Alert.alert('Error', 'No se pudo reasignar el reporte: ' + error.message)
+      Alert.alert('Error', 'No se pudo reasignar: ' + error.message)
       return
+    }
+
+    // 2. Notificación mediante Edge Function
+    try {
+      await supabase.functions.invoke('notificar-reasignacion-reporte', {
+        body: {
+          idReporte: reporteSeleccionado.idReporte,
+          idEmpleadoNuevo: empleadoId,
+          nombreAutoridad: nombreAutoridad 
+        }
+      })
+    } catch (notifError) {
+      console.error('Error al enviar notificación:', notifError)
+      // No bloqueamos el éxito de la DB si falla la notificación, solo lo logueamos
     }
 
     Alert.alert('¡Éxito!', 'Reporte reasignado correctamente')
     setModalVisible(false)
-    cargarDatos()
+    cargarDatos() // Refrescar la lista
   }
 
   const empleadosFiltrados = empleados.filter(emp => {
@@ -87,7 +129,7 @@ export default function ReasignarEmpleado() {
     return pasaDepto && pasaCargo
   })
 
-  const getEmpleadoNombre = (idEmpl?: number) => {
+  const getEmpleadoNombre = (idEmpl?: string) => {
     if (!idEmpl) return 'Sin asignar'
     const emp = empleados.find(e => e.idEmpl === idEmpl)
     return emp ? `${emp.nomEmpl} ${emp.apeEmpl}` : 'Desconocido'
@@ -195,7 +237,6 @@ export default function ReasignarEmpleado() {
             <View style={styles.filtersContainer}>
               <Text style={styles.filterLabel}>Filtrar por:</Text>
               
-              {/* Filtro Departamento */}
               <View style={styles.filterRow}>
                 <TouchableOpacity
                   style={[
@@ -247,7 +288,6 @@ export default function ReasignarEmpleado() {
                 </TouchableOpacity>
               </View>
 
-              {/* Filtro Cargo */}
               <View style={styles.filterRow}>
                 <TouchableOpacity
                   style={[
@@ -330,7 +370,7 @@ export default function ReasignarEmpleado() {
                   >
                     <View style={styles.empleadoAvatar}>
                       <Text style={styles.empleadoInitials}>
-                        {empleado.nomEmpl[0]}{empleado.apeEmpl[0]}
+                        {empleado.nomEmpl?.[0] || ''}{empleado.apeEmpl?.[0] || ''}
                       </Text>
                     </View>
 
@@ -372,6 +412,7 @@ export default function ReasignarEmpleado() {
   )
 }
 
+// ESTILOS (Sin cambios)
 const styles = StyleSheet.create({
   container: {
     flex: 1,

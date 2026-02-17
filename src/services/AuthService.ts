@@ -10,13 +10,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 
 
-// Credenciales del super admin que es un usuario especial que no está en la base de datos
-// pero tiene permisos totales y este se valida antes que cualquier login
-const SUPER_ADMIN = {
-  correo: 'emily.ojeda.est@uets.edu.ec',
-  contrasena: 'lumity<319'
-}
-
 // ===============================
 // LOGIN CON SUPABASE AUTH
 // (solo para creación / verificación)
@@ -24,7 +17,6 @@ const SUPER_ADMIN = {
 export const loginConAuth = async (
   correo: string,
   contrasena: string,
-  datosExtra: any
 ) => {
   // 1. Crear usuario en Supabase Auth
   const { data, error } = await supabase.auth.signUp({
@@ -39,101 +31,60 @@ export const loginConAuth = async (
 // ===============================
 // LOGIN PERSONALIZADO
 // ===============================
+
 export const loginPersonalizado = async (
-// Este login no usa Supabase Auth, sino que revisa las tablas usuario o empleado
   correo: string,
   contrasena: string,
   tipo: 'usuario' | 'empleado'
 ): Promise<Sesion> => {
-  try {
-    // ===============================
-    // SUPER ADMIN (PRIMERO)
-    // ===============================
-    if (correo === SUPER_ADMIN.correo && contrasena === SUPER_ADMIN.contrasena) {
-      const sesionAdmin: Sesion = {
-        tipo: 'usuario',
-        id: 0,
-        rol: 'super_admin',
-        data: {
-          idUser: 0,
-          nomUser: 'Emily Ojeda',
-          correoUser: correo,
-          rolUser: 'super_admin',
-          esSuperAdmin: true
-        } as any,
+  try { // <--- ESTO ES LO QUE FALTABA
+    // 1. AUTH DE SUPABASE (Validar credenciales reales)
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: correo,
+      password: contrasena,
+    })
+
+    if (authError) {
+      if (authError.message.includes('Email not confirmed')) {
+        throw new Error('Por favor, verifica tu correo electrónico antes de entrar.')
       }
-
-      await guardarSesionLocal(sesionAdmin)
-      return sesionAdmin
-    }
-
-    // ===============================
-    // VALIDAR CORREO REAL (USUARIO Y EMPLEADO)
-    // ===============================
-   
-
-    // ===============================
-    // LOGIN USUARIO
-    // ===============================
-    if (tipo === 'usuario') {
-      console.log('Intentando login como usuario con:', correo)
-
-      const { data, error } = await supabase
-        .from('usuario')
-        .select('*')
-        .eq('correoUser', correo)
-        .eq('contraUser', contrasena)
-        .single()
-
-      console.log('Respuesta Supabase:', { data, error })
-
-      if (error || !data) {
-        throw new Error('Credenciales incorrectas')
-      }
-
-      const sesion: Sesion = {
-        tipo: 'usuario',
-        id: data.idUser,
-        rol: data.rolUser,
-        data: data as Usuario,
-      }
-
-      await guardarSesionLocal(sesion)
-      return sesion
-    }
-
-    // ===============================
-    // LOGIN EMPLEADO
-    // ===============================
-    console.log('Intentando login como empleado con:', correo)
-
-    const { data, error } = await supabase
-      .from('empleado')
-      .select('*')
-      .eq('correoEmpl', correo)
-      .eq('contraEmpl', contrasena)
-      .single()
-
-    console.log('Respuesta Supabase:', { data, error })
-
-    if (error || !data) {
       throw new Error('Credenciales incorrectas')
     }
 
+    // 2. CONSULTAR DATOS DE PERFIL
+    const tabla = tipo === 'usuario' ? 'usuario' : 'empleado'
+    const idColumna = tipo === 'usuario' ? 'idUser' : 'idEmpl'
+
+    console.log(`Buscando perfil en tabla ${tabla} para el ID:`, authData.user.id)
+
+    const { data: perfil, error: perfilError } = await supabase
+      .from(tabla)
+      .select('*')
+      .eq(idColumna, authData.user.id)
+      .single()
+
+    if (perfilError || !perfil) {
+      console.error('Error al traer perfil:', perfilError)
+      throw new Error('Usuario autenticado, pero no se encontró su perfil en la base de datos.')
+    }
+
+    // 3. CREAR Y GUARDAR SESIÓN
     const sesion: Sesion = {
-      tipo: 'empleado',
-      id: data.idEmpl,
-      data: data as Empleado,
+      tipo: tipo,
+      id: tipo === 'usuario' ? perfil.idUser : perfil.idEmpl,
+      rol: tipo === 'usuario' ? perfil.rolUser : perfil.rolEmpl, 
+      data: perfil as any,
     }
 
     await guardarSesionLocal(sesion)
     return sesion
 
-  } catch (error: any) {
-    console.error('Error en login:', error)
+  } catch (error: any) { // <--- Este catch ahora sí tiene su try
+    console.error('Error en login:', error.message)
     throw new Error(error.message || 'Error al iniciar sesión')
   }
 }
+
 
 // ===============================
 // LOGOUT

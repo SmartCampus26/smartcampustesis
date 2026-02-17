@@ -6,9 +6,8 @@
    * Contiene la información de los usuarios del sistema
    */
   export interface Usuario {
-    idUser: number
+    idUser: string
     rolUser: string
-    contraUser?: string
     correoUser: string
     nomUser: string
     apeUser: string
@@ -21,10 +20,9 @@
    * Contiene la información del personal encargado
    */
   export interface Empleado {
-    idEmpl: number
+    idEmpl: string
     nomEmpl: string
     apeEmpl: string
-    contraEmpl?: string
     deptEmpl: string
     cargEmpl: string
     tlfEmpl?: number
@@ -36,9 +34,9 @@
    * Define los lugares físicos donde se generan reportes
    */
   export interface Lugar {
-    idLugar: number
+    idLugar: string
     nomLugar: string
-    pisoLugar: number
+    pisoLugar: string
   }
   
   /**
@@ -48,15 +46,15 @@
   export interface Reporte {
     empleado: any
     usuario: any
-    idReporte: number
+    idReporte: string
     fecReporte: string
     descriReporte: string
     estReporte: string
     prioReporte: string
     comentReporte: string
     imgReporte: string []
-    idEmpl: number
-    idUser: number
+    idEmpl: string
+    idUser: string
   }
   
   /**
@@ -64,11 +62,11 @@
    * Objetos involucrados dentro de un reporte
    */
   export interface Objeto {
-    idObj: number
+    idObj: string
     nomObj: string
     ctgobj: string
-    idReporte: number
-    idLugar: number
+    idReporte: string
+    idLugar: string
   }
   
   /**
@@ -76,8 +74,8 @@
    * Maneja la relación varios a varios entre reporte y usuario
    */
   export interface ReporteUsuario {
-    idReporte: number
-    idUser: number
+    idReporte: string
+    idUser: string
   }
 
 // DEFINICIÓN DEL TIPO SESIÓN
@@ -90,13 +88,13 @@
 export type Sesion = 
 | {
     tipo: 'usuario'
-    id: number
+    id: string
     rol: string
     data: Usuario
   }
 | {
     tipo: 'empleado'
-    id: number
+    id: string
     data: Empleado
   }
 
@@ -109,8 +107,8 @@ export type Sesion =
  * @param sesion - Sesión actual
  * @returns true si es usuario
  */
-export function esUsuario(sesion: Sesion): sesion is { tipo: 'usuario'; id: number; rol: string; data: Usuario } {
-return sesion.tipo === 'usuario'
+export function esUsuario(sesion: Sesion): sesion is { tipo: 'usuario'; id: string; rol: string; data: Usuario } {
+  return sesion.tipo === 'usuario'
 }
 
 /**
@@ -119,8 +117,8 @@ return sesion.tipo === 'usuario'
  * @param sesion - Sesión actual
  * @returns true si es empleado
  */
-export function esEmpleado(sesion: Sesion): sesion is { tipo: 'empleado'; id: number; data: Empleado } {
-return sesion.tipo === 'empleado'
+export function esEmpleado(sesion: Sesion): sesion is { tipo: 'empleado'; id: string; data: Empleado } {
+  return sesion.tipo === 'empleado'
 }
 
 // TIPO DE RESPUESTA GENERAL DE SUPABASE

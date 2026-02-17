@@ -103,7 +103,7 @@ export default function ListadoMaxAutoridad() {
    * 
    * Elimina un usuario del sistema previa confirmación
    */
-  const eliminarUsuario = (id: number, nombre: string) => {
+  const eliminarUsuario = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
       `¿Estás segura de eliminar a ${nombre}?`,
@@ -140,7 +140,7 @@ export default function ListadoMaxAutoridad() {
    * 
    * Elimina un empleado del sistema previa confirmación
    */
-  const eliminarEmpleado = (id: number, nombre: string) => {
+  const eliminarEmpleado = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
       `¿Estás segura de eliminar a ${nombre}?`,

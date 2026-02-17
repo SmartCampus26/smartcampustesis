@@ -65,59 +65,34 @@ export default function EmpleadoNuevo() {
   
     setCargando(true)
   
-    // 1️⃣ Crear usuario en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: nuevoEmpleado.correoEmpl,
-      password: nuevoEmpleado.contraEmpl,
-      options: {
-        emailRedirectTo: 'http://localhost:8081', // luego lo cambias
-      },
-    })
+    try {
+      // Llamar a la Edge Function
+      const { data, error } = await supabase.functions.invoke('crear-empleado', {
+        body: {
+          nomEmpl: nuevoEmpleado.nomEmpl,
+          apeEmpl: nuevoEmpleado.apeEmpl,
+          correoEmpl: nuevoEmpleado.correoEmpl,
+          contraEmpl: nuevoEmpleado.contraEmpl,
+          tlfEmpl: nuevoEmpleado.tlfEmpl,
+          deptEmpl: nuevoEmpleado.deptEmpl,
+          cargEmpl: nuevoEmpleado.cargEmpl,
+        },
+      })
   
-    if (authError) {
+      if (error) throw error
+      if (data && data.error) throw new Error(data.error)
+  
+      Alert.alert(
+        '✅ Empleado creado',
+        'Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl,
+        [{ text: 'OK', onPress: () => router.back() }]
+      )
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo crear el empleado')
+    } finally {
       setCargando(false)
-      Alert.alert('Error Auth', authError.message)
-      return
     }
-  
-    const userId = authData.user?.id
-  
-    if (!userId) {
-      setCargando(false)
-      Alert.alert('Error', 'No se pudo obtener el usuario creado')
-      return
-    }
-  
-    // 2️⃣ Guardar datos del empleado (CON contraseña – solo pruebas)
-    const { error: empleadoError } = await supabase.from('empleado').insert([
-      {
-        user_id: userId,
-        nomEmpl: nuevoEmpleado.nomEmpl,
-        apeEmpl: nuevoEmpleado.apeEmpl,
-        correoEmpl: nuevoEmpleado.correoEmpl,
-        contraEmpl: nuevoEmpleado.contraEmpl, // ⚠️ SOLO PRUEBAS
-        tlfEmpl: nuevoEmpleado.tlfEmpl
-          ? parseInt(nuevoEmpleado.tlfEmpl)
-          : null,
-        deptEmpl: nuevoEmpleado.deptEmpl,
-        cargEmpl: nuevoEmpleado.cargEmpl,
-      },
-    ])
-  
-    setCargando(false)
-  
-    if (empleadoError) {
-      Alert.alert('Error DB', empleadoError.message)
-      return
-    }
-  
-    Alert.alert(
-      'Empleado creado',
-      'Se envió un correo para verificar la cuenta',
-      [{ text: 'OK', onPress: () => router.back() }]
-    )
   }
-  
 
   return (
     // Ajusta la vista cuando el teclado está visible

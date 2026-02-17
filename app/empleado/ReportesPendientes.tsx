@@ -34,10 +34,10 @@ const ReportesPendientes: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // ID del empleado autenticado
-  const [empleadoActual, setEmpleadoActual] = useState<number | null>(null)
+  const [empleadoActual, setEmpleadoActual] = useState<string | null>(null)
 
   // Estados para edición de reportes
-  const [editando, setEditando] = useState<number | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [nuevaPrioridad, setNuevaPrioridad] = useState('')
   const [nuevoEstado, setNuevoEstado] = useState('')
@@ -163,25 +163,69 @@ const ReportesPendientes: React.FC = () => {
   }
 
   // Guarda los cambios del reporte en la base de datos
-  const guardarCambios = async (idReporte: number): Promise<void> => {
+  const guardarCambios = async (idReporte: string): Promise<void> => {
+  try {
+    // Obtener el reporte actual para comparar cambios
+    const reporteActual = reportes.find(r => r.idReporte === idReporte)
+    if (!reporteActual) return
+
+    // Actualizar el reporte
+    const { error: updateError } = await supabase
+      .from('reporte')
+      .update({
+        comentReporte: nuevoComentario,
+        prioReporte: nuevaPrioridad,
+        estReporte: nuevoEstado
+      })
+      .eq('idReporte', idReporte)
+
+    if (updateError) throw updateError
+
+    // 🔥 NUEVO: Notificar al usuario del cambio
     try {
-      const { error: updateError } = await supabase
-        .from('reporte')
-        .update({
-          comentReporte: nuevoComentario,
-          prioReporte: nuevaPrioridad,
-          estReporte: nuevoEstado
+      console.log('📧 Enviando notificación de actualización...')
+      
+      const cambios = {
+        prioridadAnterior: reporteActual.prioReporte,
+        prioridadNueva: nuevaPrioridad,
+        estadoAnterior: reporteActual.estReporte,
+        estadoNuevo: nuevoEstado,
+        comentarioNuevo: nuevoComentario !== reporteActual.comentReporte ? nuevoComentario : null
+      }
+
+      // Solo notificar si hay cambios reales
+      const huboCambios =
+      cambios.prioridadAnterior !== cambios.prioridadNueva ||
+      cambios.estadoAnterior !== cambios.estadoNuevo ||
+      cambios.comentarioNuevo
+    
+
+      if (huboCambios) {
+        const { error: notifError } = await supabase.functions.invoke('notificar-actualizacion-reporte', {
+          body: {
+            idReporte: idReporte,
+            idUsuario: reporteActual.usuario.idUser,
+            nombreEmpleado: `${reporteActual.empleado.nomEmpl} ${reporteActual.empleado.apeEmpl}`,
+            cambios: cambios
+          }
         })
-        .eq('idReporte', idReporte)
 
-      if (updateError) throw updateError
-
-      await cargarReportes()
-      cancelarEdicion()
-    } catch (err: any) {
-      alert('Error al guardar: ' + err.message)
+        if (notifError) {
+          console.error('Error al enviar notificación:', notifError)
+        } else {
+          console.log('✅ Notificación enviada al usuario')
+        }
+      }
+    } catch (notifError) {
+      console.error('Error al enviar notificación:', notifError)
     }
+
+    await cargarReportes()
+    cancelarEdicion()
+  } catch (err: any) {
+    alert('Error al guardar: ' + err.message)
   }
+}
 
   // Devuelve un color según el estado del reporte
   const getColorEstado = (estado: string): string => {

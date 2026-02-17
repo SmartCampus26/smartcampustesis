@@ -18,7 +18,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../src/lib/Supabase'
 // Iconos de Ionicons para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
-// Importar el contexto de fotos
+// 🔥 Importar el contexto de fotos
 import { useSaved } from '../Camera/context/SavedContext'
 
 // INTERFAZ DE PROPIEDADES
@@ -42,7 +42,6 @@ const LUGARES_PREDEFINIDOS = [
   'Coliseo',
 ]
 
-// Categorías disponibles para clasificar el objeto reportado
 const CATEGORIAS_OBJETOS = [
   { id: 'electricidad', nombre: 'Electricidad', icono: 'flash-outline' },
   { id: 'plomeria', nombre: 'Plomería', icono: 'water-outline' },
@@ -54,20 +53,14 @@ const CATEGORIAS_OBJETOS = [
   { id: 'otros', nombre: 'Otros', icono: 'ellipsis-horizontal-outline' },
 ]
 
-/**
- * Componente CrearReporte
- * Permite a un usuario crear un nuevo reporte de incidencia,
- * adjuntar fotos, seleccionar ubicación, objeto afectado
- * y asignar el reporte a un departamento.
- */
 export default function CrearReporte({ }: CrearReporteProps) {
   const params = useLocalSearchParams()
-  const idUser = parseInt(params.idUser as string)
+  const idUser = params.idUser as string 
   const nombreUsuario = params.nombreUsuario as string
   
-  // Fotos tomadas desde la cámara y funciones para gestionarlas
+  // 🔥 Obtener fotos del contexto
   const { savedPhotos, uploadPhotosToSupabase, clearSavedPhotos } = useSaved()
-  // Estados para los campos del formulario
+  
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [departamento, setDepartamento] = useState<'mantenimiento' | 'sistemas'>('mantenimiento')
@@ -77,10 +70,6 @@ export default function CrearReporte({ }: CrearReporteProps) {
   const [categoriaObjeto, setCategoriaObjeto] = useState<string>('')
   const [cargando, setCargando] = useState(false)
 
-  /**
-   * Valida que todos los campos obligatorios estén completos
-   * y que el piso sea un número válido
-   */
   const validarFormulario = () => {
     if (!titulo.trim()) {
       Alert.alert('Error', 'Por favor ingresa un título')
@@ -114,19 +103,11 @@ export default function CrearReporte({ }: CrearReporteProps) {
     return true
   }
 
-  // Redirige a la pantalla de la cámara para tomar fotos
+  // 🔥 NUEVA FUNCIÓN: Ir a la cámara
   const handleGoToCamera = () => {
     router.push('/Camera') // O la ruta donde está tu cámara (index.tsx)
   }
 
-  /**
-   * Crea el reporte en la base de datos:
-   * 1. Asigna un empleado aleatorio
-   * 2. Crea o reutiliza un lugar
-   * 3. Inserta el reporte
-   * 4. Sube las fotos (si existen)
-   * 5. Vincula usuario y objeto
-   */
   const crearReporte = async () => {
     console.log('=== DEBUGGER CREAR REPORTE ===')
     console.log('idUser recibido:', idUser)
@@ -204,7 +185,37 @@ export default function CrearReporte({ }: CrearReporteProps) {
       }
   
       const idReporte = data[0].idReporte
-      console.log('✅ Reporte creado con ID:', idReporte)
+      console.log('✅ Reporte creado con ID:', idReporte) 
+
+      // 🔥 NUEVO: Notificar al empleado asignado
+if (idEmplAleatorio) {
+  try {
+    console.log('📧 Enviando notificación al empleado...')
+    
+    const { error: notifError } = await supabase.functions.invoke('notificar-nuevo-reporte', {
+      body: {
+        idReporte: idReporte,
+        idEmpleado: idEmplAleatorio,
+        nombreUsuario: nombreUsuario,
+        descripcion: descripcion,
+        nombreObjeto: nombreObjeto,
+        categoriaObjeto: categoriaObjeto,
+        lugar: lugarSeleccionado,
+        piso: pisoNumero,
+        fotos: savedPhotos.map(p => p.uri) // URLs de las fotos subidas
+      }
+    })
+
+    if (notifError) {
+      console.error('Error al enviar notificación:', notifError)
+      // No fallar todo el reporte si la notificación falla
+    } else {
+      console.log('✅ Notificación enviada al empleado')
+    }
+  } catch (notifError) {
+    console.error('Error al enviar notificación:', notifError)
+  }
+}
 
       // 🔥 4. SUBIR FOTOS A SUPABASE (SI HAY)
       if (savedPhotos.length > 0) {
@@ -251,7 +262,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
   
       if (objetoError) throw objetoError
   
-      // Limpia estados, fotos del contexto y regresa a la pantalla anterior
+      // 🔥 7. LIMPIAR FOTOS DEL CONTEXTO
       clearSavedPhotos()
       
       Alert.alert(

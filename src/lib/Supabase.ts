@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // CONFIGURACIÓN DE CONEXIÓN A SUPABASE
 
 // Obtiene la URL del proyecto Supabase desde variables de entorno 
-// estas credenciales deben definirse en el archivo .env
+// estas credenciales deben definirse en el archivo .env                     
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL //Credenciales, verificar información
 // Obtiene la clave anónima del proyecto Supabase
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY //Credenciales, verificar información

@@ -51,47 +51,38 @@ export default function UsuarioNuevo() {
     }
   
     setCargando(true)
-  
-    try {
-      // 1️⃣ Crear usuario en SUPABASE AUTH
-      const { data, error: authError } = await supabase.auth.signUp({
-        email: nuevoUsuario.correoUser,
-        password: nuevoUsuario.contraUser,
-      })
-  
-      if (authError) throw authError
-      if (!data.user) throw new Error('No se pudo crear el usuario')
-  
-      // 2️⃣ Guardar datos extra en TU tabla
-      const { error: dbError } = await supabase.from('usuario').insert([
-        {
-          idUser: data.user.id,
-          nomUser: nuevoUsuario.nomUser,
-          apeUser: nuevoUsuario.apeUser,
-          correoUser: nuevoUsuario.correoUser,
-          tlfUser: nuevoUsuario.tlfUser
-            ? parseInt(nuevoUsuario.tlfUser)
-            : null,
-          rolUser: nuevoUsuario.rolUser,
-          fec_reg_user: new Date().toISOString(),
-        },
-      ])
-  
-      if (dbError) throw dbError
-  
-      Alert.alert(
-        'Usuario creado',
-        'Se envió un correo para verificar la cuenta',
-        [{ text: 'OK', onPress: () => router.back() }]
-      )
-  
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo crear el usuario')
-    } finally {
-      setCargando(false)
-    }
-  }    
-  
+try {
+  // LLAMADA A LA EDGE FUNCTION
+  const { data, error } = await supabase.functions.invoke('quick-handler', {  
+    body: {
+      nomUser: nuevoUsuario.nomUser,
+      apeUser: nuevoUsuario.apeUser,
+      correoUser: nuevoUsuario.correoUser,
+      contraUser: nuevoUsuario.contraUser, // ¡Asegúrate de enviarla!
+      tlfUser: nuevoUsuario.tlfUser,
+      rolUser: nuevoUsuario.rolUser,
+    },
+  })
+
+  if (error) throw error
+  if (data?.error) throw new Error(data.error) // Error que viene de nuestra lógica
+
+  Alert.alert(
+    '¡Listo!',
+    'Usuario registrado. Se ha enviado un enlace de verificación a ' + nuevoUsuario.correoUser,
+    [{ text: 'Entendido', onPress: () => router.back() }]
+  )
+
+} catch (error) {
+  if (error instanceof Error) {
+    Alert.alert('Error', error.message)
+  } else {
+    Alert.alert('Error', 'Ocurrió un error inesperado')
+  }
+} finally {
+  setCargando(false)
+}
+}
   //RENDER PRINCIPAL
   return (
     <KeyboardAvoidingView

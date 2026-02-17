@@ -31,6 +31,7 @@ export default function AutoridadesLayout() {
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
+          marginBottom: 20,
         },
         // Estilo del texto debajo de cada ícono
         tabBarLabelStyle: {

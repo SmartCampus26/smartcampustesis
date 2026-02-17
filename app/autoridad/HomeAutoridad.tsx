@@ -14,7 +14,7 @@ import {
 // Iconos
 import { Ionicons } from '@expo/vector-icons'
 // Navegación entre pantallas
-import { router, useLocalSearchParams } from 'expo-router'
+import { router } from 'expo-router'
 // Servicios para obtener datos desde la base de datos
 import { obtenerReportes } from '../../src/services/ReporteService'
 import { obtenerSesion } from '../../src/util/Session'
