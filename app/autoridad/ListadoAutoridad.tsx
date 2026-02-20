@@ -1,4 +1,13 @@
+// ===============================
+// IMPORTACIONES
+// ===============================
+
+// React y hooks:
+// useState → Manejo de estado reactivo
+// useEffect → Ejecutar efectos secundarios (ej: cargar datos al iniciar)
 import React, { useState, useEffect } from 'react'
+
+// Componentes visuales de React Native
 import {
   View,
   Text,
@@ -8,29 +17,78 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  RefreshControl,
+  RefreshControl, // Permite actualizar la lista deslizando hacia abajo
 } from 'react-native'
+
+// Router para navegación entre pantallas
 import { router } from 'expo-router'
+
+// Cliente Supabase para consultas a base de datos
 import { supabase } from '../../src/lib/Supabase'
+
+// Tipos TypeScript que definen la estructura de Usuario y Empleado
 import { Usuario, Empleado } from '../../src/types/Database'
 
+
+// Tipo personalizado que controla el filtro activo
 type TipoPersonal = 'todos' | 'usuarios' | 'empleados'
 
+
 export default function ListadoMaxAutoridad() {
+
+  // ===============================
+  // ESTADOS
+  // ===============================
+
+  // Lista completa de usuarios
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+
+  // Lista completa de empleados
   const [empleados, setEmpleados] = useState<Empleado[]>([])
+
+  // Texto ingresado en la barra de búsqueda
   const [busqueda, setBusqueda] = useState('')
+
+  // Controla qué filtro está activo (todos / usuarios / empleados)
   const [filtroActivo, setFiltroActivo] = useState<TipoPersonal>('todos')
+
+  // Controla pantalla de carga inicial
   const [cargando, setCargando] = useState(true)
+
+  // Controla animación de refrescar (pull to refresh)
   const [refrescando, setRefrescando] = useState(false)
 
+
+  // ===============================
+  // EFECTO INICIAL
+  // ===============================
+
+  /**
+   * useEffect con dependencia vacía []
+   * Se ejecuta una sola vez cuando el componente se monta.
+   * Llama a la función cargarDatos().
+   */
   useEffect(() => {
     cargarDatos()
   }, [])
 
+
+  // ===============================
+  // FUNCIÓN: CARGAR DATOS
+  // ===============================
+
+  /**
+   * Consulta la base de datos en Supabase:
+   * 1️⃣ Obtiene todos los usuarios
+   * 2️⃣ Obtiene todos los empleados
+   * 3️⃣ Ordena los resultados por nombre ascendente
+   */
   const cargarDatos = async () => {
     try {
-      // Cargar usuarios
+
+      // =====================
+      // Cargar USUARIOS
+      // =====================
       const { data: dataUsuarios, error: errorUsuarios } = await supabase
         .from('usuario')
         .select('*')
@@ -39,10 +97,13 @@ export default function ListadoMaxAutoridad() {
       if (errorUsuarios) {
         console.error('Error al cargar usuarios:', errorUsuarios)
       } else {
+        // Si no hay error, guardamos los datos en el estado
         setUsuarios(dataUsuarios || [])
       }
 
-      // Cargar empleados
+      // =====================
+      // Cargar EMPLEADOS
+      // =====================
       const { data: dataEmpleados, error: errorEmpleados } = await supabase
         .from('empleado')
         .select('*')
@@ -53,20 +114,42 @@ export default function ListadoMaxAutoridad() {
       } else {
         setEmpleados(dataEmpleados || [])
       }
+
     } catch (error) {
       console.error('Error general:', error)
       Alert.alert('Error', 'No se pudieron cargar los datos')
     } finally {
+      // Siempre se ejecuta, haya error o no
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+
+  // ===============================
+  // REFRESH MANUAL
+  // ===============================
+
+  /**
+   * Se ejecuta cuando el usuario desliza hacia abajo.
+   * Activa estado de refrescando y vuelve a cargar datos.
+   */
   const onRefresh = () => {
     setRefrescando(true)
     cargarDatos()
   }
 
+
+  // ===============================
+  // ELIMINAR USUARIO
+  // ===============================
+
+  /**
+   * Muestra confirmación antes de eliminar.
+   * Si el usuario confirma:
+   * - Ejecuta DELETE en Supabase
+   * - Vuelve a cargar datos
+   */
   const eliminarUsuario = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
@@ -89,7 +172,10 @@ export default function ListadoMaxAutoridad() {
               }
 
               Alert.alert('Éxito', 'Usuario eliminado correctamente')
+
+              // Recargar lista después de eliminar
               cargarDatos()
+
             } catch (error) {
               Alert.alert('Error', 'Ocurrió un error al eliminar')
             }
@@ -99,6 +185,15 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
+
+  // ===============================
+  // ELIMINAR EMPLEADO
+  // ===============================
+
+  /**
+   * Mismo proceso que eliminarUsuario,
+   * pero aplicado a la tabla "empleado".
+   */
   const eliminarEmpleado = (id: string, nombre: string) => {
     Alert.alert(
       'Confirmar eliminación',
@@ -122,6 +217,7 @@ export default function ListadoMaxAutoridad() {
 
               Alert.alert('Éxito', 'Empleado eliminado correctamente')
               cargarDatos()
+
             } catch (error) {
               Alert.alert('Error', 'Ocurrió un error al eliminar')
             }
@@ -131,7 +227,15 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
-  // Filtrar usuarios según búsqueda
+
+  // ===============================
+  // FILTROS POR BÚSQUEDA
+  // ===============================
+
+  /**
+   * Filtrado dinámico en memoria.
+   * Convierte todo a minúsculas para hacer búsqueda case-insensitive.
+   */
   const usuariosFiltrados = usuarios.filter(usuario => {
     const terminoBusqueda = busqueda.toLowerCase()
     return (
@@ -143,7 +247,6 @@ export default function ListadoMaxAutoridad() {
     )
   })
 
-  // Filtrar empleados según búsqueda
   const empleadosFiltrados = empleados.filter(empleado => {
     const terminoBusqueda = busqueda.toLowerCase()
     return (
@@ -156,235 +259,381 @@ export default function ListadoMaxAutoridad() {
     )
   })
 
-  const renderUsuario = (usuario: Usuario) => (
+  // =====================================================
+// FUNCIÓN: renderUsuario
+// =====================================================
+
+// Función que recibe un objeto tipo Usuario
+// y devuelve el componente visual (card) para mostrarlo en pantalla
+const renderUsuario = (usuario: Usuario) => (
+
+    // Contenedor principal de la tarjeta
+    // key → obligatorio cuando se renderiza dentro de un .map()
+    // style → combina estilos base de card + estilo específico de usuario
     <View key={usuario.idUser} style={[styles.card, styles.usuarioCard]}>
+
+      {/* ================= HEADER DE LA TARJETA ================= */}
       <View style={styles.cardHeader}>
+
+        {/* Parte izquierda del header (nombre + badge) */}
         <View style={styles.cardHeaderLeft}>
+
+          {/* Nombre completo del usuario */}
           <Text style={styles.cardName}>
             {usuario.nomUser} {usuario.apeUser}
           </Text>
+
+          {/* Badge dinámico según el rol */}
           <View style={[
             styles.badge,
-            usuario.rolUser === 'autoridad' ? styles.badgeAutoridad : styles.badgeDocente
+
+            // Si el rol es "autoridad" aplica estilo autoridad
+            // Caso contrario aplica estilo docente
+            usuario.rolUser === 'autoridad'
+              ? styles.badgeAutoridad
+              : styles.badgeDocente
           ]}>
+
+            {/* Texto dinámico según rol */}
             <Text style={styles.badgeText}>
-              {usuario.rolUser === 'autoridad' ? '👔 Autoridad' : '📚 Docente'}
+              {usuario.rolUser === 'autoridad'
+                ? '👔 Autoridad'
+                : '📚 Docente'}
             </Text>
           </View>
         </View>
+
+        {/* Botón de eliminar */}
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => eliminarUsuario(usuario.idUser, `${usuario.nomUser} ${usuario.apeUser}`)}
+
+          // Al presionar ejecuta eliminarUsuario()
+          // Se envía id y nombre completo
+          onPress={() =>
+            eliminarUsuario(
+              usuario.idUser,
+              `${usuario.nomUser} ${usuario.apeUser}`
+            )
+          }
         >
           <Text style={styles.deleteButtonText}>🗑️</Text>
         </TouchableOpacity>
       </View>
 
+      {/* ================= CUERPO DE LA TARJETA ================= */}
       <View style={styles.cardBody}>
+
+        {/* Correo */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📧 Correo:</Text>
           <Text style={styles.infoValue}>{usuario.correoUser}</Text>
         </View>
+
+        {/* Teléfono */}
+        {/* Si no existe, muestra "No registrado" */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📱 Teléfono:</Text>
-          <Text style={styles.infoValue}>{usuario.tlfUser || 'No registrado'}</Text>
+          <Text style={styles.infoValue}>
+            {usuario.tlfUser || 'No registrado'}
+          </Text>
         </View>
+
+        {/* Fecha de registro */}
+        {/* Convierte string a Date y la formatea */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📅 Registro:</Text>
           <Text style={styles.infoValue}>
-            {usuario.fec_reg_user ? new Date(usuario.fec_reg_user).toLocaleDateString() : 'N/A'}
+            {usuario.fec_reg_user
+              ? new Date(usuario.fec_reg_user).toLocaleDateString()
+              : 'N/A'}
           </Text>
         </View>
+
+        {/* ID del usuario */}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>🆔 ID:</Text>
           <Text style={styles.infoValue}>{usuario.idUser}</Text>
         </View>
+
       </View>
     </View>
   )
 
-  const renderEmpleado = (empleado: Empleado) => (
-    <View key={empleado.idEmpl} style={[styles.card, styles.empleadoCard]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <Text style={styles.cardName}>
-            {empleado.nomEmpl} {empleado.apeEmpl}
-          </Text>
-          <View style={styles.badgeContainer}>
-            <View style={[styles.badge, styles.badgeDepartamento]}>
-              <Text style={styles.badgeText}>
-                {empleado.deptEmpl === 'mantenimiento' ? '🔧 Mantenimiento' : '💻 Sistemas'}
-              </Text>
-            </View>
-            <View style={[
-              styles.badge,
-              empleado.cargEmpl === 'jefe' ? styles.badgeJefe : styles.badgeEmpleado
-            ]}>
-              <Text style={styles.badgeText}>
-                {empleado.cargEmpl === 'jefe' ? '👨‍💼 Jefe' : '👷 Empleado'}
-              </Text>
+    // Función que renderiza la tarjeta visual de un empleado.
+    const renderEmpleado = (empleado: Empleado) => (
+
+      // Contenedor principal de la tarjeta del empleado.
+      // key → obligatorio cuando se usa dentro de un .map()
+      <View key={empleado.idEmpl} style={[styles.card, styles.empleadoCard]}>
+  
+        {/* Header de la tarjeta */}
+        <View style={styles.cardHeader}>
+  
+          {/* Parte izquierda del header */}
+          <View style={styles.cardHeaderLeft}>
+  
+            {/* Nombre completo del empleado */}
+            <Text style={styles.cardName}>
+              {empleado.nomEmpl} {empleado.apeEmpl}
+            </Text>
+  
+            {/* Contenedor de badges */}
+            <View style={styles.badgeContainer}>
+  
+              {/* Badge del departamento */}
+              <View style={[styles.badge, styles.badgeDepartamento]}>
+                <Text style={styles.badgeText}>
+                  {/* Muestra ícono y texto según el departamento */}
+                  {empleado.deptEmpl === 'mantenimiento'
+                    ? '🔧 Mantenimiento'
+                    : '💻 Sistemas'}
+                </Text>
+              </View>
+  
+              {/* Badge del cargo */}
+              <View style={[
+                styles.badge,
+                empleado.cargEmpl === 'jefe'
+                  ? styles.badgeJefe
+                  : styles.badgeEmpleado
+              ]}>
+                <Text style={styles.badgeText}>
+                  {/* Texto dinámico según cargo */}
+                  {empleado.cargEmpl === 'jefe'
+                    ? '👨‍💼 Jefe'
+                    : '👷 Empleado'}
+                </Text>
+              </View>
+  
             </View>
           </View>
+  
+          {/* Botón de eliminar empleado */}
+          <TouchableOpacity
+            style={styles.deleteButton}
+  
+            // Ejecuta eliminarEmpleado enviando id y nombre completo
+            onPress={() =>
+              eliminarEmpleado(
+                empleado.idEmpl,
+                `${empleado.nomEmpl} ${empleado.apeEmpl}`
+              )
+            }
+          >
+            <Text style={styles.deleteButtonText}>🗑️</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => eliminarEmpleado(empleado.idEmpl, `${empleado.nomEmpl} ${empleado.apeEmpl}`)}
-        >
-          <Text style={styles.deleteButtonText}>🗑️</Text>
-        </TouchableOpacity>
+  
+        {/* Cuerpo de la tarjeta */}
+        <View style={styles.cardBody}>
+  
+          {/* Correo */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>📧 Correo:</Text>
+            <Text style={styles.infoValue}>{empleado.correoEmpl}</Text>
+          </View>
+  
+          {/* Teléfono (si no existe muestra texto por defecto) */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>📱 Teléfono:</Text>
+            <Text style={styles.infoValue}>
+              {empleado.tlfEmpl || 'No registrado'}
+            </Text>
+          </View>
+  
+          {/* ID del empleado */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>🆔 ID:</Text>
+            <Text style={styles.infoValue}>{empleado.idEmpl}</Text>
+          </View>
+  
+        </View>
       </View>
-
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📧 Correo:</Text>
-          <Text style={styles.infoValue}>{empleado.correoEmpl}</Text>
+    )
+  
+  
+    // Si el estado "cargando" es true, muestra pantalla de carga.
+    if (cargando) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#21D0B2" />
+          <Text style={styles.loadingText}>Cargando personal...</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📱 Teléfono:</Text>
-          <Text style={styles.infoValue}>{empleado.tlfEmpl || 'No registrado'}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>🆔 ID:</Text>
-          <Text style={styles.infoValue}>{empleado.idEmpl}</Text>
-        </View>
-      </View>
-    </View>
-  )
-
-  if (cargando) {
+      )
+    }
+  
+  
+    // Calcula totales después del filtrado.
+    const totalUsuarios = usuariosFiltrados.length
+    const totalEmpleados = empleadosFiltrados.length
+    const totalGeneral = totalUsuarios + totalEmpleados
+  
+  
+    // ===============================
+    // RENDER PRINCIPAL
+    // ===============================
+  
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#21D0B2" />
-        <Text style={styles.loadingText}>Cargando personal...</Text>
+  
+      // Contenedor principal de toda la pantalla.
+      <View style={styles.container}>
+  
+        {/* ================= HEADER ================= */}
+        <View style={styles.header}>
+  
+          {/* Botón para volver atrás */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()} // Navega a la pantalla anterior
+          >
+            <Text style={styles.backButtonText}>← Volver</Text>
+          </TouchableOpacity>
+  
+          {/* Título principal */}
+          <Text style={styles.title}>Listado de Personal</Text>
+  
+          {/* Subtítulo con total general */}
+          <Text style={styles.subtitle}>
+            Total: {totalGeneral} personas
+          </Text>
+        </View>
+  
+  
+        {/* ================= BARRA DE BÚSQUEDA ================= */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por nombre, correo, rol..."
+            placeholderTextColor="#8B9BA8"
+            value={busqueda}               // Valor actual del estado
+            onChangeText={setBusqueda}     // Actualiza estado al escribir
+          />
+        </View>
+  
+  
+        {/* ================= FILTROS ================= */}
+        <View style={styles.filterContainer}>
+  
+          {/* Filtro TODOS */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filtroActivo === 'todos' && styles.filterButtonActive
+            ]}
+            onPress={() => setFiltroActivo('todos')}
+          >
+            <Text style={[
+              styles.filterButtonText,
+              filtroActivo === 'todos' && styles.filterButtonTextActive
+            ]}>
+              Todos ({totalGeneral})
+            </Text>
+          </TouchableOpacity>
+  
+  
+          {/* Filtro USUARIOS */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filtroActivo === 'usuarios' && styles.filterButtonActive
+            ]}
+            onPress={() => setFiltroActivo('usuarios')}
+          >
+            <Text style={[
+              styles.filterButtonText,
+              filtroActivo === 'usuarios' && styles.filterButtonTextActive
+            ]}>
+              Usuarios ({totalUsuarios})
+            </Text>
+          </TouchableOpacity>
+  
+  
+          {/* Filtro EMPLEADOS */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filtroActivo === 'empleados' && styles.filterButtonActive
+            ]}
+            onPress={() => setFiltroActivo('empleados')}
+          >
+            <Text style={[
+              styles.filterButtonText,
+              filtroActivo === 'empleados' && styles.filterButtonTextActive
+            ]}>
+              Empleados ({totalEmpleados})
+            </Text>
+          </TouchableOpacity>
+  
+        </View>
+  
+  
+        {/* ================= LISTA CON SCROLL ================= */}
+        <ScrollView
+          style={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refrescando} // Muestra animación si es true
+              onRefresh={onRefresh}    // Ejecuta función al deslizar
+            />
+          }
+        >
+  
+          {/* ================= MOSTRAR USUARIOS ================= */}
+          {(filtroActivo === 'todos' || filtroActivo === 'usuarios') && (
+            <>
+              {usuariosFiltrados.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    👥 Usuarios ({usuariosFiltrados.length})
+                  </Text>
+  
+                  {/* Renderiza cada usuario usando .map() */}
+                  {usuariosFiltrados.map(renderUsuario)}
+                </>
+              ) : busqueda !== '' && filtroActivo === 'usuarios' ? (
+                <Text style={styles.noResults}>
+                  No se encontraron usuarios
+                </Text>
+              ) : null}
+            </>
+          )}
+  
+  
+          {/* ================= MOSTRAR EMPLEADOS ================= */}
+          {(filtroActivo === 'todos' || filtroActivo === 'empleados') && (
+            <>
+              {empleadosFiltrados.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    🔧 Empleados ({empleadosFiltrados.length})
+                  </Text>
+  
+                  {/* Renderiza cada empleado */}
+                  {empleadosFiltrados.map(renderEmpleado)}
+                </>
+              ) : busqueda !== '' && filtroActivo === 'empleados' ? (
+                <Text style={styles.noResults}>
+                  No se encontraron empleados
+                </Text>
+              ) : null}
+            </>
+          )}
+  
+  
+          {/* Si no hay resultados generales */}
+          {totalGeneral === 0 && busqueda !== '' && (
+            <Text style={styles.noResults}>
+              No se encontraron resultados
+            </Text>
+          )}
+  
+          {/* Espacio inferior extra */}
+          <View style={{ height: 40 }} />
+  
+        </ScrollView>
       </View>
     )
   }
-
-  const totalUsuarios = usuariosFiltrados.length
-  const totalEmpleados = empleadosFiltrados.length
-  const totalGeneral = totalUsuarios + totalEmpleados
-
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>← Volver</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Listado de Personal</Text>
-        <Text style={styles.subtitle}>Total: {totalGeneral} personas</Text>
-      </View>
-
-      {/* Barra de búsqueda */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por nombre, correo, rol..."
-          placeholderTextColor="#8B9BA8"
-          value={busqueda}
-          onChangeText={setBusqueda}
-        />
-      </View>
-
-      {/* Filtros */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filtroActivo === 'todos' && styles.filterButtonActive
-          ]}
-          onPress={() => setFiltroActivo('todos')}
-        >
-          <Text style={[
-            styles.filterButtonText,
-            filtroActivo === 'todos' && styles.filterButtonTextActive
-          ]}>
-            Todos ({totalGeneral})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filtroActivo === 'usuarios' && styles.filterButtonActive
-          ]}
-          onPress={() => setFiltroActivo('usuarios')}
-        >
-          <Text style={[
-            styles.filterButtonText,
-            filtroActivo === 'usuarios' && styles.filterButtonTextActive
-          ]}>
-            Usuarios ({totalUsuarios})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filtroActivo === 'empleados' && styles.filterButtonActive
-          ]}
-          onPress={() => setFiltroActivo('empleados')}
-        >
-          <Text style={[
-            styles.filterButtonText,
-            filtroActivo === 'empleados' && styles.filterButtonTextActive
-          ]}>
-            Empleados ({totalEmpleados})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Lista de personal */}
-      <ScrollView
-        style={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refrescando} onRefresh={onRefresh} />
-        }
-      >
-        {/* Mostrar usuarios */}
-        {(filtroActivo === 'todos' || filtroActivo === 'usuarios') && (
-          <>
-            {usuariosFiltrados.length > 0 ? (
-              <>
-                <Text style={styles.sectionTitle}>
-                  👥 Usuarios ({usuariosFiltrados.length})
-                </Text>
-                {usuariosFiltrados.map(renderUsuario)}
-              </>
-            ) : busqueda !== '' && filtroActivo === 'usuarios' ? (
-              <Text style={styles.noResults}>No se encontraron usuarios</Text>
-            ) : null}
-          </>
-        )}
-
-        {/* Mostrar empleados */}
-        {(filtroActivo === 'todos' || filtroActivo === 'empleados') && (
-          <>
-            {empleadosFiltrados.length > 0 ? (
-              <>
-                <Text style={styles.sectionTitle}>
-                  🔧 Empleados ({empleadosFiltrados.length})
-                </Text>
-                {empleadosFiltrados.map(renderEmpleado)}
-              </>
-            ) : busqueda !== '' && filtroActivo === 'empleados' ? (
-              <Text style={styles.noResults}>No se encontraron empleados</Text>
-            ) : null}
-          </>
-        )}
-
-        {totalGeneral === 0 && busqueda !== '' && (
-          <Text style={styles.noResults}>No se encontraron resultados</Text>
-        )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
-  )
-}
 
 const styles = StyleSheet.create({
   container: {

@@ -108,15 +108,30 @@ export const obtenerSesion = async (): Promise<Sesion | null> => {
 // ===============================
 // HELPERS SESIÓN LOCAL
 // ===============================
+
+// Guarda la sesión en almacenamiento local del dispositivo
+// Se usa AsyncStorage para que la sesión persista aunque se cierre la app
 const guardarSesionLocal = async (sesion: Sesion) => {
+  // Convierte el objeto sesión a string JSON y lo guarda con la clave 'sesion'
   await AsyncStorage.setItem('sesion', JSON.stringify(sesion))
 }
 
+// Obtiene la sesión almacenada localmente
+// Devuelve null si no existe
 const obtenerSesionLocal = async (): Promise<Sesion | null> => {
+
+  // Recupera el valor almacenado con la clave 'sesion'
   const sesion = await AsyncStorage.getItem('sesion')
+
+  // Si existe, lo convierte nuevamente a objeto
+  // Si no existe, devuelve null
   return sesion ? JSON.parse(sesion) : null
 }
 
+// Elimina la sesión del almacenamiento local
+// Se usa cuando el usuario cierra sesión
 const eliminarSesionLocal = async () => {
+
+  // Borra la clave 'sesion' del AsyncStorage
   await AsyncStorage.removeItem('sesion')
 }

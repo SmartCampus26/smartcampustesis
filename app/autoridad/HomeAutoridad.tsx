@@ -1,5 +1,8 @@
-// Importa React y hooks para manejar estado y efectos
+// Importa React y hooks:
+// useState -> manejar estado reactivo
+// useEffect -> ejecutar efectos secundarios (ej: cargar datos al iniciar)
 import React, { useState, useEffect } from 'react'
+
 // Componentes visuales de React Native
 import {
   View,
@@ -7,36 +10,62 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
+  ActivityIndicator,   // Indicador visual de carga
+  RefreshControl,      // Permite "pull to refresh"
   Alert,
 } from 'react-native'
-// Iconos
+
+// Iconos para mejorar experiencia visual (UX)
 import { Ionicons } from '@expo/vector-icons'
-// Navegación entre pantallas
+
+// Navegación entre pantallas usando expo-router
 import { router } from 'expo-router'
-// Servicios para obtener datos desde la base de datos
+
+// Servicios personalizados que encapsulan lógica de base de datos
+// Esto mantiene separada la lógica de datos de la UI (buena práctica)
 import { obtenerReportes } from '../../src/services/ReporteService'
 import { obtenerSesion } from '../../src/util/Session'
-// Tipo de dato Reporte
+
+// Tipo TypeScript que define la estructura del objeto Reporte
 import { Reporte } from '../../src/types/Database'
-// Manejo seguro del área superior (notch, barra de estado)
+
+// Manejo seguro del área superior (notch, barra de estado, etc.)
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 
 export default function HomeAutoridad() {
-  // ESTADOS (variables reactivas)
 
+  // =======================
+  // ESTADOS (STATE)
+  // =======================
 
-  // Información del usuario logueado
+  /**
+   * Usuario logueado actualmente.
+   * Se tipa como any (aunque lo ideal sería usar una interfaz tipada).
+   */
   const [usuario, setUsuario] = useState<any>(null)
-  // Lista de reportes creados por el usuario
+
+  /**
+   * Lista de reportes creados por el usuario.
+   * Se tipa como arreglo de Reporte.
+   */
   const [reportes, setReportes] = useState<Reporte[]>([])
-  // Controla si los datos están cargando
+
+  /**
+   * Indica si los datos iniciales están cargando.
+   * Controla la pantalla de loading.
+   */
   const [cargando, setCargando] = useState(true)
-  // Controla la animación de refrescar
+
+  /**
+   * Controla el estado del "pull to refresh".
+   */
   const [refrescando, setRefrescando] = useState(false)
-  // Estadísticas de los reportes del usuario
+
+  /**
+   * Estadísticas calculadas dinámicamente
+   * a partir de los reportes del usuario.
+   */
   const [stats, setStats] = useState({
     total: 0,
     pendientes: 0,
@@ -44,62 +73,134 @@ export default function HomeAutoridad() {
     resueltos: 0,
   })
 
-  // EFECTO: se ejecuta al abrir la pantalla
+
+  // =======================
+  // EFECTO INICIAL
+  // =======================
+
+  /**
+   * useEffect con dependencia vacía []
+   * Se ejecuta SOLO una vez cuando el componente se monta.
+   * Equivale a componentDidMount en clases.
+   */
   useEffect(() => {
     cargarDatos()
   }, [])
 
-  // FUNCIÓN: Cargar datos del usuario y reportes
+
+  // =======================
+  // FUNCIÓN: CARGAR DATOS
+  // =======================
+
+  /**
+   * Obtiene:
+   * - La sesión actual
+   * - Todos los reportes
+   * - Filtra los del usuario
+   * - Calcula estadísticas
+   */
   const cargarDatos = async () => {
     try {
-      // Obtener la sesión del usuario
-      const sesion = await obtenerSesion()
-      setUsuario(sesion?.data)
-      
 
-      // Obtener todos los reportes
+      // 1️⃣ Obtener sesión actual
+      const sesion = await obtenerSesion()
+
+      // Guardamos información del usuario en estado
+      setUsuario(sesion?.data)
+
+      // 2️⃣ Obtener todos los reportes desde el servicio
       const { data: reportesData, error: reportesError } = await obtenerReportes()
+
       if (reportesError) throw reportesError
 
-      // Filtrar solo los reportes creados por este usuario
+      /**
+       * 3️⃣ Filtrar solo reportes creados por este usuario.
+       * 
+       * Nota importante:
+       * Aquí usas sesion?.id
+       * Debe coincidir con el campo real que identifica al usuario.
+       */
       const misReportes = (reportesData || []).filter(
         (r: Reporte) => r.idUser === sesion?.id
       )
-      
-      // Guardar reportes y calcular estadísticas
+
+      // Guardar en estado
       setReportes(misReportes)
+
+      // Calcular estadísticas derivadas
       calcularEstadisticas(misReportes)
+
     } catch (error: any) {
       Alert.alert('Error', error.message)
     } finally {
-      // Finaliza estados de carga
+      /**
+       * finally SIEMPRE se ejecuta,
+       * haya error o no.
+       */
       setCargando(false)
       setRefrescando(false)
     }
   }
 
-   // FUNCIÓN: Calcular estadísticas de reportes
+
+  // =======================
+  // FUNCIÓN: CALCULAR STATS
+  // =======================
+
+  /**
+   * Recibe un arreglo de reportes
+   * y calcula conteos por estado.
+   */
   const calcularEstadisticas = (data: Reporte[]) => {
+
     setStats({
       total: data.length,
-      pendientes: data.filter(r => r.estReporte === 'pendiente').length,
-      enProceso: data.filter(r => r.estReporte === 'en proceso').length,
-      resueltos: data.filter(r => r.estReporte === 'resuelto').length,
+
+      // Filtrado por estado
+      pendientes: data.filter(
+        r => r.estReporte === 'pendiente'
+      ).length,
+
+      enProceso: data.filter(
+        r => r.estReporte === 'en proceso'
+      ).length,
+
+      resueltos: data.filter(
+        r => r.estReporte === 'resuelto'
+      ).length,
     })
   }
 
-  // FUNCIÓN: Refrescar datos manualmente
+
+  // =======================
+  // FUNCIÓN: REFRESH
+  // =======================
+
+  /**
+   * Se ejecuta cuando el usuario
+   * hace "pull down" para refrescar.
+   */
   const onRefresh = () => {
     setRefrescando(true)
     cargarDatos()
   }
 
+
+  // =======================
+  // CREAR REPORTE
+  // =======================
+
+  /**
+   * Navega a la pantalla de creación de reporte.
+   * Pasa parámetros por router.
+   */
   const handleCrearReporte = () => {
+
     if (!usuario?.idUser) {
       Alert.alert('Error', 'No se pudo identificar al usuario')
       return
     }
-    
+
     router.push({
       pathname: '/autoridad/ReporteAutoridad',
       params: {
@@ -108,8 +209,17 @@ export default function HomeAutoridad() {
       }
     })
   }
-  
+
+
+  // =======================
   // PANTALLA DE CARGA
+  // =======================
+
+  /**
+   * Render condicional:
+   * Si cargando es true,
+   * mostramos spinner.
+   */
   if (cargando) {
     return (
       <SafeAreaView style={styles.centeredContainer} edges={['top']}>
@@ -118,22 +228,44 @@ export default function HomeAutoridad() {
     )
   }
 
+
+  // =======================
   // INTERFAZ PRINCIPAL
+  // =======================
+
+  /**
+   * SafeAreaView evita que el contenido
+   * se superponga con notch o barra de estado.
+   */
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+
       <ScrollView
         style={styles.scrollView}
+
+        /**
+         * RefreshControl habilita el gesto
+         * de arrastrar para actualizar.
+         */
         refreshControl={
-          <RefreshControl refreshing={refrescando} onRefresh={onRefresh} colors={['#21D0B2']} />
+          <RefreshControl
+            refreshing={refrescando}
+            onRefresh={onRefresh}
+            colors={['#21D0B2']}
+          />
         }
       >
-        {/* ===== ENCABEZADO ===== */}
+
+        {/* Encabezado dinámico */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>¡Hola!</Text>
-            <Text style={styles.username}>{usuario?.nomUser || 'Usuario'}</Text>
-          </View>
 
+            {/* Uso de optional chaining para evitar errores */}
+            <Text style={styles.username}>
+              {usuario?.nomUser || 'Usuario'}
+            </Text>
+          </View>
         </View>
 
         {/* ===== TARJETAS DE ESTADÍSTICAS ====== */}

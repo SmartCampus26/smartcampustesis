@@ -1,9 +1,30 @@
+// ===============================
+// IMPORTACIONES NECESARIAS
+// ===============================
+
+// Librería para generar archivos PDF dinámicamente
 import * as Print from 'expo-print'
+
+// Permite compartir archivos (como el PDF generado) usando las opciones del dispositivo
 import * as Sharing from 'expo-sharing'
-import { Alert } from 'react-native'
+
+// Sistema de archivos de Expo (versión legacy)
+// Se usa para renombrar el archivo PDF antes de compartirlo
+import * as FileSystem from 'expo-file-system/legacy'
+
+import { Alert } from 'react-native' 
+// Permite mostrar mensajes emergentes al usuario (errores o confirmaciones)
+
+// Función para obtener la sesión actual almacenada
 import { obtenerSesion } from '../../src/util/Session'
+
+// Función que calcula estadísticas de los reportes (filtrado y conteo)
 import { obtenerEstadisticas } from '../components/filtrosReportes'
-import { Reporte } from '../types/Database'
+
+// Tipos y validadores de base de datos
+import { Reporte, esEmpleado, esUsuario } from '../types/Database'
+// Reporte: interfaz tipada del reporte
+// esEmpleado / esUsuario: funciones type guard para validar el tipo de usuario
 
 // ============================================
 // INTERFACES Y TIPOS
@@ -188,25 +209,110 @@ function generarGraficoBarrasPrioridad(reportes: Reporte[]): string {
 }
 
 // ============================================
+// ⭐ NUEVA FUNCIÓN AUXILIAR: CONSTRUIR NOMBRE DE ARCHIVO
+// ============================================
+
+/**
+ * Construye el nombre del archivo PDF con formato: informe_fecha_nombre.pdf
+ *
+ * - La fecha se obtiene automáticamente del sistema (formato YYYY-MM-DD)
+ * - El nombre se sanitiza eliminando caracteres especiales no permitidos
+ *   en nombres de archivo (ej: /, \, :, *, ?, ", <, >, |)
+ * - Los espacios se reemplazan por guiones bajos para mejor compatibilidad
+ *
+ * @param nombreGenerador - Nombre de quien genera el PDF (ej: "Juan Pérez")
+ * @returns Nombre del archivo (ej: "informe_2026-02-16_Juan_Perez.pdf")
+ *
+ * @example
+ * construirNombreArchivo("Juan Pérez")  // → "informe_2026-02-16_Juan_Perez.pdf"
+ * construirNombreArchivo(undefined)     // → "informe_2026-02-16_Sistema.pdf"
+ */
+function construirNombreArchivo(nombreGenerador?: string): string {
+  // Fecha actual en formato ISO y recortar solo la parte de la fecha (YYYY-MM-DD)
+  const fechaArchivo = new Date().toISOString().split('T')[0]
+
+  // Limpiar el nombre:
+  // 1. Eliminar caracteres que no sean letras (incluye tildes y ñ), números o espacios
+  // 2. Quitar espacios al inicio/final
+  // 3. Reemplazar espacios internos con guiones bajos
+  const nombreLimpio = (nombreGenerador || 'Sistema')
+    .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9 ]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+
+  return `informe_${fechaArchivo}_${nombreLimpio}.pdf`
+}
+
+// ============================================
+// ⭐ NUEVA FUNCIÓN AUXILIAR: RENOMBRAR ARCHIVO PDF
+// ============================================
+
+/**
+ * Renombra el archivo PDF generado por expo-print con un nombre personalizado.
+ *
+ * ¿Por qué es necesario?
+ * expo-print NO permite definir el nombre del archivo al crearlo; siempre
+ * genera un nombre aleatorio tipo "print-xxxxxx.pdf". Para solucionar esto,
+ * obtenemos el directorio del archivo original y lo movemos (renombramos)
+ * al mismo directorio con el nuevo nombre usando FileSystem.moveAsync.
+ *
+ * @param uriOriginal - URI del archivo generado por expo-print
+ * @param nombreArchivo - Nombre deseado para el archivo (ej: "informe_2026-02-16_Juan.pdf")
+ * @returns Nueva URI del archivo con el nombre personalizado
+ *
+ * @example
+ * const nuevaUri = await renombrarArchivoPDF(
+ *   'file:///cache/print-abc123.pdf',
+ *   'informe_2026-02-16_Juan_Perez.pdf'
+ * )
+ * // nuevaUri → 'file:///cache/informe_2026-02-16_Juan_Perez.pdf'
+ */
+async function renombrarArchivoPDF(uriOriginal: string, nombreArchivo: string): Promise<string> {
+  // Extraer el directorio base del archivo original.
+  // Usamos una variable tipada explícitamente como number para evitar el error
+  // de TypeScript: "The left-hand side of an arithmetic operation must be of
+  // type 'any', 'number', 'bigint' or an enum type"
+  const ultimaBarraPos: number = uriOriginal.lastIndexOf('/') + 1
+  const directorioBase = uriOriginal.substring(0, ultimaBarraPos)
+
+  // Construir la nueva URI con el nombre personalizado
+  const nuevaUri = `${directorioBase}${nombreArchivo}`
+
+  // Mover (renombrar) el archivo al nuevo nombre en el mismo directorio
+  await FileSystem.moveAsync({ from: uriOriginal, to: nuevaUri })
+
+  return nuevaUri
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL: GENERAR PDF
 // ============================================
 
 /**
  * Genera un PDF con el listado de reportes y estadísticas
- * 
+ *
+ * Flujo del proceso:
+ * 1. Valida que haya reportes
+ * 2. Calcula estadísticas automáticamente
+ * 3. Obtiene datos del generador desde la sesión activa
+ * 4. Construye el HTML con tablas, badges y gráficos SVG
+ * 5. Convierte el HTML a PDF con expo-print
+ * 6. ⭐ Renombra el archivo con formato: informe_fecha_nombre.pdf
+ * 7. Comparte el PDF mediante expo-sharing
+ *
  * @param reportes - Array de reportes a incluir (puede estar previamente filtrado)
  * @param opciones - Configuración opcional para personalizar el PDF
- * @returns URI del archivo PDF generado
+ * @returns URI del archivo PDF generado con nombre personalizado
  */
 export async function generarPDF(
-  reportes: Reporte[], 
+  reportes: Reporte[],
   opciones: OpcionesPDF = { mostrarGraficos: true }
 ) {
   try {
     // ========================================
     // VALIDACIONES INICIALES
     // ========================================
-    
+
     if (!reportes || reportes.length === 0) {
       Alert.alert('Advertencia', 'No hay reportes para generar el PDF')
       return
@@ -219,25 +325,36 @@ export async function generarPDF(
     // Calcular estadísticas automáticamente usando la función del filtro
     const stats = obtenerEstadisticas(reportes)
 
-    // ⭐ OBTENER NOMBRE DEL USUARIO DE LA SESIÓN SI NO SE PROPORCIONÓ ⭐
+    // ⭐ OBTENER NOMBRE Y PUESTO DEL GENERADOR DE LA SESIÓN ⭐
     let nombreGenerador = opciones.nombreGenerador
+    let puestoGenerador = ''
 
     if (!nombreGenerador) {
       try {
         const sesion = await obtenerSesion()
 
-        if (sesion && 'nomEmpl' in sesion.data) {
-          const e = sesion.data
-          nombreGenerador =
-            `${e.nomEmpl} ${e.apeEmpl}`.trim() || 'Empleado'
-        } else {
-          nombreGenerador = 'Empleado'
+        if (sesion) {
+          if (esEmpleado(sesion)) {
+            const e = sesion.data
+            nombreGenerador = `${e.nomEmpl} ${e.apeEmpl}`.trim()
+            puestoGenerador = e.cargEmpl || ''
+          } else if (esUsuario(sesion)) {
+            const u = sesion.data
+            nombreGenerador = `${u.nomUser} ${u.apeUser}`.trim()
+            puestoGenerador = u.rolUser || 'Usuario'
+          }
         }
+
+        if (!nombreGenerador) {
+          nombreGenerador = 'Sistema' // Fallback
+        }
+
       } catch (error) {
-        nombreGenerador = 'Empleado'
+        console.error('Error obteniendo datos de sesión para PDF:', error)
+        nombreGenerador = 'Sistema'
       }
     }
-        
+
     // Formatear fecha de generación en español
     const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
       year: 'numeric',
@@ -549,7 +666,7 @@ export async function generarPDF(
           <p class="fecha-generacion">Generado el ${fechaGeneracion}</p>
           ${nombreGenerador ? `
             <p class="generado-por">
-              👤 Generado por: ${nombreGenerador}
+              👤 Generado por: ${nombreGenerador} ${puestoGenerador ? `(${puestoGenerador})` : ''}
             </p>
           ` : ''}
         </div>
@@ -663,14 +780,16 @@ export async function generarPDF(
             </div>
           `}
         </div>
+
         <!-- ================================
-                PIE DE PÁGINA
-                ================================ -->
-            <div class="footer">
-              <p>Informe generado automáticamente | Total de reportes: ${stats.total}</p>
-              ${nombreGenerador ? `<p>Generado por: ${nombreGenerador}</p>` : ''}
-              <p>© ${new Date().getFullYear()} - Sistema de Gestión de Reportes</p>
-            </div>
+             PIE DE PÁGINA
+             ================================ -->
+        <div class="footer">
+          <p>Informe generado automáticamente | Total de reportes: ${stats.total}</p>
+          ${nombreGenerador ? `<p>Generado por: ${nombreGenerador} ${puestoGenerador ? `(${puestoGenerador})` : ''}</p>` : ''}
+          <p>© ${new Date().getFullYear()} - Sistema de Gestión de Reportes</p>
+        </div>
+
         <!-- ⭐ SALTO DE PÁGINA ANTES DE LOS GRÁFICOS ⭐ -->
         <div class="page-break"></div>
 
@@ -693,7 +812,7 @@ export async function generarPDF(
               </div>
             </div>
           </div>
-        `   : ''}
+        ` : ''}
       </body>
       </html>
     `
@@ -702,11 +821,25 @@ export async function generarPDF(
     // GENERACIÓN DEL PDF
     // ========================================
 
-    // Convertir HTML a PDF usando expo-print
-    const { uri } = await Print.printToFileAsync({ 
+    // Convertir HTML a PDF usando expo-print.
+    // NOTA: expo-print no permite definir el nombre del archivo, siempre
+    // genera un nombre aleatorio tipo "print-xxxxxx.pdf". Por eso el
+    // siguiente paso es renombrarlo con nuestra función auxiliar.
+    const { uri } = await Print.printToFileAsync({
       html,
       base64: false // No necesitamos base64, solo el URI del archivo
     })
+
+    // ========================================
+    // ⭐ RENOMBRAR EL ARCHIVO CON NOMBRE PERSONALIZADO
+    // ========================================
+
+    // Construir el nombre deseado: informe_2026-02-16_Juan_Perez.pdf
+    const nombreArchivo = construirNombreArchivo(nombreGenerador)
+
+    // Mover el archivo al nuevo nombre usando FileSystem.moveAsync.
+    // Esto es equivalente a renombrarlo en el mismo directorio.
+    const uriConNombre = await renombrarArchivoPDF(uri, nombreArchivo)
 
     // ========================================
     // COMPARTIR EL PDF
@@ -714,10 +847,10 @@ export async function generarPDF(
 
     // Verificar si el dispositivo puede compartir archivos
     const canShare = await Sharing.isAvailableAsync()
-    
+
     if (canShare) {
-      // Compartir el PDF con opciones específicas
-      await Sharing.shareAsync(uri, {
+      // Compartir el PDF renombrado con opciones específicas
+      await Sharing.shareAsync(uriConNombre, {
         mimeType: 'application/pdf',
         dialogTitle: 'Compartir Informe de Reportes',
         UTI: 'com.adobe.pdf' // Identificador de tipo uniforme para iOS
@@ -730,14 +863,14 @@ export async function generarPDF(
       )
     }
 
-    // Retornar la URI del PDF para uso posterior si es necesario
-    return uri
+    // Retornar la URI del PDF renombrado para uso posterior si es necesario
+    return uriConNombre
 
   } catch (error) {
     // ========================================
     // MANEJO DE ERRORES
     // ========================================
-    
+
     console.error('Error al generar PDF:', error)
     Alert.alert(
       'Error',
@@ -755,14 +888,14 @@ export async function generarPDF(
  * Genera un PDF solo con reportes de un estado específico
  */
 export async function generarPDFPorEstado(
-  reportes: Reporte[], 
+  reportes: Reporte[],
   estado: string,
   nombreGenerador?: string
 ) {
   const reportesFiltrados = reportes.filter(
     r => r.estReporte.toLowerCase() === estado.toLowerCase()
   )
-  
+
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes ${estado.charAt(0).toUpperCase() + estado.slice(1)}`,
     mostrarGraficos: true,
@@ -781,17 +914,17 @@ export async function generarPDFPorFechas(
 ) {
   const inicio = new Date(fechaInicio)
   inicio.setHours(0, 0, 0, 0)
-  
+
   const fin = new Date(fechaFin)
   fin.setHours(23, 59, 59, 999)
-  
+
   const reportesFiltrados = reportes.filter(r => {
     const fecha = new Date(r.fecReporte)
     return fecha >= inicio && fecha <= fin
   })
-  
+
   const rangoTexto = `${fechaInicio.toLocaleDateString('es-ES')} - ${fechaFin.toLocaleDateString('es-ES')}`
-  
+
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes del ${rangoTexto}`,
     mostrarGraficos: true,
@@ -804,15 +937,15 @@ export async function generarPDFPorFechas(
  */
 export async function generarPDFPorEmpleado(
   reportes: Reporte[],
-  idEmpl: number,
+  idEmpl: string,
   nombreGenerador?: string
 ) {
   const reportesFiltrados = reportes.filter(r => r.idEmpl === idEmpl)
-  
+
   const nombreEmpleado = reportesFiltrados[0]?.empleado
     ? `${reportesFiltrados[0].empleado.nomEmpl} ${reportesFiltrados[0].empleado.apeEmpl}`
     : 'Empleado Desconocido'
-  
+
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreEmpleado}`,
     incluirEmpleado: false,
@@ -826,15 +959,15 @@ export async function generarPDFPorEmpleado(
  */
 export async function generarPDFPorUsuario(
   reportes: Reporte[],
-  idUser: number,
+  idUser: string,
   nombreGenerador?: string
 ) {
   const reportesFiltrados = reportes.filter(r => r.idUser === idUser)
-  
+
   const nombreUsuario = reportesFiltrados[0]?.usuario
     ? `${reportesFiltrados[0].usuario.nomUser} ${reportesFiltrados[0].usuario.apeUser}`
     : 'Usuario Desconocido'
-  
+
   return generarPDF(reportesFiltrados, {
     titulo: `Reportes de ${nombreUsuario}`,
     incluirUsuario: false,

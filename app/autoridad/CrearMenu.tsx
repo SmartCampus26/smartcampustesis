@@ -1,96 +1,199 @@
+// Importamos React porque estamos creando un componente funcional
 import React from 'react'
+
+// Importamos componentes básicos de React Native
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  ScrollView,        // Permite que la pantalla tenga scroll vertical
+  StyleSheet,        // Permite crear los estilos (NO lo documentaremos abajo)
+  Text,              // Componente para mostrar texto
+  TouchableOpacity,  // Botón presionable con efecto de opacidad
+  View,              // Contenedor similar a un <div>
 } from 'react-native'
+
+// Importamos Ionicons para usar íconos en la interfaz
 import { Ionicons } from '@expo/vector-icons'
+
+// Importamos el router de expo-router para navegar entre pantallas
 import { router } from 'expo-router'
 
+
+// Exportamos el componente principal llamado CrearMenu
+// Este componente muestra dos tarjetas:
+// 1. Crear Usuario
+// 2. Crear Empleado
 export default function CrearMenu() {
+
+  // Retornamos la interfaz visual del componente
   return (
+
+    // ScrollView permite que el contenido sea desplazable
     <ScrollView style={styles.container}>
+
+      {/* ===================== HEADER ===================== */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Gestión de Accesos</Text>
+
+        {/* Título principal */}
+        <Text style={styles.headerTitle}>
+          Gestión de Accesos
+        </Text>
+
+        {/* Subtítulo explicativo */}
         <Text style={styles.headerSubtitle}>
           Selecciona el tipo de cuenta que deseas crear
         </Text>
+
       </View>
 
+
+      {/* ===================== CONTENEDOR DE TARJETAS ===================== */}
       <View style={styles.cardsContainer}>
-        {/* Card Usuario */}
+
+
+        {/* =======================================================
+           TARJETA 1: CREAR USUARIO
+           ======================================================= */}
         <TouchableOpacity
+          // Se combinan dos estilos: el estilo general de card
+          // y el estilo específico para usuario
           style={[styles.card, styles.cardUsuario]}
+
+          // Cuando se presiona, navega a la pantalla UsuarioNuevo
           onPress={() => router.push('/autoridad/UsuarioNuevo')}
+
+          // Define el nivel de transparencia al presionar
           activeOpacity={0.8}
         >
+
+          {/* Contenedor del ícono */}
           <View style={styles.iconContainer}>
-            <Ionicons name="school" size={40} color="#1DCDFE" />
+            <Ionicons 
+              name="school"   // Ícono tipo escuela
+              size={40}       // Tamaño del ícono
+              color="#1DCDFE" // Color del ícono
+            />
           </View>
           
-          <Text style={styles.cardTitle}>Crear Usuario</Text>
+          {/* Título de la tarjeta */}
+          <Text style={styles.cardTitle}>
+            Crear Usuario
+          </Text>
+
+          {/* Descripción */}
           <Text style={styles.cardDescription}>
             Docentes y autoridades del sistema educativo
           </Text>
 
+          {/* Lista de características */}
           <View style={styles.cardFeatures}>
+
+            {/* Característica 1 */}
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#21D0B2" />
-              <Text style={styles.featureText}>Rol: Docente o Autoridad</Text>
+              <Text style={styles.featureText}>
+                Rol: Docente o Autoridad
+              </Text>
             </View>
+
+            {/* Característica 2 */}
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#21D0B2" />
-              <Text style={styles.featureText}>Acceso al sistema</Text>
+              <Text style={styles.featureText}>
+                Acceso al sistema
+              </Text>
             </View>
+
+            {/* Característica 3 */}
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#21D0B2" />
-              <Text style={styles.featureText}>Gestión de reportes</Text>
+              <Text style={styles.featureText}>
+                Gestión de reportes
+              </Text>
             </View>
+
           </View>
 
+          {/* Botón visual inferior de la tarjeta */}
           <View style={styles.cardButton}>
-            <Text style={styles.cardButtonText}>Crear Usuario</Text>
+            <Text style={styles.cardButtonText}>
+              Crear Usuario
+            </Text>
+
+            {/* Ícono de flecha */}
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </View>
+
         </TouchableOpacity>
 
-        {/* Card Empleado */}
+
+
+        {/* =======================================================
+           TARJETA 2: CREAR EMPLEADO
+           ======================================================= */}
         <TouchableOpacity
           style={[styles.card, styles.cardEmpleado]}
+
+          // Navega a la pantalla EmpleadoNuevo
           onPress={() => router.push('/autoridad/EmpleadoNuevo')}
+
           activeOpacity={0.8}
         >
+
+          {/* Contenedor del ícono */}
           <View style={styles.iconContainer}>
-            <Ionicons name="construct" size={40} color="#2F455C" />
+            <Ionicons 
+              name="construct" // Ícono tipo herramienta
+              size={40}
+              color="#2F455C"
+            />
           </View>
           
-          <Text style={styles.cardTitle}>Crear Empleado</Text>
+          {/* Título */}
+          <Text style={styles.cardTitle}>
+            Crear Empleado
+          </Text>
+
+          {/* Descripción */}
           <Text style={styles.cardDescription}>
             Personal de mantenimiento y sistemas
           </Text>
 
+          {/* Características */}
           <View style={styles.cardFeatures}>
+
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#1DCDFE" />
-              <Text style={styles.featureText}>Departamento especializado</Text>
+              <Text style={styles.featureText}>
+                Departamento especializado
+              </Text>
             </View>
+
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#1DCDFE" />
-              <Text style={styles.featureText}>Asignación de tareas</Text>
+              <Text style={styles.featureText}>
+                Asignación de tareas
+              </Text>
             </View>
+
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#1DCDFE" />
-              <Text style={styles.featureText}>Seguimiento de reportes</Text>
+              <Text style={styles.featureText}>
+                Seguimiento de reportes
+              </Text>
             </View>
+
           </View>
 
+          {/* Botón visual */}
           <View style={styles.cardButton}>
-            <Text style={styles.cardButtonText}>Crear Empleado</Text>
+            <Text style={styles.cardButtonText}>
+              Crear Empleado
+            </Text>
+
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </View>
+
         </TouchableOpacity>
+
       </View>
 
     </ScrollView>

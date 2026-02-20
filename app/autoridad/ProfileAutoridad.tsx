@@ -1,28 +1,55 @@
+// Importa React y los hooks useState y useEffect.
 import React, { useState, useEffect } from 'react'
+
+// Importa componentes visuales de React Native.
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
+  View,               // Contenedor visual (similar a un div)
+  Text,               // Texto en pantalla
+  StyleSheet,         // Permite crear estilos
+  ScrollView,         // Contenedor con scroll vertical
+  TouchableOpacity,   // Botón presionable
+  ActivityIndicator,  // Indicador de carga (spinner)
+  Alert,              // Ventana emergente
 } from 'react-native'
+
+// Hook de navegación de Expo Router.
 import { useRouter } from 'expo-router'
+
+// Librería de íconos.
 import { Ionicons } from '@expo/vector-icons'
+
+// Funciones para manejar sesión del usuario.
 import { obtenerSesion, eliminarSesion } from '../../src/util/Session'
+
+// Servicio que permite obtener los reportes desde base de datos.
 import { obtenerReportes } from '../../src/services/ReporteService'
+
+// Tipos TypeScript que definen la estructura de datos.
 import { Usuario, Empleado, Reporte } from '../../src/types/Database'
+
+// Contexto personalizado para manejar fotos guardadas.
 import { useSaved } from '../Camera/context/SavedContext'
 
+
+// Componente principal del perfil de autoridad.
 export default function ProfileAutoridad() {
+
+  // Hook para navegación.
   const router = useRouter()
+
+  // Estado que guarda la información del usuario o empleado logueado.
   const [usuario, setUsuario] = useState<Usuario | Empleado | null>(null)
+
+  // Estado que indica si el perfil pertenece a usuario o empleado.
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
+
+  // Estado que controla si la pantalla está cargando.
   const [cargando, setCargando] = useState(true)
   
-  const { clearSavedPhotos } = useSaved()  // ✅ acceso al contexto de fotos
-  // Estadísticas de reportes
+  // Accede a la función para limpiar fotos guardadas desde el contexto.
+  const { clearSavedPhotos } = useSaved()
+
+  // Estado que guarda estadísticas de reportes.
   const [stats, setStats] = useState({
     total: 0,
     pendientes: 0,
@@ -30,23 +57,40 @@ export default function ProfileAutoridad() {
     resueltos: 0,
   })
 
+
+  // useEffect que se ejecuta una sola vez al montar el componente.
   useEffect(() => {
     cargarDatos()
   }, [])
 
+
+  // Función que carga los datos del perfil y estadísticas.
   const cargarDatos = async () => {
     try {
+
+      // Obtiene la sesión guardada.
       const sesion = await obtenerSesion()
+
       if (sesion) {
+
+        // Guarda datos del usuario en el estado.
         setUsuario(sesion.data)
+
+        // Guarda el tipo (usuario o empleado).
         setTipoUsuario(sesion.tipo)
         
-        // Cargar estadísticas de reportes
+        // Obtiene todos los reportes del sistema.
         const { data: reportesData } = await obtenerReportes()
+
+        // Filtra solo los reportes del usuario actual.
         const misReportes = (reportesData || []).filter(
-          (r: Reporte) => sesion.tipo === 'usuario' ? r.idUser === sesion.id : r.idEmpl === sesion.id
+          (r: Reporte) =>
+            sesion.tipo === 'usuario'
+              ? r.idUser === sesion.id
+              : r.idEmpl === sesion.id
         )
 
+        // Calcula estadísticas según estado del reporte.
         setStats({
           total: misReportes.length,
           pendientes: misReportes.filter((r: Reporte) => r.estReporte === 'Pendiente').length,
@@ -54,13 +98,18 @@ export default function ProfileAutoridad() {
           resueltos: misReportes.filter((r: Reporte) => r.estReporte === 'Resuelto').length,
         })
       }
+
     } catch (error: any) {
+      // Muestra alerta si ocurre error.
       Alert.alert('Error', 'No se pudo cargar el perfil')
     } finally {
+      // Siempre se ejecuta al finalizar.
       setCargando(false)
     }
   }
 
+
+  // Función para cerrar sesión.
   const handleCerrarSesion = () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -75,9 +124,16 @@ export default function ProfileAutoridad() {
           style: 'destructive',
           onPress: async () => {
             try {
+
+              // Elimina sesión almacenada.
               await eliminarSesion()
-              clearSavedPhotos()  
+
+              // Limpia fotos guardadas del contexto.
+              clearSavedPhotos()
+
+              // Redirige al inicio.
               router.replace('/')
+
             } catch (error: any) {
               Alert.alert('Error', 'No se pudo cerrar la sesión')
             }
@@ -87,6 +143,8 @@ export default function ProfileAutoridad() {
     )
   }
 
+
+  // Funciones temporales (placeholders).
   const handleEditarPerfil = () => {
     Alert.alert('Próximamente', 'Función de editar perfil en desarrollo')
   }
@@ -111,6 +169,8 @@ export default function ProfileAutoridad() {
     )
   }
 
+
+  // Si está cargando muestra spinner.
   if (cargando) {
     return (
       <View style={styles.centeredContainer}>
@@ -119,7 +179,12 @@ export default function ProfileAutoridad() {
     )
   }
 
-  // Obtener nombre y email según tipo de usuario
+
+  // ===============================
+  // FUNCIONES AUXILIARES
+  // ===============================
+
+  // Obtiene nombre según tipo de usuario.
   const getNombre = () => {
     if (tipoUsuario === 'usuario') {
       return (usuario as Usuario)?.nomUser || 'Usuario'
@@ -128,72 +193,100 @@ export default function ProfileAutoridad() {
     return `${emp?.nomEmpl || ''} ${emp?.apeEmpl || ''}`.trim()
   }
 
+  // Obtiene correo según tipo.
   const getEmail = () => {
     return tipoUsuario === 'usuario'
       ? (usuario as Usuario)?.correoUser
       : (usuario as Empleado)?.correoEmpl
   }
 
+  // Obtiene rol o cargo según tipo.
   const getRol = () => {
     return tipoUsuario === 'usuario'
       ? (usuario as Usuario)?.rolUser
       : (usuario as Empleado)?.cargEmpl
   }
 
+
+  // ===============================
+  // RENDER PRINCIPAL
+  // ===============================
+
   return (
     <ScrollView style={styles.container}>
-      {/* Header con Avatar */}
+
+      {/* HEADER con avatar */}
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={48} color="#FFFFFF" />
           </View>
         </View>
+
+        {/* Nombre */}
         <Text style={styles.userName}>{getNombre()}</Text>
+
+        {/* Email */}
         <Text style={styles.userEmail}>{getEmail()}</Text>
+
+        {/* Badge de autoridad */}
         <View style={styles.userBadge}>
           <Ionicons name="shield-checkmark" size={14} color="#1DCDFE" />
           <Text style={styles.userBadgeText}>Autoridad</Text>
         </View>
       </View>
 
-      {/* Estadísticas */}
+
+      {/* ================= ESTADÍSTICAS ================= */}
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Mis Estadísticas</Text>
+
         <View style={styles.statsGrid}>
+
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </View>
+
           <View style={styles.statDivider} />
+
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#FFA726' }]}>
               {stats.pendientes}
             </Text>
             <Text style={styles.statLabel}>Pendientes</Text>
           </View>
+
           <View style={styles.statDivider} />
+
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#21D0B2' }]}>
               {stats.enProceso}
             </Text>
             <Text style={styles.statLabel}>En Proceso</Text>
           </View>
+
           <View style={styles.statDivider} />
+
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: '#34F5C5' }]}>
               {stats.resueltos}
             </Text>
             <Text style={styles.statLabel}>Resueltos</Text>
           </View>
+
         </View>
       </View>
-
-      {/* Información Personal */}
+      {/* ================= INFORMACIÓN PERSONAL ================= */}
       <View style={styles.section}>
+
+        {/* Título de la sección */}
         <Text style={styles.sectionTitle}>Información Personal</Text>
         
+        {/* Tarjeta que contiene los datos */}
         <View style={styles.infoCard}>
+
+          {/* Fila: Nombre completo */}
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -202,8 +295,10 @@ export default function ProfileAutoridad() {
             </View>
           </View>
 
+          {/* Línea divisora visual */}
           <View style={styles.divider} />
 
+          {/* Fila: Correo electrónico */}
           <View style={styles.infoRow}>
             <Ionicons name="mail-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -212,8 +307,10 @@ export default function ProfileAutoridad() {
             </View>
           </View>
 
+          {/* Línea divisora */}
           <View style={styles.divider} />
 
+          {/* Fila: Cargo o Rol */}
           <View style={styles.infoRow}>
             <Ionicons name="briefcase-outline" size={20} color="#2F455C" />
             <View style={styles.infoTextContainer}>
@@ -222,6 +319,7 @@ export default function ProfileAutoridad() {
             </View>
           </View>
 
+          {/* Si el tipo es empleado, muestra departamento adicional */}
           {tipoUsuario === 'empleado' && (
             <>
               <View style={styles.divider} />
@@ -236,31 +334,46 @@ export default function ProfileAutoridad() {
               </View>
             </>
           )}
+
         </View>
       </View>
 
-      {/* Preferencias */}
+
+      {/* ================= PREFERENCIAS ================= */}
       <View style={styles.section}>
+
+        {/* Título */}
         <Text style={styles.sectionTitle}>Preferencias</Text>
         
+        {/* Opción: Notificaciones */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleNotificaciones}
         >
           <View style={styles.menuItemLeft}>
+
+            {/* Ícono con fondo de color */}
             <View style={[styles.menuIcon, { backgroundColor: '#FFF3E0' }]}>
               <Ionicons name="notifications-outline" size={20} color="#FFA726" />
             </View>
+
             <Text style={styles.menuItemText}>Notificaciones</Text>
           </View>
+
+          {/* Flecha de navegación */}
           <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
         </TouchableOpacity>
+
       </View>
 
-      {/* Soporte */}
+
+      {/* ================= SOPORTE ================= */}
       <View style={styles.section}>
+
+        {/* Título */}
         <Text style={styles.sectionTitle}>Soporte</Text>
         
+        {/* Opción: Ayuda */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleAyuda}
@@ -274,6 +387,7 @@ export default function ProfileAutoridad() {
           <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
         </TouchableOpacity>
 
+        {/* Opción: Acerca de */}
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleAcercaDe}
@@ -286,10 +400,13 @@ export default function ProfileAutoridad() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
         </TouchableOpacity>
+
       </View>
 
-      {/* Botón de Cerrar Sesión */}
+
+      {/* ================= BOTÓN CERRAR SESIÓN ================= */}
       <View style={styles.section}>
+
         <TouchableOpacity 
           style={styles.logoutButton}
           onPress={handleCerrarSesion}
@@ -297,14 +414,18 @@ export default function ProfileAutoridad() {
           <Ionicons name="log-out-outline" size={20} color="#FF5252" />
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
+
       </View>
 
-      {/* Versión */}
+
+      {/* ================= VERSIÓN ================= */}
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Versión 1.0.0</Text>
       </View>
 
+      {/* Espacio inferior para evitar que el contenido quede pegado */}
       <View style={styles.bottomSpacer} />
+
     </ScrollView>
   )
 }

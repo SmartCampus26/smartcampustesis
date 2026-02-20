@@ -55,12 +55,6 @@ export default function LoginScreen() {
       // Autenticación mediante servicio personalizado
       const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
       
-      // Acceso total para super administrador
-      if (sesion.tipo === 'usuario' && sesion.rol === 'super_admin') {
-        Alert.alert('Acceso Total', 'Bienvenida Emily - Administrador del Sistema')
-        router.replace('/maxAutoridad/MenuSuperAutoridad')
-        return
-      }
       
       // Redirección según tipo y rol del usuario
       if (sesion.tipo === 'usuario') {

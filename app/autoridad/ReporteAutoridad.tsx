@@ -53,98 +53,171 @@ const CATEGORIAS_OBJETOS = [
   { id: 'otros', nombre: 'Otros', icono: 'ellipsis-horizontal-outline' },
 ]
 
+// Hook principal del componente CrearReporte
 export default function CrearReporte({ }: CrearReporteProps) {
+
+  // Obtiene los parámetros enviados por navegación (idUser y nombreUsuario)
   const params = useLocalSearchParams()
+
+  // Extrae idUser desde los parámetros y lo convierte a string
   const idUser = params.idUser as string 
+
+  // Extrae nombreUsuario desde los parámetros
   const nombreUsuario = params.nombreUsuario as string
   
-  // 🔥 Obtener fotos del contexto
+  // 🔥 Obtiene desde el contexto:
+  // savedPhotos -> fotos guardadas temporalmente
+  // uploadPhotosToSupabase -> función para subir fotos
+  // clearSavedPhotos -> limpia las fotos después de crear el reporte
   const { savedPhotos, uploadPhotosToSupabase, clearSavedPhotos } = useSaved()
   
+  // ===================== ESTADOS DEL FORMULARIO =====================
+
+  // Guarda el título del reporte
   const [titulo, setTitulo] = useState('')
+
+  // Guarda la descripción del problema
   const [descripcion, setDescripcion] = useState('')
+
+  // Guarda el departamento seleccionado (mantenimiento o sistemas)
   const [departamento, setDepartamento] = useState<'mantenimiento' | 'sistemas'>('mantenimiento')
+
+  // Guarda el lugar seleccionado
   const [lugarSeleccionado, setLugarSeleccionado] = useState<string>('')
+
+  // Guarda el piso del lugar
   const [pisoLugar, setPisoLugar] = useState('')
+
+  // Guarda el nombre del objeto afectado
   const [nombreObjeto, setNombreObjeto] = useState('')
+
+  // Guarda la categoría del objeto
   const [categoriaObjeto, setCategoriaObjeto] = useState<string>('')
+
+  // Controla si el formulario está en proceso de carga
   const [cargando, setCargando] = useState(false)
 
+  // ===================== VALIDACIÓN DEL FORMULARIO =====================
+
   const validarFormulario = () => {
+
+    // Verifica que el título no esté vacío
     if (!titulo.trim()) {
       Alert.alert('Error', 'Por favor ingresa un título')
       return false
     }
+
+    // Verifica que la descripción no esté vacía
     if (!descripcion.trim()) {
       Alert.alert('Error', 'Por favor ingresa una descripción')
       return false
     }
+
+    // Verifica nombre del objeto
     if (!nombreObjeto.trim()) {
       Alert.alert('Error', 'Por favor ingresa el nombre del objeto')
       return false
     }
+
+    // Verifica categoría seleccionada
     if (!categoriaObjeto) {
       Alert.alert('Error', 'Por favor selecciona una categoría de objeto')
       return false
     }
+
+    // Verifica lugar seleccionado
     if (!lugarSeleccionado) {
       Alert.alert('Error', 'Por favor selecciona un lugar')
       return false
     }
+
+    // Verifica piso
     if (!pisoLugar.trim()) {
       Alert.alert('Error', 'Por favor ingresa el piso')
       return false
     }
+
+    // Convierte el piso a número
     const pisoNumero = parseInt(pisoLugar)
+
+    // Valida que sea número válido mayor que 0
     if (isNaN(pisoNumero) || pisoNumero < 1) {
       Alert.alert('Error', 'El piso debe ser un número válido mayor a 0')
       return false
     }
+
+    // Si todo es válido
     return true
   }
 
-  // 🔥 NUEVA FUNCIÓN: Ir a la cámara
+  // ===================== IR A LA CÁMARA =====================
+
   const handleGoToCamera = () => {
-    router.push('/Camera') // O la ruta donde está tu cámara (index.tsx)
+
+    // Navega a la pantalla de cámara
+    router.push('/Camera')
   }
 
+  // ===================== CREAR REPORTE =====================
+
   const crearReporte = async () => {
+
+    // Mensajes de depuración en consola
     console.log('=== DEBUGGER CREAR REPORTE ===')
     console.log('idUser recibido:', idUser)
     console.log('Fotos guardadas:', savedPhotos.length)
   
+    // Si el formulario no es válido, se detiene
     if (!validarFormulario()) return
   
+    // Activa el estado de carga
     setCargando(true)
+
     try {
+
+      // Convierte piso a número
       const pisoNumero = parseInt(pisoLugar)
   
-      // 1. Obtener empleado aleatorio del departamento
+      // ===================== 1️⃣ OBTENER EMPLEADO ALEATORIO =====================
+
       const { data: empleados, error: errorEmpleados } = await supabase
-        .from('empleado')
-        .select('idEmpl')
-        .eq('deptEmpl', departamento)
+        .from('empleado')              // Tabla empleado
+        .select('idEmpl')              // Solo selecciona idEmpl
+        .eq('deptEmpl', departamento)  // Filtra por departamento
   
+      // Si hay error lo lanza
       if (errorEmpleados) throw errorEmpleados
   
+      // Inicializa variable para empleado asignado
       let idEmplAleatorio = null
+
+      // Si hay empleados disponibles
       if (empleados && empleados.length > 0) {
+
+        // Genera índice aleatorio
         const indiceAleatorio = Math.floor(Math.random() * empleados.length)
+
+        // Asigna empleado aleatorio
         idEmplAleatorio = empleados[indiceAleatorio].idEmpl
+
         console.log(`Empleado asignado: ${idEmplAleatorio} del departamento ${departamento}`)
       }
   
-      // 2. Verificar/crear lugar
+      // ===================== 2️⃣ VERIFICAR O CREAR LUGAR =====================
+
       let { data: lugarExistente, error: errorBuscarLugar } = await supabase
         .from('lugar')
         .select('idLugar')
         .eq('nomLugar', lugarSeleccionado)
         .eq('pisoLugar', pisoNumero)
         .single()
-  
+
+      // Variable para guardar id del lugar en base de datos
       let idLugarDB: number
   
+      // Si no existe el lugar
       if (errorBuscarLugar || !lugarExistente) {
+
         const { data: nuevoLugar, error: errorCrearLugar } = await supabase
           .from('lugar')
           .insert([
@@ -157,121 +230,172 @@ export default function CrearReporte({ }: CrearReporteProps) {
           .single()
   
         if (errorCrearLugar) throw errorCrearLugar
+
+        // Guarda nuevo idLugar
         idLugarDB = nuevoLugar.idLugar
+
       } else {
+
+        // Si ya existe, usa el existente
         idLugarDB = lugarExistente.idLugar
       }
   
-      // 3. Crear el reporte
+      // ===================== 3️⃣ CREAR REPORTE =====================
+
       const { data, error } = await supabase
         .from('reporte')
         .insert([
           {
+            // Fecha actual en formato ISO
             fecReporte: new Date().toISOString(),
+
+            // Descripción ingresada
             descriReporte: descripcion,
+
+            // Estado inicial
             estReporte: 'pendiente',
+
+            // Prioridad inicial
             prioReporte: 'no asignada',
+
+            // Comentario vacío
             comentReporte: '',
-            imgReporte: [], // 🔥 INICIALIZAR COMO ARRAY VACÍO
+
+            // Inicializa array de imágenes vacío
+            imgReporte: [],
+
+            // Empleado asignado
             idEmpl: idEmplAleatorio,
+
+            // Usuario creador
             idUser: idUser,
           }
         ])
-        .select('idReporte')
+        .select('idReporte') // Devuelve el ID creado
   
       if (error) throw error
+
       if (!data || data.length === 0) {
         throw new Error('No se devolvió el reporte')
       }
-  
+
+      // Obtiene el ID del reporte recién creado
       const idReporte = data[0].idReporte
-      console.log('✅ Reporte creado con ID:', idReporte) 
 
-      // 🔥 NUEVO: Notificar al empleado asignado
-if (idEmplAleatorio) {
-  try {
-    console.log('📧 Enviando notificación al empleado...')
-    
-    const { error: notifError } = await supabase.functions.invoke('notificar-nuevo-reporte', {
-      body: {
-        idReporte: idReporte,
-        idEmpleado: idEmplAleatorio,
-        nombreUsuario: nombreUsuario,
-        descripcion: descripcion,
-        nombreObjeto: nombreObjeto,
-        categoriaObjeto: categoriaObjeto,
-        lugar: lugarSeleccionado,
-        piso: pisoNumero,
-        fotos: savedPhotos.map(p => p.uri) // URLs de las fotos subidas
-      }
-    })
+      console.log('✅ Reporte creado con ID:', idReporte)
 
-    if (notifError) {
-      console.error('Error al enviar notificación:', notifError)
-      // No fallar todo el reporte si la notificación falla
-    } else {
-      console.log('✅ Notificación enviada al empleado')
-    }
-  } catch (notifError) {
-    console.error('Error al enviar notificación:', notifError)
-  }
-}
-
-      // 🔥 4. SUBIR FOTOS A SUPABASE (SI HAY)
-      if (savedPhotos.length > 0) {
-        console.log(`📤 Subiendo ${savedPhotos.length} fotos...`)
+            // 🔥 NUEVO: Notificar al empleado asignado
+      // Si existe un empleado asignado
+      if (idEmplAleatorio) {
         try {
+          console.log('📧 Enviando notificación al empleado...')
+          
+          // Invoca una Edge Function de Supabase
+          // Esta función se encarga de enviar notificación al empleado
+          const { error: notifError } = await supabase.functions.invoke('notificar-nuevo-reporte', {
+            body: {
+              idReporte: idReporte,                 // ID del reporte creado
+              idEmpleado: idEmplAleatorio,          // Empleado asignado
+              nombreUsuario: nombreUsuario,         // Nombre del usuario creador
+              descripcion: descripcion,             // Descripción del reporte
+              nombreObjeto: nombreObjeto,           // Nombre del objeto afectado
+              categoriaObjeto: categoriaObjeto,     // Categoría del objeto
+              lugar: lugarSeleccionado,             // Lugar del incidente
+              piso: pisoNumero,                     // Piso del lugar
+              fotos: savedPhotos.map(p => p.uri)    // Lista de URIs de fotos
+            }
+          })
+
+          // Si ocurre error en notificación
+          if (notifError) {
+            console.error('Error al enviar notificación:', notifError)
+            // No se cancela el proceso completo si falla la notificación
+          } else {
+            console.log('✅ Notificación enviada al empleado')
+          }
+
+        } catch (notifError) {
+          console.error('Error al enviar notificación:', notifError)
+        }
+      }
+
+      // ===================== 4️⃣ SUBIR FOTOS =====================
+
+      // Si existen fotos guardadas en el contexto
+      if (savedPhotos.length > 0) {
+
+        console.log(`📤 Subiendo ${savedPhotos.length} fotos...`)
+
+        try {
+
+          // Llama a función del contexto para subir fotos
           await uploadPhotosToSupabase(idReporte)
+
           console.log('✅ Fotos subidas correctamente')
+
         } catch (photoError) {
+
           console.error('❌ Error al subir fotos:', photoError)
-          // No fallar todo el reporte si las fotos fallan
+
+          // Muestra advertencia pero no cancela el reporte
           Alert.alert(
             'Advertencia',
             'El reporte se creó pero hubo un problema al subir las fotos'
           )
         }
       }
-  
-      // 5. Vincular reporte con usuario
+
+      // ===================== 5️⃣ VINCULAR REPORTE CON USUARIO =====================
+
       const { error: errorReporteUsuario } = await supabase
-        .from('reporte_usuario')
+        .from('reporte_usuario') // Tabla intermedia
         .insert([
           {
-            idReporte,
-            idUser,
+            idReporte,  // ID del reporte creado
+            idUser,     // Usuario que creó el reporte
           }
         ])
-  
+
+      // Si ocurre error al vincular
       if (errorReporteUsuario) {
         console.error('Error al vincular usuario:', errorReporteUsuario)
         throw errorReporteUsuario
       }
-  
-      // 6. Crear el objeto
+
+      // ===================== 6️⃣ CREAR OBJETO =====================
+
       const { error: objetoError } = await supabase
-        .from('objeto')
+        .from('objeto') // Tabla objeto
         .insert([
           {
-            nomObj: nombreObjeto,
-            ctgobj: categoriaObjeto,
-            idLugar: idLugarDB,
-            idReporte,
+            nomObj: nombreObjeto,         // Nombre del objeto
+            ctgobj: categoriaObjeto,      // Categoría
+            idLugar: idLugarDB,           // Lugar donde está el objeto
+            idReporte,                    // Relación con el reporte
           }
         ])
-  
+
+      // Si ocurre error al crear objeto
       if (objetoError) throw objetoError
-  
-      // 🔥 7. LIMPIAR FOTOS DEL CONTEXTO
+
+      // ===================== 7️⃣ LIMPIAR FOTOS =====================
+
+      // Limpia fotos almacenadas en contexto
       clearSavedPhotos()
       
+      // ===================== ALERTA DE ÉXITO =====================
+
       Alert.alert(
         'Éxito',
         `Reporte creado${savedPhotos.length > 0 ? ` con ${savedPhotos.length} foto(s)` : ''} y asignado a empleado ${idEmplAleatorio || 'sin asignar'}`,
         [
           {
             text: 'OK',
+
+            // Cuando el usuario presiona OK
             onPress: () => {
+
+              // Limpia todos los campos del formulario
               setTitulo('')
               setDescripcion('')
               setDepartamento('mantenimiento')
@@ -279,15 +403,25 @@ if (idEmplAleatorio) {
               setPisoLugar('')
               setNombreObjeto('')
               setCategoriaObjeto('')
+
+              // Regresa a la pantalla anterior
               router.back()
             }
           }
         ]
       )
+
     } catch (error: any) {
+
+      // Captura cualquier error general
       console.error('Error al crear reporte:', error)
+
+      // Muestra mensaje de error
       Alert.alert('Error', error.message || 'No se pudo crear el reporte')
+
     } finally {
+
+      // Siempre desactiva el estado de carga
       setCargando(false)
     }
   }

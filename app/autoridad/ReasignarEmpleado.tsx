@@ -1,110 +1,178 @@
+// Importa React y los hooks useState y useEffect
+// useState permite manejar estados dentro del componente
+// useEffect permite ejecutar código cuando el componente se monta
 import React, { useState, useEffect } from 'react'
+
+// Importa componentes nativos de React Native
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-  Modal,
+  Alert,              // Permite mostrar alertas emergentes
+  ScrollView,         // Permite contenido con scroll vertical
+  StyleSheet,         // Permite definir estilos (NO documentamos styles)
+  Text,               // Muestra texto en pantalla
+  TouchableOpacity,   // Botón presionable
+  View,               // Contenedor visual
+  ActivityIndicator,  // Indicador de carga (spinner)
+  Modal,              // Ventana emergente
 } from 'react-native'
+
+// Importa iconos de Expo
 import { Ionicons } from '@expo/vector-icons'
+
+// Importa la instancia de Supabase para conexión con la base de datos
 import { supabase } from '../../src/lib/Supabase'
+
+// Importa los tipos TypeScript de la base de datos
 import { Empleado, Reporte } from '../../src/types/Database'
+
+// Importa función para obtener la sesión activa
 import { obtenerSesion } from '@/src/util/Session'
 
+// Exporta el componente principal
 export default function ReasignarEmpleado() {
+
+  // ===================== ESTADOS =====================
+
+  // Guarda la lista de empleados
   const [empleados, setEmpleados] = useState<Empleado[]>([])
+
+  // Guarda la lista de reportes
   const [reportes, setReportes] = useState<Reporte[]>([])
+
+  // Controla si la pantalla está cargando información
   const [cargando, setCargando] = useState(true)
+
+  // Controla si el modal está visible
   const [modalVisible, setModalVisible] = useState(false)
+
+  // Guarda el reporte seleccionado para reasignar
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   
-  // Estado para la autoridad que realiza la acción
+  // Guarda el nombre de la autoridad que realiza la reasignación
   const [nombreAutoridad, setNombreAutoridad] = useState<string>('Sistema')
 
-  // Filtros
+  // ===================== FILTROS =====================
+
+  // Filtro por departamento
   const [filtroDepto, setFiltroDepto] = useState<string>('todos')
+
+  // Filtro por cargo
   const [filtroCargo, setFiltroCargo] = useState<string>('todos')
 
-  // CARGA INICIAL: Unificada para optimizar el rendimiento
+  // ===================== CARGA INICIAL =====================
+
+  // useEffect se ejecuta una sola vez cuando el componente se monta
   useEffect(() => {
+
+    // Función asincrónica para inicializar la pantalla
     const inicializarPantalla = async () => {
+
+      // Activa el indicador de carga
       setCargando(true)
-      // Ejecutamos ambas cargas en paralelo
+
+      // Ejecuta ambas funciones en paralelo para optimizar rendimiento
       await Promise.all([
-        cargarDatos(),
-        cargarDatosSesion()
+        cargarDatos(),        // Carga empleados y reportes
+        cargarDatosSesion()   // Carga datos de sesión
       ])
+
+      // Desactiva el indicador de carga
       setCargando(false)
     }
 
+    // Ejecuta la inicialización
     inicializarPantalla()
-  }, [])
+
+  }, []) // Array vacío = solo se ejecuta al montar el componente
+
+  // ===================== CARGAR SESIÓN =====================
 
   const cargarDatosSesion = async () => {
     try {
+
+      // Obtiene la sesión guardada
       const sesion = await obtenerSesion()
+
+      // Si existe sesión
       if (sesion) {
-        // Usamos tus interfaces Usuario y Empleado según el tipo de sesión
+
+        // Si es usuario
         if (sesion.tipo === 'usuario') {
           setNombreAutoridad(`${sesion.data.nomUser} ${sesion.data.apeUser}`)
-        } else if (sesion.tipo === 'empleado') {
+        } 
+
+        // Si es empleado
+        else if (sesion.tipo === 'empleado') {
           setNombreAutoridad(`${sesion.data.nomEmpl} ${sesion.data.apeEmpl}`)
         }
       }
+
     } catch (error) {
+      // Si ocurre error lo muestra en consola
       console.error('Error al recuperar sesión:', error)
     }
   }
 
-  const cargarDatos = async () => {
-    // Cargar empleados
-    const { data: empData, error: empError } = await supabase
-      .from('empleado')
-      .select('*')
-      .order('nomEmpl', { ascending: true })
+  // ===================== CARGAR DATOS =====================
 
+  const cargarDatos = async () => {
+
+    // Consulta tabla empleado
+    const { data: empData, error: empError } = await supabase
+      .from('empleado')        // Selecciona tabla empleado
+      .select('*')             // Selecciona todos los campos
+      .order('nomEmpl', { ascending: true }) // Ordena por nombre
+
+    // Si hay error
     if (empError) {
       Alert.alert('Error', 'No se pudieron cargar los empleados: ' + empError.message)
       return
     }
 
-    // Cargar reportes
+    // Consulta tabla reporte
     const { data: repData, error: repError } = await supabase
-      .from('reporte')
-      .select('*')
-      .order('idReporte', { ascending: false })
+      .from('reporte')         // Tabla reporte
+      .select('*')             // Todos los campos
+      .order('idReporte', { ascending: false }) // Orden descendente
 
+    // Si hay error
     if (repError) {
       Alert.alert('Error', 'No se pudieron cargar los reportes: ' + repError.message)
     }
 
+    // Guarda empleados en el estado
     setEmpleados(empData || [])
+
+    // Guarda reportes en el estado
     setReportes(repData || [])
   }
 
+  // ===================== ABRIR MODAL =====================
+
   const abrirModalReasignacion = (reporte: Reporte) => {
-    setReporteSeleccionado(reporte)
-    setModalVisible(true)
+    setReporteSeleccionado(reporte) // Guarda reporte seleccionado
+    setModalVisible(true)           // Muestra el modal
   }
 
+  // ===================== REASIGNAR REPORTE =====================
+
   const reasignarReporte = async (empleadoId: string) => {
+
+    // Si no hay reporte seleccionado, no hace nada
     if (!reporteSeleccionado) return
 
-    // 1. Actualización en la base de datos
+    // 1️⃣ Actualiza base de datos
     const { error } = await supabase
       .from('reporte')
-      .update({ idEmpl: empleadoId })
+      .update({ idEmpl: empleadoId }) // Cambia el empleado asignado
       .eq('idReporte', reporteSeleccionado.idReporte)
 
+    // Si hay error
     if (error) {
       Alert.alert('Error', 'No se pudo reasignar: ' + error.message)
       return
     }
 
-    // 2. Notificación mediante Edge Function
+    // 2️⃣ Envía notificación mediante Edge Function
     try {
       await supabase.functions.invoke('notificar-reasignacion-reporte', {
         body: {
@@ -115,25 +183,47 @@ export default function ReasignarEmpleado() {
       })
     } catch (notifError) {
       console.error('Error al enviar notificación:', notifError)
-      // No bloqueamos el éxito de la DB si falla la notificación, solo lo logueamos
     }
 
+    // Muestra mensaje de éxito
     Alert.alert('¡Éxito!', 'Reporte reasignado correctamente')
+
+    // Cierra modal
     setModalVisible(false)
-    cargarDatos() // Refrescar la lista
+
+    // Recarga datos
+    cargarDatos()
   }
 
+  // ===================== FILTRO DE EMPLEADOS =====================
+
   const empleadosFiltrados = empleados.filter(emp => {
+
+    // Verifica departamento
     const pasaDepto = filtroDepto === 'todos' || emp.deptEmpl === filtroDepto
+
+    // Verifica cargo
     const pasaCargo = filtroCargo === 'todos' || emp.cargEmpl === filtroCargo
+
+    // Retorna solo si cumple ambos filtros
     return pasaDepto && pasaCargo
   })
 
+  // ===================== OBTENER NOMBRE DE EMPLEADO =====================
+
   const getEmpleadoNombre = (idEmpl?: string) => {
+
+    // Si no tiene empleado asignado
     if (!idEmpl) return 'Sin asignar'
+
+    // Busca empleado por ID
     const emp = empleados.find(e => e.idEmpl === idEmpl)
+
+    // Si existe lo devuelve, si no devuelve "Desconocido"
     return emp ? `${emp.nomEmpl} ${emp.apeEmpl}` : 'Desconocido'
   }
+
+  // ===================== PANTALLA DE CARGA =====================
 
   if (cargando) {
     return (
@@ -143,6 +233,8 @@ export default function ReasignarEmpleado() {
       </View>
     )
   }
+
+  // ===================== RENDER PRINCIPAL =====================
 
   return (
     <ScrollView style={styles.container}>

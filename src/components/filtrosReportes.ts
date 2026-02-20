@@ -17,8 +17,8 @@ export interface FiltrosReporte {
   prioridad?: string
   
   // Filtros de relaciones (IDs)
-  idUser?: number
-  idEmpl?: number
+  idUser?: string
+  idEmpl?: string
   
   // Filtro de búsqueda de texto
   descripcion?: string
@@ -155,7 +155,7 @@ export function filtrarPorPrioridades(
 // Filtra reportes creados por un usuario específico
 export function filtrarPorUsuario(
   reportes: Reporte[],
-  idUser: number
+  idUser: string
 ): Reporte[] {
   return reportes.filter(r => r.idUser === idUser)
 }
@@ -163,7 +163,7 @@ export function filtrarPorUsuario(
 //Filtra reportes asignados a un empleado específico
 export function filtrarPorEmpleado(
   reportes: Reporte[],
-  idEmpl: number
+  idEmpl: string
 ): Reporte[] {
   return reportes.filter(r => r.idEmpl === idEmpl)
 }
@@ -269,7 +269,7 @@ export function filtrarConImagen(reportes: Reporte[]): Reporte[] {
 
 // Filtra reportes sin asignar (sin empleado)
 export function filtrarSinAsignar(reportes: Reporte[]): Reporte[] {
-  return reportes.filter(r => !r.idEmpl || r.idEmpl === 0)
+  return reportes.filter(r => !r.idEmpl || r.idEmpl === "0")
 }
 
 //ORDENAMIENTO
@@ -368,7 +368,7 @@ export function obtenerEstadisticas(reportes: Reporte[]) {
       Array.isArray(r.imgReporte) && 
       r.imgReporte.length > 0
     ).length, // 🔥 CAMBIAR AQUÍ
-    sinAsignar: reportes.filter(r => !r.idEmpl || r.idEmpl === 0).length,
+    sinAsignar: reportes.filter(r => !r.idEmpl || r.idEmpl === "0").length,
     porEstado: contarPorEstado(reportes),
     porPrioridad: contarPorPrioridad(reportes),
     porDepartamento: contarPorDepartamento(reportes),
