@@ -25,8 +25,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true, // Renueva automáticamente el token de sesión cuando expira
     persistSession: true, // Mantiene la sesión activa incluso al cerrar la aplicación
     detectSessionInUrl: false, // Se desactiva porque no es una aplicación web
-    // storage:
     // Puede configurarse en el futuro para soporte web
-    // storage: Platform.OS === 'web' ? localStorage : AsyncStorage,
   },
 })

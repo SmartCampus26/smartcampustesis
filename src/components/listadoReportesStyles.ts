@@ -1,0 +1,187 @@
+import { StyleSheet } from 'react-native'
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
+    backgroundColor: '#2F455C',
+    padding: 20,
+    paddingTop: 15,
+  },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    marginTop: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#2F455C',
+  },
+  filtersContainer: {
+    maxHeight: 60,
+    marginBottom: 8,
+  },
+  filtersContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    gap: 6,
+  },
+  filterButtonActive: {
+    backgroundColor: '#21D0B2',
+    borderColor: '#21D0B2',
+  },
+  filterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2F455C',
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
+  },
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2F455C',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#8B9BA8',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  reportCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reportIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reportId: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2F455C',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  reportDesc: {
+    fontSize: 14,
+    color: '#2F455C',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  reportMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#8B9BA8',
+    textTransform: 'capitalize',
+  },
+  assignedSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FFFE',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  assignedText: {
+    fontSize: 13,
+    color: '#2F455C',
+    fontWeight: '600',
+  },
+  bottomSpacer: {
+    height: 20,
+  },
+})

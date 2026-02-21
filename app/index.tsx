@@ -60,10 +60,10 @@ export default function LoginScreen() {
       if (sesion.tipo === 'usuario') {
         if (sesion.rol === 'autoridad') {
           Alert.alert('Bienvenido', `Hola ${sesion.data.nomUser}`)
-          router.replace('/autoridad/HomeAutoridad')
+          router.replace('/(auth)/HomeAutoridad')
         } else if (sesion.rol === 'docente') {
           Alert.alert('Bienvenido', `Hola ${sesion.data.nomUser}`)
-          router.replace('/docente/HomeDocente')
+          router.replace('/(auth)/HomeDocente')
         } else {
           throw new Error('Rol de usuario no reconocido')
         }
@@ -72,7 +72,7 @@ export default function LoginScreen() {
        else if (sesion.tipo === 'empleado') {
         // Manejo de errores de autenticación
         Alert.alert('Bienvenido', `Hola ${sesion.data.nomEmpl}`)
-        router.replace('/empleado/HomeEmpleado')
+        router.replace('/(auth)/HomeEmpleado')
       }
     } catch (error: any) {
       // Manejo de errores de autenticación
