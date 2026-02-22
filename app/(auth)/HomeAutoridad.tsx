@@ -1,5 +1,6 @@
 // Importa React y hooks para manejar estado y efectos
-import React, { useState, useEffect } from 'react'
+import * as React from 'react'
+import { useState, useEffect } from 'react'
 // Componentes visuales de React Native
 import {
   View, Text, ScrollView, TouchableOpacity,

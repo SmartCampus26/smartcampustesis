@@ -1,6 +1,6 @@
 // 🎯 SwipeCard: Tarjeta interactiva con gestos de deslizamiento
 // Permite guardar o descartar una imagen mediante swipe horizontal
-import React from 'react';
+import * as React from 'react';
 import { StyleSheet, View, Dimensions, Image } from 'react-native';
 // Manejo de gestos táctiles
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';

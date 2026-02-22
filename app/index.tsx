@@ -1,5 +1,5 @@
 // React y hook useState para manejar el estado del componente
-import React, { useState } from 'react'
+import  { useState } from 'react'
 // Componentes nativos de React Native para construir la interfaz
 import {
   View,                 // Contenedor básico de la interfaz
@@ -22,6 +22,8 @@ import { loginPersonalizado } from '../src/services/AuthService'
 import { Sesion } from '../src/types/Database'
 // Librería de íconos para mejorar la interfaz visual
 import { Ionicons } from '@expo/vector-icons'
+
+import * as React from 'react'; 
 
 /**
  * Componente LoginScreen

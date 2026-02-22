@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +24,7 @@ import {
   insertarObjeto,
   notificarEmpleado,
 } from '../../src/services/CrearReporteServices'
+import * as React from 'react';
 
 interface CrearReporteProps {
   idUser: number

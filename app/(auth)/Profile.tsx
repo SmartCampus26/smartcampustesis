@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 
 // Hooks principales de React
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // Componentes base de React Native
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native'
@@ -17,7 +17,9 @@ import { profileStyles as s } from '../../src/components/Profilestyles'
 import { cargarPerfil, cerrarSesion, ProfileData } from '../../src/services/Profileservice'
 
 // Contexto para limpiar fotos guardadas (solo usuarios)
-import { useSaved } from '../Camera/context/SavedContext'
+import { useSaved } from '../Camera/context/SavedContext' 
+
+import * as React from 'react';
 
 export default function ProfileScreen() {
   const router = useRouter()

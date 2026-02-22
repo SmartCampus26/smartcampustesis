@@ -1,5 +1,5 @@
 // React y hook para manejar estado del formulario
-import React, { useState, useEffect } from 'react'
+import  { useState, useEffect } from 'react'
 // Componentes nativos para la interfaz del usuario y control del teclado
 import {
   Alert,
@@ -24,6 +24,8 @@ import {
 } from '../../src/services/UsuarioServices'
 // Estilos
 import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoStyles'
+
+import * as React from 'react';
 
 //COMPONENTE
 /**

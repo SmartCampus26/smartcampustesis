@@ -1,5 +1,5 @@
 // React y hooks para manejo de estado y ciclo de vida
-import React, { useEffect, useState } from 'react'
+import  { useEffect, useState } from 'react'
 // Componentes nativos para interfaz, scroll, alertas y carga
 import {
   ActivityIndicator,
@@ -25,6 +25,8 @@ import {
   getEstadoTexto,
   getPrioridadColor,
 } from '../../src/services/TodosReportesService'
+
+import * as React from 'react';
 
 /**
  * Pantalla que muestra todos los reportes del sistema

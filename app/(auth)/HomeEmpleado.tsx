@@ -1,5 +1,5 @@
 // Importa React y hooks para manejar estado y efectos
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 // Componentes visuales de React Native
 import {
   ActivityIndicator,
@@ -18,6 +18,8 @@ import { generarPDF } from '../../src/components/PdfService'
 import { cargarDatosEmpleado, getStatusColor, getPriorityColor } from '../../src/services/Homeempleadoservice'
 // Estilos
 import { homeEmpleadoStyles as styles } from '../../src/components/homeEmpleadoStyles'
+
+import * as React from 'react';
 
 // COMPONENTE PRINCIPAL
 export default function HomeEmpleados() {

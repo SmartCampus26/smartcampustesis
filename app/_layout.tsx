@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SavedProvider } from "./Camera/context/SavedContext";
-import React from "react";
+import * as React from 'react';
 
 export default function RootLayout() {
   return (

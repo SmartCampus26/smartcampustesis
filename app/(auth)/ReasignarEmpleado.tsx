@@ -1,7 +1,7 @@
 // Importa React y los hooks useState y useEffect
 // useState permite manejar estados dentro del componente
 // useEffect permite ejecutar código cuando el componente se monta
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // Importa componentes nativos de React Native
 import {
@@ -22,6 +22,8 @@ import { Empleado, Reporte } from '../../src/types/Database'
 
 // Importa estilos separados
 import { styles } from '../../src/components/Reasignarempleadostyles'
+
+import * as React from 'react';
 
 // Importa la lógica de negocio separada
 import {

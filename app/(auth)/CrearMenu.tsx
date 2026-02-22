@@ -3,7 +3,7 @@
 // ===============================
 
 // Importa React
-import React from 'react'
+import * as React from 'react';
 
 // Componentes visuales de React Native
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native'

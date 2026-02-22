@@ -8,7 +8,8 @@
   packages = 
   [ pkgs.nodejs_22
     pkgs.deno
-    pkgs.supabase-cli
+    pkgs.supabase-cli 
+    pkgs.eas-cli
    ];
   # Variables de entorno del workspace
   env = { EXPO_USE_FAST_RESOLVER = 1; };

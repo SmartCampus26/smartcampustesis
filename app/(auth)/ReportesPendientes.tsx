@@ -1,5 +1,5 @@
 // Librerías base de React y hooks para manejar estado y ciclo de vida
-import React, { useEffect, useState } from 'react'
+import  { useEffect, useState } from 'react'
 // Componentes visuales de React Native
 import { ActivityIndicator, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
 // Iconos de Expo
@@ -15,6 +15,8 @@ import {
   getColorEstado,
   getColorPrioridad,
 } from '../../src/services/ReportesPendientesService'
+
+import * as React from 'react';
 
 //COMPONENTE PRINCIPAL
 const ReportesPendientes: React.FC = () => {

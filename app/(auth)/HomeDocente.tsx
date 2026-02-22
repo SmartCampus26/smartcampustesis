@@ -1,5 +1,5 @@
 // Importa React y hooks para manejar estado y efectos
-import React, { useEffect, useState } from 'react'
+import  { useEffect, useState } from 'react'
 // Componentes visuales de React Native
 import {
   ActivityIndicator,
@@ -22,6 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
 // Estilos
 import { homeDocenteStyles as styles } from '../../src/components/homeDocenteStyles'
+
+import * as React from 'react'; 
 
 export default function HomeUsuario() {
   // ESTADOS (variables reactivas)

@@ -2,7 +2,7 @@
 // Este componente permite mostrar gráficos de pastel
 import { PieChart } from 'react-native-chart-kit'
 // Importa React, necesario para definir componentes funcionales
-import React from 'react'
+import * as React from 'react';
 
 // Componente funcional GraficoEstados
 // Recibe como prop un objeto llamado "stats" que contiene los datos estadísticos

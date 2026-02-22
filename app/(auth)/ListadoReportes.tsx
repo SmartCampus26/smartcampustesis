@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import  { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,8 @@ import {
   getStatusColor,
   getPriorityColor,
 } from '../../src/services/ListadoReportesService'
+
+import * as React from 'react';
 
 export default function MisReportes() {
   const { filtro } = useLocalSearchParams<{ filtro?: string }>()

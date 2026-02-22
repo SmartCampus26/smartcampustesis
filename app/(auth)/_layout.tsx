@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native'
 import { Sesion } from '../../src/types/Database'
 import { obtenerSesion } from '../../src/util/Session'
 import { Platform } from 'react-native'
-import React from 'react'
+import * as React from 'react';
 
 
 

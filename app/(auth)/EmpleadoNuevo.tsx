@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import  { useState } from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,6 +18,7 @@ import {
   crearEmpleadoDB,
 } from '../../src/services/EmpleadoNuevoService'
 import { Eye, EyeOff } from 'lucide-react-native'
+import * as React from 'react';
 
 export default function EmpleadoNuevo() {
   const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({

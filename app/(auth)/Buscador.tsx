@@ -4,7 +4,8 @@
 
 // Importa React y los hooks useEffect (ejecuta código al montar el componente)
 // y useState (manejo de estados)
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 
 // Componentes visuales de React Native
 import {
