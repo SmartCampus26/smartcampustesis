@@ -17,6 +17,7 @@ import {
   validarEmpleado,
   crearEmpleadoDB,
 } from '../../src/services/EmpleadoNuevoService'
+import { Eye, EyeOff } from 'lucide-react-native'
 
 export default function EmpleadoNuevo() {
   const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({
@@ -29,6 +30,8 @@ export default function EmpleadoNuevo() {
     cargEmpl: 'empleado',
   })
   const [cargando, setCargando] = useState(false)
+
+  const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
   const set = (campo: keyof NuevoEmpleadoForm, valor: string) =>
     setNuevoEmpleado((prev) => ({ ...prev, [campo]: valor }))
@@ -122,10 +125,16 @@ export default function EmpleadoNuevo() {
               <TextInput
                 style={styles.input}
                 placeholder="Mínimo 6 caracteres"
-                secureTextEntry
+                secureTextEntry={!mostrarContrasena}
                 value={nuevoEmpleado.contraEmpl}
                 onChangeText={(t) => set('contraEmpl', t)}
               />
+              <TouchableOpacity onPress={() => setMostrarContrasena(prev => !prev)}>
+                {mostrarContrasena
+                  ? <EyeOff size={20} color="#6B7280" />
+                  : <Eye size={20} color="#6B7280" />
+                }
+              </TouchableOpacity>
             </View>
           </View>
 

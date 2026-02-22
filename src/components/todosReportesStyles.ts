@@ -121,9 +121,8 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
   reportHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: 'column',
+    gap: 8,
     marginBottom: 12,
   },
   reportBadge: {

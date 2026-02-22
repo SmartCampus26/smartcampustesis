@@ -191,24 +191,28 @@ export default function TodosReportes() {
               return (
                 <View key={reporte.idReporte} style={styles.reportCard}>
                   {/* Header del Reporte */}
-                  <View style={styles.reportHeader}>
-                    <View style={styles.reportBadge}>
-                      <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
-                    </View>
-                    <View style={styles.statusBadges}>
-                      {reporte.prioReporte && (
-                        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioReporte) }]}>
-                          <Text style={styles.prioridadText}>
-                            {reporte.prioReporte === 'alta' ? '🔴 Alta' :
-                             reporte.prioReporte === 'media' ? '🟡 Media' : '🟢 Baja'}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estReporte) }]}>
-                        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estReporte)}</Text>
-                      </View>
-                    </View>
-                  </View>
+            {/* Header del Reporte */}
+              <View style={styles.reportHeader}>
+             {/* Fila 1: ID badge */}
+            <View style={styles.reportBadge}>
+          <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
+        </View>
+
+      {/* Fila 2: Prioridad y Estado */}
+    <View style={styles.statusBadges}>
+      {reporte.prioReporte && (
+        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioReporte) }]}>
+        <Text style={styles.prioridadText}>
+          {reporte.prioReporte === 'alta' ? '🔴 Alta' :
+           reporte.prioReporte === 'media' ? '🟡 Media' : '🟢 Baja'}
+        </Text>
+        </View>
+      )}
+      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estReporte) }]}>
+        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estReporte)}</Text>
+      </View>
+   </View>
+      </View>
 
                   {/* Contenido del Reporte */}
                   <Text style={styles.reportTitle}>Reporte #{reporte.idReporte}</Text>

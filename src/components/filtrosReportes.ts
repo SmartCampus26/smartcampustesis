@@ -2,7 +2,7 @@
 // PARA REPORTES DEL SISTEMA
 
 // Importación de tipos
-import { Reporte, Empleado, Usuario, Lugar, Objeto } from '../types/Database'
+import { Reporte} from '../types/Database'
 
 // INTERFAZ DE FILTROS
 // Define todos los criterios posibles de filtrado

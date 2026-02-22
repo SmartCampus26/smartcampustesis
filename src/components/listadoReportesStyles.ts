@@ -129,16 +129,20 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,              // ← FIX: toma el espacio disponible sin salirse
+    marginRight: 8,       // ← FIX: deja espacio para el chevron
   },
   reportId: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2F455C',
+    flexShrink: 1,        // ← FIX: el texto se encoge, nunca empuja al badge
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    flexShrink: 0,        // ← FIX: el badge nunca se comprime
   },
   statusText: {
     color: '#FFFFFF',

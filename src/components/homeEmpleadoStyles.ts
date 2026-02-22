@@ -87,11 +87,14 @@ export const homeEmpleadoStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2F455C',
+    flexShrink: 1,        // ← FIX: el texto se encoge, nunca empuja al badge
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    flexShrink: 0,        // ← FIX: el badge nunca se comprime
+    marginLeft: 8,        // ← FIX: espacio mínimo entre ID y badge
   },
   statusText: {
     color: '#FFFFFF',
