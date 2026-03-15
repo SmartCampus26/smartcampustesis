@@ -2,50 +2,37 @@
 import  { useState } from 'react'
 // Componentes nativos de React Native para construir la interfaz
 import {
-  View,                 // Contenedor básico de la interfaz
-  Text,                 // Muestra texto en pantalla
-  TextInput,            // Campo de entrada de texto
-  TouchableOpacity,     // Botón táctil personalizable
-  Image,                // Visualización de imágenes
-  StyleSheet,           // Definición de estilos
-  Alert,                // Ventanas emergentes de alerta
-  ActivityIndicator,    // Indicador de carga
-  KeyboardAvoidingView, // Ajusta la vista al mostrar el teclado
-  Platform,             // Detecta el sistema operativo
-  ScrollView,           // Permite desplazamiento vertical
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native'
 // Navegación y redirección entre pantallas
 import { router } from 'expo-router'
-// Servicio personalizado de autenticación encapsula la lógica de login y validación en Supabase
+// Servicio personalizado de autenticación
 import { loginPersonalizado } from '../src/services/AuthService'
 // Tipo de datos de sesión
 import { Sesion } from '../src/types/Database'
-// Librería de íconos para mejorar la interfaz visual
+// Librería de íconos
 import { Ionicons } from '@expo/vector-icons'
 
 import * as React from 'react'; 
 
-/**
- * Componente LoginScreen
- * Gestiona la autenticación y redirección según
- * el tipo de usuario y su rol dentro del sistema
- */
 export default function LoginScreen() {
-  // Estados del formulario
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState<'usuario' | 'empleado'>('usuario')
-  // Estados de control de interfaz
   const [cargando, setCargando] = useState(false)
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
-  /**
-   * Maneja el proceso completo de inicio de sesión:
-   * validación, autenticación y redirección
-   */
   const handleLogin = async () => {
-
-    // Validación de campos vacíos
     if (!correo.trim() || !contrasena.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos')
       return
@@ -54,11 +41,8 @@ export default function LoginScreen() {
     setCargando(true)
 
     try {
-      // Autenticación mediante servicio personalizado
       const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
       
-      
-      // Redirección según tipo y rol del usuario
       if (sesion.tipo === 'usuario') {
         if (sesion.rol === 'autoridad') {
           Alert.alert('Bienvenido', `Hola ${sesion.data.nomUser}`)
@@ -69,15 +53,11 @@ export default function LoginScreen() {
         } else {
           throw new Error('Rol de usuario no reconocido')
         }
-      }
-       // Redirección para empleados
-       else if (sesion.tipo === 'empleado') {
-        // Manejo de errores de autenticación
+      } else if (sesion.tipo === 'empleado') {
         Alert.alert('Bienvenido', `Hola ${sesion.data.nomEmpl}`)
         router.replace('/(auth)/HomeEmpleado')
       }
     } catch (error: any) {
-      // Manejo de errores de autenticación
       Alert.alert('Error de autenticación', error.message || 'Credenciales incorrectas')
     } finally {
       setCargando(false)
@@ -85,7 +65,6 @@ export default function LoginScreen() {
   }
 
   return (
-    // Ajusta la vista automáticamente cuando aparece el teclado
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -94,7 +73,6 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-         {/* Logo de la aplicación */}
         <View style={styles.logoContainer}>
           <Image
             source={require('../assets/images/logo_tesis.png')} 
@@ -103,17 +81,13 @@ export default function LoginScreen() {
           />
         </View>
 
-        {/* Título principal */}
         <Text style={styles.title}>Iniciar Sesión</Text>
         <Text style={styles.subtitle}>Accede a tu cuenta</Text>
 
         {/* Selector del tipo de usuario */}
         <View style={styles.tipoUsuarioContainer}>
           <TouchableOpacity
-            style={[
-              styles.tipoBoton,
-              tipoUsuario === 'usuario' && styles.tipoBotonActivo
-            ]}
+            style={[styles.tipoBoton, tipoUsuario === 'usuario' && styles.tipoBotonActivo]}
             onPress={() => setTipoUsuario('usuario')}
           >
             <Ionicons 
@@ -122,19 +96,13 @@ export default function LoginScreen() {
               color={tipoUsuario === 'usuario' ? '#FFFFFF' : '#2F455C'} 
               style={{ marginRight: 8 }}
             />
-            <Text style={[
-              styles.tipoTexto,
-              tipoUsuario === 'usuario' && styles.tipoTextoActivo
-            ]}>
+            <Text style={[styles.tipoTexto, tipoUsuario === 'usuario' && styles.tipoTextoActivo]}>
               Usuario
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tipoBoton,
-              tipoUsuario === 'empleado' && styles.tipoBotonActivo
-            ]}
+            style={[styles.tipoBoton, tipoUsuario === 'empleado' && styles.tipoBotonActivo]}
             onPress={() => setTipoUsuario('empleado')}
           >
             <Ionicons 
@@ -143,27 +111,19 @@ export default function LoginScreen() {
               color={tipoUsuario === 'empleado' ? '#FFFFFF' : '#2F455C'} 
               style={{ marginRight: 8 }}
             />
-            <Text style={[
-              styles.tipoTexto,
-              tipoUsuario === 'empleado' && styles.tipoTextoActivo
-            ]}>
+            <Text style={[styles.tipoTexto, tipoUsuario === 'empleado' && styles.tipoTextoActivo]}>
               Empleado
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Formulario de inicio de sesión */}
+        {/* Formulario */}
         <View style={styles.formContainer}>
-          {/* Campo de correo */}
+          {/* Correo */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Correo Electrónico</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="mail-outline" 
-                size={20} 
-                color="#8B9BA8" 
-                style={styles.inputIcon}
-              />
+              <Ionicons name="mail-outline" size={20} color="#8B9BA8" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="ejemplo@correo.com"
@@ -177,16 +137,11 @@ export default function LoginScreen() {
             </View>
           </View>
             
-          {/* Campo de contraseña */}
+          {/* Contraseña */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Contraseña</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color="#8B9BA8" 
-                style={styles.inputIcon}
-              />
+              <Ionicons name="lock-closed-outline" size={20} color="#8B9BA8" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
@@ -208,8 +163,16 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* ── ENLACE "¿Olvidaste tu contraseña?" ── */}
+          <TouchableOpacity
+            style={styles.forgotContainer}
+            onPress={() => router.push('/ContraseniaOlvidada')}
+          >
+            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
           
-          {/* Botón de inicio de sesión */}
+          {/* Botón de login */}
           <TouchableOpacity
             style={styles.loginButton}
             onPress={handleLogin}
@@ -226,7 +189,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Información según el tipo de usuario */}
+        {/* Info badge */}
         <View style={styles.infoContainer}>
           <View style={styles.infoBadge}>
             <Ionicons 
@@ -296,10 +259,7 @@ const styles = StyleSheet.create({
   tipoBotonActivo: {
     backgroundColor: '#21D0B2',
     shadowColor: '#21D0B2',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
@@ -346,6 +306,21 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
   },
+
+  // ── Nuevo: enlace de contraseña olvidada ──
+  forgotContainer: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    marginBottom: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  forgotText: {
+    fontSize: 14,
+    color: '#21D0B2',
+    fontWeight: '600',
+  },
+
   loginButton: {
     backgroundColor: '#21D0B2',
     borderRadius: 12,
@@ -355,10 +330,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
     shadowColor: '#21D0B2',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
