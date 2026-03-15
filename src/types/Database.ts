@@ -37,6 +37,8 @@
     idLugar: string
     nomLugar: string
     pisoLugar: string
+    aulaLugar: string 
+    numAula?: string
   }
   
   /**

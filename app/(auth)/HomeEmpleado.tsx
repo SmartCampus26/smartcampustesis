@@ -25,9 +25,9 @@ import * as React from 'react';
 export default function HomeEmpleados() {
   // ===== ESTADOS PRINCIPALES =====
 
-  // Información del empleado en sesión
+  // Información del colaborador en sesión
   const [empleado, setEmpleado] = useState<any>(null)
-  // Lista de reportes asignados al empleado
+  // Lista de reportes asignados al colaborador
   const [reportes, setReportes] = useState<Reporte[]>([])
   // Estados de carga
   const [cargando, setCargando] = useState(true)
@@ -89,7 +89,7 @@ export default function HomeEmpleados() {
     >
       {/* ENCABEZADO */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Empleado'}</Text>
+        <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Colaborador'}</Text>
         <Text style={styles.role}>Tareas Asignadas</Text>
       </View>
 

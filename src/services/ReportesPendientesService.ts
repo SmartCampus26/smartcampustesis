@@ -1,83 +1,45 @@
-// Almacenamiento local para recuperar la sesión guardada
 import AsyncStorage from '@react-native-async-storage/async-storage'
-// Cliente de Supabase configurado previamente
 import { supabase } from '../lib/Supabase'
-// Tipos TypeScript que representan las tablas de la base de datos
 import { Empleado, Lugar, Objeto, Reporte, Sesion, Usuario } from '../types/Database'
 
-/**
- * ================================
- * INTERFAZ EXTENDIDA
- * ================================
- * Representa un reporte con todas sus relaciones cargadas
- */
 export interface ReporteCompleto extends Reporte {
-  empleado: Empleado
+  empleado: Empleado | null
   usuario: Usuario
   objeto: Objeto | null
   lugar: Lugar | null
 }
 
-//FUNCIONES
-
 /**
- * Obtiene la sesión almacenada y valida que sea un empleado.
- * Retorna el ID del empleado o lanza un error si no es válido.
+ * Obtiene la sesión completa del empleado con cargo y departamento.
  */
-export const obtenerEmpleadoActual = async (): Promise<string> => {
+export const obtenerSesionEmpleado = async (): Promise<{ id: string; cargo: string; depto: string; nombre: string }> => {
   const sesionGuardada = await AsyncStorage.getItem('sesion')
   if (!sesionGuardada) throw new Error('No hay sesión activa')
 
   const sesion: Sesion = JSON.parse(sesionGuardada)
-  // Verificar directamente si es tipo empleado
   if (sesion.tipo !== 'empleado') throw new Error('Solo empleados pueden ver esta sección')
 
-  return sesion.id
+  return {
+    id: sesion.id,
+    cargo: sesion.data.cargEmpl,
+    depto: sesion.data.deptEmpl,
+    // Retornamos el nombre completo del jefe para usarlo en la notificación al empleado
+    nombre: `${sesion.data.nomEmpl} ${sesion.data.apeEmpl}`,
+  }
 }
 
 /**
- * Carga los reportes asignados al empleado desde Supabase,
- * incluyendo empleado, usuario, objeto y lugar relacionados.
+ * Añade objeto y lugar a cada reporte.
  */
-export const cargarReportesEmpleado = async (empleadoActual: string): Promise<ReporteCompleto[]> => {
-  // Consulta principal de reportes con relaciones
-  const { data, error: supabaseError } = await supabase
-    .from('reporte')
-    .select(`
-      *,
-      empleado:idEmpl (
-        idEmpl,
-        nomEmpl,
-        apeEmpl,
-        correoEmpl,
-        deptEmpl,
-        cargEmpl,
-        tlfEmpl
-      ),
-      usuario:idUser (
-        idUser,
-        nomUser,
-        apeUser,
-        correoUser,
-        tlfUser
-      )
-    `)
-    .eq('idEmpl', empleadoActual)
-    .order('fecReporte', { ascending: false })
-
-  if (supabaseError) throw supabaseError
-
-  // Cargar objeto y lugar asociados a cada reporte
-  const reportesConDatos = await Promise.all(
-    (data || []).map(async (reporte: any) => {
-      // Obtener el objeto asociado al reporte
+const enriquecerReportes = async (data: any[]): Promise<ReporteCompleto[]> => {
+  return await Promise.all(
+    data.map(async (reporte: any) => {
       const { data: objeto } = await supabase
         .from('objeto')
         .select('*')
         .eq('idReporte', reporte.idReporte)
         .single()
 
-      // Si hay objeto, obtener su lugar
       let lugar = null
       if (objeto) {
         const { data: lugarData } = await supabase
@@ -88,20 +50,118 @@ export const cargarReportesEmpleado = async (empleadoActual: string): Promise<Re
         lugar = lugarData
       }
 
-      return {
-        ...reporte,
-        objeto: objeto || null,
-        lugar: lugar || null
-      } as ReporteCompleto
+      return { ...reporte, objeto: objeto || null, lugar } as ReporteCompleto
     })
   )
-
-  return reportesConDatos
 }
 
 /**
- * Guarda los cambios de un reporte en la base de datos
- * y envía notificación al usuario si hubo cambios reales.
+ * Carga los reportes SIN asignar (idEmpl = null).
+ */
+export const cargarReportesSinAsignar = async (): Promise<ReporteCompleto[]> => {
+  const { data, error } = await supabase
+    .from('reporte')
+    .select(`
+      *,
+      usuario:idUser ( idUser, nomUser, apeUser, correoUser, tlfUser )
+    `)
+    .is('idEmpl', null)
+    .order('fecReporte', { ascending: false })
+
+  if (error) throw error
+  return await enriquecerReportes(data || [])
+}
+
+/**
+ * Carga los reportes YA ASIGNADOS a colaboradores del departamento del jefe.
+ */
+export const cargarReportesAsignadosDepto = async (depto: string): Promise<ReporteCompleto[]> => {
+  const { data: empleados, error: empError } = await supabase
+    .from('empleado')
+    .select('idEmpl')
+    .eq('deptEmpl', depto)
+
+  if (empError) throw empError
+  if (!empleados || empleados.length === 0) return []
+
+  const idsEmpleados = empleados.map((e: any) => e.idEmpl)
+
+  const { data, error } = await supabase
+    .from('reporte')
+    .select(`
+      *,
+      empleado:idEmpl ( idEmpl, nomEmpl, apeEmpl, correoEmpl, deptEmpl, cargEmpl, tlfEmpl ),
+      usuario:idUser ( idUser, nomUser, apeUser, correoUser, tlfUser )
+    `)
+    .in('idEmpl', idsEmpleados)
+    .order('fecReporte', { ascending: false })
+
+  if (error) throw error
+  return await enriquecerReportes(data || [])
+}
+
+/**
+ * Carga los reportes asignados al colaborador actual.
+ */
+export const cargarReportesEmpleado = async (empleadoActual: string): Promise<ReporteCompleto[]> => {
+  const { data, error } = await supabase
+    .from('reporte')
+    .select(`
+      *,
+      empleado:idEmpl ( idEmpl, nomEmpl, apeEmpl, correoEmpl, deptEmpl, cargEmpl, tlfEmpl ),
+      usuario:idUser ( idUser, nomUser, apeUser, correoUser, tlfUser )
+    `)
+    .eq('idEmpl', empleadoActual)
+    .order('fecReporte', { ascending: false })
+
+  if (error) throw error
+  return await enriquecerReportes(data || [])
+}
+
+/**
+ * Carga los colaboradores (no jefes) del departamento indicado.
+ */
+export const cargarColaboradoresDepto = async (depto: string): Promise<Empleado[]> => {
+  const { data, error } = await supabase
+    .from('empleado')
+    .select('*')
+    .eq('deptEmpl', depto)
+    .eq('cargEmpl', 'empleado')
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Asigna o reasigna un colaborador a un reporte.
+ * Una vez asignado, notifica al EMPLEADO vía 'notificar-nuevo-reporte'.
+ */
+export const asignarColaboradorAReporte = async (
+  idReporte: string,
+  idEmpl: string,
+  nombreJefe: string        // ← nombre completo del jefe para el correo
+): Promise<void> => {
+  const { error } = await supabase
+    .from('reporte')
+    .update({ idEmpl, estReporte: 'En Proceso' })
+    .eq('idReporte', idReporte)
+
+  if (error) throw error
+
+  // ✅ Notificar al EMPLEADO que el jefe le asignó una tarea
+  try {
+    console.log('Invocando notificar-nuevo-reporte:', { idReporte, idEmpleado: idEmpl, nombreJefe })
+    await supabase.functions.invoke('notificar-nuevo-reporte', {
+      body: { idReporte, idEmpleado: idEmpl, nombreJefe },
+    })
+    console.log('Notificación al empleado enviada correctamente')
+  } catch (e) {
+    console.error('Error al enviar notificación al empleado:', e)
+  }
+}
+
+/**
+ * Guarda cambios de estado, prioridad y comentario de un reporte.
  */
 export const guardarCambiosReporte = async (
   idReporte: string,
@@ -110,8 +170,7 @@ export const guardarCambiosReporte = async (
   nuevaPrioridad: string,
   nuevoEstado: string
 ): Promise<void> => {
-  // Actualizar el reporte
-  const { error: updateError } = await supabase
+  const { error } = await supabase
     .from('reporte')
     .update({
       comentReporte: nuevoComentario,
@@ -120,12 +179,9 @@ export const guardarCambiosReporte = async (
     })
     .eq('idReporte', idReporte)
 
-  if (updateError) throw updateError
+  if (error) throw error
 
-  // 🔥 Notificar al usuario del cambio
   try {
-    console.log('📧 Enviando notificación de actualización...')
-
     const cambios = {
       prioridadAnterior: reporte.prioReporte,
       prioridadNueva: nuevaPrioridad,
@@ -134,37 +190,26 @@ export const guardarCambiosReporte = async (
       comentarioNuevo: nuevoComentario !== reporte.comentReporte ? nuevoComentario : null,
     }
 
-    // Solo notificar si hay cambios reales
     const huboCambios =
       cambios.prioridadAnterior !== cambios.prioridadNueva ||
       cambios.estadoAnterior !== cambios.estadoNuevo ||
       cambios.comentarioNuevo
 
-    if (huboCambios) {
-      const { error: notifError } = await supabase.functions.invoke(
-        'notificar-actualizacion-reporte',
-        {
-          body: {
-            idReporte,
-            idUsuario: reporte.usuario.idUser,
-            nombreEmpleado: `${reporte.empleado.nomEmpl} ${reporte.empleado.apeEmpl}`,
-            cambios,
-          },
-        }
-      )
-
-      if (notifError) {
-        console.error('Error al enviar notificación:', notifError)
-      } else {
-        console.log('✅ Notificación enviada al usuario')
-      }
+    if (huboCambios && reporte.empleado) {
+      await supabase.functions.invoke('notificar-actualizacion-reporte', {
+        body: {
+          idReporte,
+          idUsuario: reporte.usuario.idUser,
+          nombreEmpleado: `${reporte.empleado.nomEmpl} ${reporte.empleado.apeEmpl}`,
+          cambios,
+        },
+      })
     }
-  } catch (notifError) {
-    console.error('Error al enviar notificación:', notifError)
+  } catch (e) {
+    console.error('Error al enviar notificación de actualización:', e)
   }
 }
 
-// Devuelve un color según el estado del reporte
 export const getColorEstado = (estado: string): string => {
   switch (estado) {
     case 'Pendiente':  return '#FFA500'
@@ -174,7 +219,6 @@ export const getColorEstado = (estado: string): string => {
   }
 }
 
-// Devuelve un color según la prioridad del reporte
 export const getColorPrioridad = (prioridad: string): string => {
   switch (prioridad) {
     case 'Alta':  return '#DC143C'

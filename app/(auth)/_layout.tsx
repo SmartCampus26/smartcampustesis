@@ -7,9 +7,6 @@ import { obtenerSesion } from '../../src/util/Session'
 import { Platform } from 'react-native'
 import * as React from 'react';
 
-
-
-
 const COLORS = {
   autoridad:     { active: '#1DCDFE', header: '#2F455C' },
   sistemas:      { active: '#1DCDFE', header: '#2F455C' },
@@ -92,7 +89,7 @@ export default function UnifiedLayout() {
       <Tabs.Screen name="HomeEmpleado"
         options={{
           href: isEmpleado ? undefined : null,
-          title: 'Inicio', headerTitle: 'Panel de Empleados',
+          title: 'Inicio', headerTitle: 'Panel de Colaboradores',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
@@ -101,7 +98,7 @@ export default function UnifiedLayout() {
       <Tabs.Screen name="ReasignarEmpleado"
         options={{
           href: isAutoridad ? undefined : null,
-          title: 'Reasignar', headerTitle: 'Reasignar Empleado',
+          title: 'Reasignar', headerTitle: 'Reasignar Colaborador',
           tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal" size={size} color={color} />,
         }}
       />
@@ -137,7 +134,7 @@ export default function UnifiedLayout() {
       <Tabs.Screen name="Buscador"
         options={{
           href: (isAutoridad || isEmpleado) ? undefined : null,
-          title: 'Buscador', headerTitle: 'Búsqueda de Usuario/Empleado',
+          title: 'Buscador', headerTitle: 'Búsqueda de Usuario/Colaborador',
           tabBarIcon: ({ color, size }) => <Ionicons name="search" size={size} color={color} />,
         }}
       />
@@ -146,7 +143,7 @@ export default function UnifiedLayout() {
       <Tabs.Screen name="CrearMenu"
         options={{
           href: (isAutoridad || isSistemas) ? undefined : null,
-          title: 'Crear', headerTitle: 'Crear Usuario/Empleado',
+          title: 'Crear', headerTitle: 'Crear Usuario/Colaborador',
           tabBarIcon: ({ color, size }) => <Ionicons name="person-add" size={size} color={color} />,
         }}
       />
@@ -161,7 +158,7 @@ export default function UnifiedLayout() {
 
       {/* ── OCULTAS — navegables con router.push() ── */}
       <Tabs.Screen name="UsuarioNuevo"   options={{ href: null, headerTitle: 'Nuevo Usuario' }} />
-      <Tabs.Screen name="EmpleadoNuevo"  options={{ href: null, headerTitle: 'Nuevo Empleado' }} /> 
+      <Tabs.Screen name="EmpleadoNuevo"  options={{ href: null, headerTitle: 'Nuevo Colaborador' }} /> 
       <Tabs.Screen name="CrearReporte"   options={{ href: null, headerTitle: 'Crear Reporte' }} />
 
     </Tabs>

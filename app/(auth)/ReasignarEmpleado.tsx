@@ -39,7 +39,7 @@ export default function ReasignarEmpleado() {
 
   // ===================== ESTADOS =====================
 
-  // Guarda la lista de empleados
+  // Guarda la lista de colaboradores
   const [empleados, setEmpleados] = useState<Empleado[]>([])
 
   // Guarda la lista de reportes
@@ -78,7 +78,7 @@ export default function ReasignarEmpleado() {
 
       // Ejecuta ambas funciones en paralelo para optimizar rendimiento
       await Promise.all([
-        cargarDatos(),       // Carga empleados y reportes
+        cargarDatos(),       // Carga colaboradores y reportes
         cargarSesion()       // Carga datos de sesión
       ])
 
@@ -104,7 +104,7 @@ export default function ReasignarEmpleado() {
     try {
       const { empleados: empData, reportes: repData } = await cargarEmpleadosYReportes()
 
-      // Guarda empleados en el estado
+      // Guarda colaboradores en el estado
       setEmpleados(empData)
 
       // Guarda reportes en el estado
@@ -144,9 +144,9 @@ export default function ReasignarEmpleado() {
     }
   }
 
-  // ===================== FILTRO DE EMPLEADOS =====================
+  // ===================== FILTRO DE COLABORADORES =====================
 
-  // Aplica filtros de departamento y cargo sobre la lista de empleados
+  // Aplica filtros de departamento y cargo sobre la lista de colaboradores
   const empleadosFiltrados = filtrarEmpleados(empleados, filtroDepto, filtroCargo)
 
   // ===================== PANTALLA DE CARGA =====================
@@ -169,7 +169,7 @@ export default function ReasignarEmpleado() {
         <View style={styles.statCard}>
           <Ionicons name="people" size={30} color="#1DCDFE" />
           <Text style={styles.statNumber}>{empleados.length}</Text>
-          <Text style={styles.statLabel}>Empleados</Text>
+          <Text style={styles.statLabel}>Colaboradores</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="document-text" size={30} color="#21D0B2" />
@@ -226,14 +226,14 @@ export default function ReasignarEmpleado() {
                 onPress={() => abrirModalReasignacion(reporte)}
               >
                 <Ionicons name="swap-horizontal" size={20} color="#FFF" />
-                <Text style={styles.reassignButtonText}>Reasignar Empleado</Text>
+                <Text style={styles.reassignButtonText}>Reasignar Colaborador</Text>
               </TouchableOpacity>
             </View>
           ))
         )}
       </View>
 
-      {/* Modal de Selección de Empleado */}
+      {/* Modal de Selección de Colaborador */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -243,7 +243,7 @@ export default function ReasignarEmpleado() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar Empleado</Text>
+              <Text style={styles.modalTitle}>Seleccionar Colaborador</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close-circle" size={30} color="#6B7280" />
               </TouchableOpacity>
@@ -276,32 +276,32 @@ export default function ReasignarEmpleado() {
 
               {/* Fila filtros de cargo */}
               <View style={styles.filterRow}>
-                {(['todos', 'empleado', 'jefe'] as const).map((cargo) => (
+                {(['todos', 'colaborador', 'jefe'] as const).map((cargo) => (
                   <TouchableOpacity
                     key={cargo}
                     style={[styles.filterChip, filtroCargo === cargo && styles.filterChipActive]}
                     onPress={() => setFiltroCargo(cargo)}
                   >
-                    {cargo === 'empleado' && (
+                    {cargo === 'colaborador' && (
                       <Ionicons name="person" size={16} color={filtroCargo === cargo ? '#FFF' : '#1DCDFE'} />
                     )}
                     {cargo === 'jefe' && (
                       <Ionicons name="star" size={16} color={filtroCargo === cargo ? '#FFF' : '#34F5C5'} />
                     )}
                     <Text style={[styles.filterChipText, filtroCargo === cargo && styles.filterChipTextActive]}>
-                      {cargo === 'todos' ? 'Todos' : cargo === 'empleado' ? 'Empleado' : 'Jefe'}
+                      {cargo === 'todos' ? 'Todos' : cargo === 'colaborador' ? 'Colaborador' : 'Jefe'}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            {/* Lista de Empleados */}
+            {/* Lista de Colaboradores */}
             <ScrollView style={styles.empleadosList}>
               {empleadosFiltrados.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons name="search-outline" size={50} color="#9CA3AF" />
-                  <Text style={styles.emptyText}>No hay empleados con estos filtros</Text>
+                  <Text style={styles.emptyText}>No hay colaboradores con estos filtros</Text>
                 </View>
               ) : (
                 empleadosFiltrados.map((empleado) => (

@@ -1,5 +1,5 @@
 // React y hook para manejar estado del formulario
-import  { useState, useEffect } from 'react'
+import { useState } from 'react'
 // Componentes nativos para la interfaz del usuario y control del teclado
 import {
   Alert,
@@ -19,13 +19,14 @@ import { Eye, EyeOff } from 'lucide-react-native'
 import { router } from 'expo-router'
 // Lógica de creación de usuario y validaciones
 import {
+  crearUsuario,
   NuevoUsuarioData, USUARIO_INICIAL,
-  validarUsuario, crearUsuario, esDepartamentoSistemas,
+  validarUsuario
 } from '../../src/services/UsuarioServices'
 // Estilos
 import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoStyles'
 
-import * as React from 'react';
+import * as React from 'react'
 
 //COMPONENTE
 /**
@@ -39,19 +40,6 @@ export default function UsuarioNuevo() {
   const [cargando, setCargando] = useState(false)
   // Estado para controlar la visibilidad de la contraseña
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
-
-  // Verifica al montar que el empleado sea del departamento Sistemas
-  useEffect(() => {
-    esDepartamentoSistemas().then(esSistemas => {
-      if (!esSistemas) {
-        Alert.alert(
-          'Acceso denegado',
-          'Solo el departamento de Sistemas puede crear usuarios.',
-          [{ text: 'Volver', onPress: () => router.back() }]
-        )
-      }
-    })
-  }, [])
 
   const set = (campo: keyof NuevoUsuarioData) => (valor: string) =>
     setNuevoUsuario(prev => ({ ...prev, [campo]: valor }))

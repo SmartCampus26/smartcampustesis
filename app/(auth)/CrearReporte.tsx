@@ -1,3 +1,6 @@
+import { Ionicons } from '@expo/vector-icons'
+import { router, useLocalSearchParams } from 'expo-router'
+import * as React from 'react'
 import { useState } from 'react'
 import {
   ActivityIndicator,
@@ -9,22 +12,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
-import { useSaved } from '../Camera/context/SavedContext'
 import { styles } from '../../src/components/crearReporteStyles'
 import {
-  LUGARES_PREDEFINIDOS,
   CATEGORIAS_OBJETOS,
-  validarFormularioReporte,
-  fetchEmpleadoAleatorio,
-  obtenerOCrearLugar,
-  insertarReporte,
-  vincularReporteUsuario,
   insertarObjeto,
-  notificarEmpleado,
+  insertarReporte,
+  LUGARES_PREDEFINIDOS,
+  TIPOS_AULA,
+  notificarJefeNuevoReporte,
+  obtenerOCrearLugar,
+  validarFormularioReporte,
+  vincularReporteUsuario,
 } from '../../src/services/CrearReporteServices'
-import * as React from 'react';
+import { useSaved } from '../Camera/context/SavedContext'
 
 interface CrearReporteProps {
   idUser: number
@@ -37,6 +37,10 @@ export default function CrearReporte({ }: CrearReporteProps) {
   const nombreUsuario = params.nombreUsuario as string
 
   const { savedPhotos, uploadPhotosToSupabase, clearSavedPhotos } = useSaved()
+
+  const [aulaLugar, setAulaLugar] = useState('')
+  const [aulaExpanded, setAulaExpanded] = useState(false)
+  const [numAula, setNumAula] = useState('')
 
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -51,7 +55,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
 
   const crearReporte = async () => {
     const error = validarFormularioReporte({
-      titulo, descripcion, nombreObjeto, categoriaObjeto, lugarSeleccionado, pisoLugar,
+      titulo, descripcion, nombreObjeto, categoriaObjeto, lugarSeleccionado, pisoLugar, aulaLugar
     })
     if (error) { Alert.alert('Error', error); return }
 
@@ -59,28 +63,9 @@ export default function CrearReporte({ }: CrearReporteProps) {
     try {
       const pisoNumero = parseInt(pisoLugar)
 
-      const idEmplAleatorio = await fetchEmpleadoAleatorio(departamento)
-      const idLugarDB = await obtenerOCrearLugar(lugarSeleccionado, pisoNumero)
-      const idReporte = await insertarReporte(descripcion, idEmplAleatorio, idUser)
-
-      // Notificar al empleado
-      if (idEmplAleatorio) {
-        try {
-          await notificarEmpleado({
-            idReporte,
-            idEmpleado: idEmplAleatorio,
-            nombreUsuario,
-            descripcion,
-            nombreObjeto,
-            categoriaObjeto,
-            lugar: lugarSeleccionado,
-            piso: pisoNumero,
-            fotosUris: savedPhotos.map(p => p.uri),
-          })
-        } catch (e) {
-          console.error('Error al enviar notificación:', e)
-        }
-      }
+      // Crear lugar, reporte y objeto (sin empleado asignado — el jefe lo asignará)
+      const idLugarDB = await obtenerOCrearLugar(lugarSeleccionado, pisoNumero, aulaLugar, numAula || undefined)
+      const idReporte = await insertarReporte(descripcion, null, idUser)
 
       // Subir fotos
       if (savedPhotos.length > 0) {
@@ -94,16 +79,41 @@ export default function CrearReporte({ }: CrearReporteProps) {
       await vincularReporteUsuario(idReporte, idUser)
       await insertarObjeto(nombreObjeto, categoriaObjeto, idLugarDB, idReporte)
 
+      // ✅ Notificar al JEFE para que asigne un colaborador
+      try {
+        await notificarJefeNuevoReporte({
+          idReporte,
+          nombreUsuario,
+          descripcion,
+          nombreObjeto,
+          categoriaObjeto,
+          lugar: lugarSeleccionado,
+          piso: pisoNumero,
+          aulaLugar,
+          numAula: numAula || undefined,
+        })
+      } catch (notifError) {
+        console.error('Error al notificar al jefe:', notifError)
+        // No bloqueamos al usuario si falla la notificación
+      }
+
       clearSavedPhotos()
 
       Alert.alert(
         'Éxito',
-        `Reporte creado${savedPhotos.length > 0 ? ` con ${savedPhotos.length} foto(s)` : ''} y asignado a empleado ${idEmplAleatorio || 'sin asignar'}`,
+        `Reporte creado${savedPhotos.length > 0 ? ` con ${savedPhotos.length} foto(s)` : ''}. El jefe asignará un colaborador.`,
         [{
           text: 'OK',
           onPress: () => {
-            setTitulo(''); setDescripcion(''); setDepartamento('mantenimiento')
-            setLugarSeleccionado(''); setPisoLugar(''); setNombreObjeto(''); setCategoriaObjeto('')
+            setTitulo('')
+            setDescripcion('')
+            setDepartamento('mantenimiento')
+            setLugarSeleccionado('')
+            setPisoLugar('')
+            setNombreObjeto('')
+            setCategoriaObjeto('')
+            setAulaLugar('')
+            setNumAula('')
             router.back()
           }
         }]
@@ -260,6 +270,69 @@ export default function CrearReporte({ }: CrearReporteProps) {
               maxLength={2}
             />
           </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Tipo de Aula *</Text>
+            <TouchableOpacity
+              style={[styles.input, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+              onPress={() => setAulaExpanded(!aulaExpanded)}
+            >
+              <Text style={{ color: aulaLugar ? '#2F455C' : '#A0ADB4', fontSize: 16 }}>
+                {aulaLugar || 'Selecciona el tipo de aula...'}
+              </Text>
+              <Ionicons name={aulaExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#8B9BA8" />
+            </TouchableOpacity>
+
+            {aulaExpanded && (
+              <View style={{ borderWidth: 1, borderColor: '#E1E8ED', borderRadius: 12, marginTop: 4, overflow: 'hidden' }}>
+                {TIPOS_AULA.map((tipo, index) => (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 14,
+                      backgroundColor: aulaLugar === tipo ? '#F0FFFE' : '#FFFFFF',
+                      borderBottomWidth: index < TIPOS_AULA.length - 1 ? 1 : 0,
+                      borderBottomColor: '#F5F7FA',
+                    }}
+                    onPress={() => { setAulaLugar(tipo); setAulaExpanded(false) }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Ionicons
+                        name={
+                          tipo === 'Ambiente Educativo' ? 'school-outline' :
+                          tipo === 'Laboratorio' ? 'flask-outline' : 'ellipsis-horizontal-outline'
+                        }
+                        size={20}
+                        color={aulaLugar === tipo ? '#21D0B2' : '#8B9BA8'}
+                      />
+                      <Text style={{ fontSize: 15, color: aulaLugar === tipo ? '#21D0B2' : '#2F455C', fontWeight: aulaLugar === tipo ? '600' : '400' }}>
+                        {tipo}
+                      </Text>
+                    </View>
+                    {aulaLugar === tipo && <Ionicons name="checkmark-circle" size={20} color="#21D0B2" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {(aulaLugar === 'Ambiente Educativo' || aulaLugar === 'Laboratorio') && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.label}>
+                  Número de {aulaLugar === 'Laboratorio' ? 'Laboratorio' : 'Aula'}{' '}
+                  <Text style={{ color: '#8B9BA8', fontWeight: '400' }}>(opcional)</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={`Ej: ${aulaLugar === 'Laboratorio' ? 'Lab-01, Lab-202...' : 'Aula-101, A-05...'}`}
+                  value={numAula}
+                  onChangeText={setNumAula}
+                  maxLength={20}
+                />
+              </View>
+            )}
+          </View>
         </View>
 
         {/* DEPARTAMENTO */}
@@ -289,7 +362,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={20} color="#21D0B2" />
           <Text style={styles.infoText}>
-            El reporte se creará con estado "Pendiente" y la prioridad será asignada por el personal correspondiente.
+            El reporte se creará con estado "Pendiente" y será asignado por el jefe al colaborador correspondiente.
           </Text>
         </View>
 

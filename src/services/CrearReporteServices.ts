@@ -1,17 +1,18 @@
 import { supabase } from '../lib/Supabase'
 
 export const LUGARES_PREDEFINIDOS = [
-  'Polideportivo',
-  'Piscina',
-  'Música',
-  'Cancha Cubierta',
-  'Patio Central',
-  'Aula de Danza',
   'Edificio Miguel Rua',
   'Edificio Carlos Crespi',
   'Secretaria',
-  'Tecniclub',
+  'DPEI',
+  'Cancha Cubierta',
   'Coliseo',
+  'Patio Central',
+  'Polideportivo',
+  'Piscina',
+  'Música',
+  'Aula de Danza',
+  'Tecniclub',
 ]
 
 export const CATEGORIAS_OBJETOS = [
@@ -48,26 +49,37 @@ export const fetchEmpleadoAleatorio = async (
  */
 export const obtenerOCrearLugar = async (
   nomLugar: string,
-  pisoLugar: number
+  pisoLugar: number,
+  aulaLugar: string,
+  numAula?: string
 ): Promise<number> => {
   const { data: lugarExistente, error } = await supabase
     .from('lugar')
     .select('idLugar')
     .eq('nomLugar', nomLugar)
     .eq('pisoLugar', pisoLugar)
-    .single()
+    .eq('aulaLugar', aulaLugar)
+    .maybeSingle()
 
   if (!error && lugarExistente) return lugarExistente.idLugar
 
   const { data: nuevoLugar, error: errorCrear } = await supabase
     .from('lugar')
-    .insert([{ nomLugar, pisoLugar }])
+    .insert([{ nomLugar, pisoLugar, aulaLugar, numAula: numAula || null }])
     .select()
     .single()
 
   if (errorCrear) throw errorCrear
   return nuevoLugar.idLugar
 }
+
+export const TIPOS_AULA = [
+  'Ambiente Educativo',
+  'Laboratorio',
+  'Otro',
+] as const
+
+export type TipoAula = typeof TIPOS_AULA[number]
 
 /**
  * Crea el reporte en la base de datos y retorna su ID
@@ -127,30 +139,31 @@ export const insertarObjeto = async (
 }
 
 /**
- * Envía notificación al empleado asignado vía Edge Function
+ * Notifica al JEFE cuando se crea un nuevo reporte pendiente de asignación.
+ * Invoca la Edge Function 'notificar-asignacion-jefe'.
  */
-export const notificarEmpleado = async (params: {
+export const notificarJefeNuevoReporte = async (params: {
   idReporte: number
-  idEmpleado: string
   nombreUsuario: string
   descripcion: string
   nombreObjeto: string
   categoriaObjeto: string
   lugar: string
   piso: number
-  fotosUris: string[]
+  aulaLugar: string
+  numAula?: string
 }): Promise<void> => {
-  const { error } = await supabase.functions.invoke('notificar-nuevo-reporte', {
+  const { error } = await supabase.functions.invoke('notificar-asignacion-jefe', {
     body: {
       idReporte: params.idReporte,
-      idEmpleado: params.idEmpleado,
       nombreUsuario: params.nombreUsuario,
       descripcion: params.descripcion,
       nombreObjeto: params.nombreObjeto,
       categoriaObjeto: params.categoriaObjeto,
       lugar: params.lugar,
       piso: params.piso,
-      fotos: params.fotosUris,
+      aulaLugar: params.aulaLugar,
+      numAula: params.numAula,
     },
   })
 
@@ -167,8 +180,9 @@ export const validarFormularioReporte = (campos: {
   categoriaObjeto: string
   lugarSeleccionado: string
   pisoLugar: string
+  aulaLugar: string
 }): string | null => {
-  const { titulo, descripcion, nombreObjeto, categoriaObjeto, lugarSeleccionado, pisoLugar } = campos
+  const { titulo, descripcion, nombreObjeto, categoriaObjeto, lugarSeleccionado, pisoLugar, aulaLugar } = campos
 
   if (!titulo.trim()) return 'Por favor ingresa un título'
   if (!descripcion.trim()) return 'Por favor ingresa una descripción'
@@ -176,6 +190,7 @@ export const validarFormularioReporte = (campos: {
   if (!categoriaObjeto) return 'Por favor selecciona una categoría de objeto'
   if (!lugarSeleccionado) return 'Por favor selecciona un lugar'
   if (!pisoLugar.trim()) return 'Por favor ingresa el piso'
+  if (!aulaLugar) return 'Por favor selecciona el tipo de aula'
 
   const pisoNumero = parseInt(pisoLugar)
   if (isNaN(pisoNumero) || pisoNumero < 1) return 'El piso debe ser un número válido mayor a 0'

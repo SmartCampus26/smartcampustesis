@@ -9,15 +9,15 @@ export const crearObjeto = (objeto: Objeto) =>
 
 export const obtenerObjetosPorReporte = (idReporte: number) =>
   supabase
-    .from('objeto')
-    .select(`*, lugar:idLugar (nomLugar, pisoLugar)`)
-    .eq('idReporte', idReporte)
+.from('objeto')
+.select(`*, lugar:idLugar (nomLugar, pisoLugar, aulaLugar. numAula)`)  
+.eq('idReporte', idReporte)
 // Trae todos los objetos relacionados con un reporte específico
 
 export const obtenerObjetoPorId = (idObj: number) =>
   supabase
     .from('objeto')
-    .select(`*, lugar:idLugar (nomLugar, pisoLugar)`)
+    .select(`*, lugar:idLugar (nomLugar, pisoLugar, aulaLugar, numAula)`)
     .eq('idObj', idObj)
     .single()
 //Trae un objeto específico por su id esto incluye los datos del objeto y el lugar asociado

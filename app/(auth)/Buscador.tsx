@@ -269,7 +269,7 @@ export default function ListadoMaxAutoridad() {
               empleado.cargEmpl === 'jefe' ? styles.badgeJefe : styles.badgeEmpleado
             ]}>
               <Text style={styles.badgeText}>
-                {empleado.cargEmpl === 'jefe' ? '👨‍💼 Jefe' : '👷 Empleado'}
+                {empleado.cargEmpl === 'jefe' ? '👨‍💼 Jefe' : '👷 Colaborador'}
               </Text>
             </View>
           </View>
@@ -353,7 +353,7 @@ export default function ListadoMaxAutoridad() {
                 ? `Todos (${totalGeneral})`
                 : f === 'usuarios'
                 ? `Usuarios (${totalUsuarios})`
-                : `Empleados (${totalEmpleados})`}
+                : `Colaboradores (${totalEmpleados})`}
             </Text>
           </TouchableOpacity>
         ))}
@@ -384,11 +384,11 @@ export default function ListadoMaxAutoridad() {
           <>
             {empleadosFiltrados.length > 0 ? (
               <>
-                <Text style={styles.sectionTitle}>🔧 Empleados ({empleadosFiltrados.length})</Text>
+                <Text style={styles.sectionTitle}>🔧 Colaboradores ({empleadosFiltrados.length})</Text>
                 {empleadosFiltrados.map(renderEmpleado)}
               </>
             ) : busqueda !== '' && filtroActivo === 'empleados' ? (
-              <Text style={styles.noResults}>No se encontraron empleados</Text>
+              <Text style={styles.noResults}>No se encontraron colaboradores</Text>
             ) : null}
           </>
         )}

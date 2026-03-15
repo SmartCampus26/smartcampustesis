@@ -28,7 +28,7 @@ export default function EmpleadoNuevo() {
     contraEmpl: '',
     tlfEmpl: '',
     deptEmpl: 'mantenimiento',
-    cargEmpl: 'empleado',
+    cargEmpl: 'colaborador',
   })
   const [cargando, setCargando] = useState(false)
 
@@ -45,12 +45,12 @@ export default function EmpleadoNuevo() {
     try {
       await crearEmpleadoDB(nuevoEmpleado)
       Alert.alert(
-        '✅ Empleado creado',
+        '✅ Colaborador creado',
         'Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl,
         [{ text: 'OK', onPress: () => router.back() }]
       )
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo crear el empleado')
+      Alert.alert('Error', err.message || 'No se pudo crear el colaborador')
     } finally {
       setCargando(false)
     }
@@ -66,7 +66,7 @@ export default function EmpleadoNuevo() {
         {/* HEADER */}
         <View style={styles.header}>
           <Ionicons name="construct" size={50} color="#2F455C" />
-          <Text style={styles.title}>Nuevo Empleado</Text>
+          <Text style={styles.title}>Nuevo Colaborador</Text>
           <Text style={styles.subtitle}>
             Completa la información del personal de mantenimiento o sistemas
           </Text>
@@ -181,14 +181,37 @@ export default function EmpleadoNuevo() {
           {/* Cargo */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Cargo *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="briefcase-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: Técnico, Supervisor, etc."
-                value={nuevoEmpleado.cargEmpl}
-                onChangeText={(t) => set('cargEmpl', t)}
-              />
+            <View style={styles.roleContainer}>
+              {(['colaborador', 'jefe'] as const).map((cargo) => (
+                <TouchableOpacity
+                  key={cargo}
+                  style={[
+                    styles.roleButton,
+                    nuevoEmpleado.cargEmpl === cargo && styles.roleButtonActive,
+                  ]}
+                  onPress={() => set('cargEmpl', cargo)}
+                >
+                  <Ionicons
+                    name={cargo === 'jefe' ? 'shield-checkmark' : 'person'}
+                    size={24}
+                    color={
+                      nuevoEmpleado.cargEmpl === cargo
+                        ? '#FFF'
+                        : cargo === 'jefe'
+                        ? '#21D0B2'
+                        : '#2F455C'
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.roleButtonText,
+                      nuevoEmpleado.cargEmpl === cargo && styles.roleButtonTextActive,
+                    ]}
+                  >
+                    {cargo === 'jefe' ? 'Jefe' : 'Colaborador'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -196,7 +219,7 @@ export default function EmpleadoNuevo() {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1DCDFE" />
             <Text style={styles.infoText}>
-              El empleado será asignado automáticamente a reportes según su departamento
+              El colaborador será asignado automáticamente a reportes según su departamento
             </Text>
           </View>
 
@@ -207,7 +230,7 @@ export default function EmpleadoNuevo() {
             disabled={cargando}
           >
             <Text style={styles.submitButtonText}>
-              {cargando ? 'Creando Empleado...' : 'Crear Empleado'}
+              {cargando ? 'Creando Colaborador...' : 'Crear Colaborador'}
             </Text>
           </TouchableOpacity>
 

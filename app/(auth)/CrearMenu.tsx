@@ -153,7 +153,7 @@ export default function CrearMenu() {
 
           {/* TÍTULO */}
           <Text style={styles.cardTitle}>
-            Crear Empleado
+            Crear Colaborador
           </Text>
 
           {/* DESCRIPCIÓN */}
@@ -195,7 +195,7 @@ export default function CrearMenu() {
           {/* BOTÓN VISUAL INFERIOR */}
           <View style={styles.cardButton}>
             <Text style={styles.cardButtonText}>
-              Crear Empleado
+              Crear Colaborador
             </Text>
 
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
