@@ -75,7 +75,7 @@ export default function UnifiedLayout() {
       <Tabs.Screen name="HomeAutoridad"
         options={{
           href: isAutoridad ? undefined : null,
-          title: 'Inicio', headerTitle: 'Panel de Autoridades',
+          title: 'Inicio', headerTitle: 'Panel de Coordinadores',
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />

@@ -1,39 +1,68 @@
+// src/services/ReporteService.ts
 import { supabase } from '../lib/Supabase'
-//Se importa la conexión a Supabase ya configurada para poder usarla y hacer consultas a la base de datos
 import { Reporte } from '../types/Database'
-//Se importa Reporte para que TypeScript conozca la forma de un reporte: qué campos tiene, qué tipos de datos son, etc.
 
 export const crearReporte = (reporte: Reporte) =>
   supabase.from('reporte').insert(reporte).select().single()
-//Crea un nuevo reporte en la tabla reporte es decir que Guarda el reporte y devuélve sus datos
 
-export const obtenerReportes = () =>
-  supabase
+export const obtenerReportes = async () => {
+  const { data, error } = await supabase
     .from('reporte')
     .select(`
       *,
       usuario:idUser (
+        idUser,
         nomUser,
         apeUser,
-        correoUser
+        correoUser,
+        rolUser
       ),
       empleado:idEmpl (
+        idEmpl,
         nomEmpl,
         apeEmpl,
-        correoEmpl
+        correoEmpl,
+        deptEmpl,
+        cargEmpl
+      ),
+      objeto (
+        idObj,
+        nomObj,
+        ctgobj,
+        idLugar
       )
     `)
     .order('fecReporte', { ascending: false })
-// Obtiene todos los reportes y además trae los datos del usuario asociado y los datos del empleado asociado 
+
+  if (error) return { data: null, error }
+
+  // objeto viene como ARRAY desde Supabase — tomar el primer elemento
+  const reportesConLugar = await Promise.all(
+    (data || []).map(async (rep: any) => {
+      const objetoArr = Array.isArray(rep.objeto) ? rep.objeto : (rep.objeto ? [rep.objeto] : [])
+      const objeto = objetoArr[0] ?? null
+      const idLugar = objeto?.idLugar ?? null
+
+      if (!idLugar) return { ...rep, objeto, lugar: null }
+
+      const { data: lugarData } = await supabase
+        .from('lugar')
+        .select('*')
+        .eq('idLugar', idLugar)
+        .single()
+
+      return { ...rep, objeto, lugar: lugarData ?? null }
+    })
+  )
+
+  return { data: reportesConLugar, error: null }
+}
 
 export const actualizarReporte = (
   idReporte: number,
-  cambios: Partial<Reporte> //Esto quiere decir que se puede enviar solo los campos que se quiere actualizar
+  cambios: Partial<Reporte>
 ) =>
   supabase.from('reporte').update(cambios).eq('idReporte', idReporte)
-// Actualiza un reporte según su id
-
 
 export const eliminarReporte = (idReporte: number) =>
   supabase.from('reporte').delete().eq('idReporte', idReporte)
-// Elimina un reporte de la base de datos buscando por su id

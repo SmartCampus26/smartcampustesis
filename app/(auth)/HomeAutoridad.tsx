@@ -1,21 +1,17 @@
-// Importa React y hooks para manejar estado y efectos
+// app/(auth)/HomeAutoridad.tsx
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-// Componentes visuales de React Native
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert,
 } from 'react-native'
-// Iconos
 import { Ionicons } from '@expo/vector-icons'
-// Navegación entre pantallas
 import { router } from 'expo-router'
-// Tipo de dato Reporte
 import { Reporte } from '../../src/types/Database'
-// Lógica de carga de datos y funciones auxiliares
 import { cargarDatosAutoridad, getStatusColor, getPriorityColor, HomeAutoridadStats } from '../../src/services/HomeAutoridadService'
-// Estilos
 import { homeAutoridadStyles as styles } from '../../src/components/homeAutoridadStyles'
+// ── NUEVO ──
+import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 
 export default function HomeAutoridad() {
   const [usuario, setUsuario] = useState<any>(null)
@@ -23,17 +19,18 @@ export default function HomeAutoridad() {
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
   const [stats, setStats] = useState<HomeAutoridadStats>({
-    total: 0,
-    pendientes: 0,
-    enProceso: 0,
-    resueltos: 0,
+    total: 0, pendientes: 0, enProceso: 0, resueltos: 0,
   })
+  // ── NUEVO: estado del modal ──
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
   const cargarDatos = async () => {
     try {
       const datos = await cargarDatosAutoridad()
+      console.log('REPORTE[0] completo:', JSON.stringify(datos.reportes[0], null, 2))
       setUsuario(datos.usuario)
       setReportes(datos.reportes)
       setStats(datos.stats)
@@ -56,6 +53,12 @@ export default function HomeAutoridad() {
       pathname: '/CrearReporte',
       params: { idUser: usuario.idUser, nombreUsuario: usuario.nomUser || 'Usuario' }
     })
+  }
+
+  // ── NUEVO: abrir modal con el reporte seleccionado ──
+  const abrirDetalle = (reporte: Reporte) => {
+    setReporteSeleccionado(reporte)
+    setModalVisible(true)
   }
 
   if (cargando) {
@@ -157,19 +160,17 @@ export default function HomeAutoridad() {
             </View>
           ) : (
             reportes.slice(0, 3).map((reporte) => (
+              // ── CAMBIO: onPress ahora abre el modal ──
               <TouchableOpacity
                 key={reporte.idReporte}
                 style={styles.reportCard}
-                onPress={() => Alert.alert('Detalle', `Reporte #${reporte.idReporte}`)}
+                onPress={() => abrirDetalle(reporte)}
               >
-                {/* ← AQUÍ ESTÁ EL FIX: reportIdContainer agrupa ID y badge */}
                 <View style={styles.reportHeader}>
-                    <Text style={styles.reportId} numberOfLines={1}>
-                      #{reporte.idReporte}
-                    </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reporte.estReporte) }]}>
-                      <Text style={styles.statusText}>{reporte.estReporte}</Text>
-                    </View>
+                  <Text style={styles.reportId} numberOfLines={1}>#{reporte.idReporte}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reporte.estReporte) }]}>
+                    <Text style={styles.statusText}>{reporte.estReporte}</Text>
+                  </View>
                 </View>
 
                 <Text style={styles.reportDesc} numberOfLines={2}>
@@ -181,8 +182,7 @@ export default function HomeAutoridad() {
                     <Ionicons name="calendar-outline" size={14} color="#8B9BA8" />
                     <Text style={styles.reportDate}>
                       {new Date(reporte.fecReporte).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'short',
+                        day: '2-digit', month: 'short',
                       })}
                     </Text>
                   </View>
@@ -213,6 +213,13 @@ export default function HomeAutoridad() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ── NUEVO: Modal de detalle ── */}
+      <ReporteDetalleModal
+        visible={modalVisible}
+        reporte={reporteSeleccionado}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   )
 }

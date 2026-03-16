@@ -1,70 +1,104 @@
-// Cliente de Supabase para consultas a la base de datos
+// src/services/TodosReportesService.ts
 import { supabase } from '../lib/Supabase'
 
-// INTERFACES
-// Estructura de datos del usuario
 export interface usuario {
-  idUser: number
+  idUser: string
   nomUser: string
   apeUser: string
   rolUser: string
+  correoUser?: string
 }
 
-// Estructura de datos del reporte
 export interface reporte {
-  idReporte: number
+  idReporte: string
   descriReporte?: string
   fecReporte?: string
   estReporte?: string
-  idUser?: number
+  idUser?: string
   prioReporte?: string
-  imgReporte?: string
+  imgReporte?: string | string[]
   comentReporte?: string
+  usuario?: usuario | null
+  empleado?: any | null
+  objeto?: any | null
+  lugar?: any | null
 }
 
-// FUNCIONES
-
-// Obtiene usuarios y reportes desde Supabase
 export const cargarDatosTodosReportes = async (): Promise<{
   usuarios: usuario[]
   reportes: reporte[]
 }> => {
-  // Consulta de usuarios
   const { data: usuData, error: usuError } = await supabase
     .from('usuario')
     .select('*')
 
   if (usuError) throw new Error('No se pudieron cargar los usuarios: ' + usuError.message)
 
-  // Consulta de reportes
   const { data: repData, error: repError } = await supabase
     .from('reporte')
-    .select('*')
+    .select(`
+      *,
+      usuario:idUser (
+        idUser,
+        nomUser,
+        apeUser,
+        correoUser,
+        rolUser
+      ),
+      empleado:idEmpl (
+        idEmpl,
+        nomEmpl,
+        apeEmpl,
+        correoEmpl,
+        deptEmpl,
+        cargEmpl
+      ),
+      objeto (
+        idObj,
+        nomObj,
+        ctgobj,
+        idLugar
+      )
+    `)
     .order('fecReporte', { ascending: false })
 
   if (repError) throw new Error('No se pudieron cargar los reportes: ' + repError.message)
 
+  // objeto viene como ARRAY — normalizar y buscar lugar
+  const reportesConLugar = await Promise.all(
+    (repData || []).map(async (rep: any) => {
+      const objetoArr = Array.isArray(rep.objeto) ? rep.objeto : (rep.objeto ? [rep.objeto] : [])
+      const objeto = objetoArr[0] ?? null
+      const idLugar = objeto?.idLugar ?? null
+
+      if (!idLugar) return { ...rep, objeto, lugar: null }
+
+      const { data: lugarData } = await supabase
+        .from('lugar')
+        .select('*')
+        .eq('idLugar', idLugar)
+        .single()
+
+      return { ...rep, objeto, lugar: lugarData ?? null }
+    })
+  )
+
   return {
     usuarios: usuData || [],
-    reportes: repData || [],
+    reportes: reportesConLugar,
   }
 }
 
-// Obtiene nombre y rol del usuario asociado a un reporte
 export const getUsuarioInfo = (
   usuarios: usuario[],
-  idUser?: number
+  idUser?: string
 ): { nombre: string; rol: string } => {
   if (!idUser) return { nombre: 'Sin asignar', rol: 'N/A' }
-  const usuario = usuarios.find(u => u.idUser === idUser)
-  if (!usuario) return { nombre: 'Desconocido', rol: 'N/A' }
-  return {
-    nombre: `${usuario.nomUser} ${usuario.apeUser}`,
-    rol: usuario.rolUser,
-  }
+  const u = usuarios.find(u => u.idUser === idUser)
+  if (!u) return { nombre: 'Desconocido', rol: 'N/A' }
+  return { nombre: `${u.nomUser} ${u.apeUser}`, rol: u.rolUser }
 }
 
-// Filtrado de reportes por búsqueda, rol y estado
 export const filtrarTodosReportes = (
   reportes: reporte[],
   usuarios: usuario[],
@@ -77,13 +111,12 @@ export const filtrarTodosReportes = (
     const pasaBusqueda =
       (rep.descriReporte?.toLowerCase().includes(busqueda.toLowerCase())) ||
       (usuarioInfo.nombre.toLowerCase().includes(busqueda.toLowerCase()))
-    const pasaRol = filtroRol === 'todos' || usuarioInfo.rol === filtroRol
-    const pasaEstado = filtroEstado === 'todos' || rep.estReporte === filtroEstado
+    const pasaRol    = filtroRol    === 'todos' || usuarioInfo.rol === filtroRol
+    const pasaEstado = filtroEstado === 'todos' || rep.estReporte  === filtroEstado
     return pasaBusqueda && pasaRol && pasaEstado
   })
 }
 
-// Devuelve el color según el estado del reporte
 export const getEstadoColor = (estado?: string): string => {
   switch (estado) {
     case 'pendiente':  return '#FCD34D'
@@ -94,7 +127,6 @@ export const getEstadoColor = (estado?: string): string => {
   }
 }
 
-// Devuelve el texto legible del estado
 export const getEstadoTexto = (estado?: string): string => {
   switch (estado) {
     case 'pendiente':  return 'Pendiente'
@@ -105,7 +137,6 @@ export const getEstadoTexto = (estado?: string): string => {
   }
 }
 
-// Devuelve el color según la prioridad del reporte
 export const getPrioridadColor = (prioridad?: string): string => {
   switch (prioridad) {
     case 'alta':  return '#EF4444'

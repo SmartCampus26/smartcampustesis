@@ -1,44 +1,29 @@
-// Importa React y hooks para manejar estado y efectos
+// app/(auth)/HomeEmpleado.tsx
 import { useEffect, useState } from 'react'
-// Componentes visuales de React Native
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Alert, RefreshControl,
+  ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
-// Tipo de datos Reporte
 import { Reporte } from '../../src/types/Database'
-// Servicio PDF
 import { generarPDF } from '../../src/components/PdfService'
-// Lógica de carga de datos y funciones auxiliares
 import { cargarDatosEmpleado, getStatusColor, getPriorityColor } from '../../src/services/Homeempleadoservice'
-// Estilos
 import { homeEmpleadoStyles as styles } from '../../src/components/homeEmpleadoStyles'
+// ── NUEVO ──
+import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 
-import * as React from 'react';
+import * as React from 'react'
 
-// COMPONENTE PRINCIPAL
 export default function HomeEmpleados() {
-  // ===== ESTADOS PRINCIPALES =====
+  const [empleado, setEmpleado]         = useState<any>(null)
+  const [reportes, setReportes]         = useState<Reporte[]>([])
+  const [cargando, setCargando]         = useState(true)
+  const [refrescando, setRefrescando]   = useState(false)
+  // ── NUEVO ──
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible]               = useState(false)
 
-  // Información del colaborador en sesión
-  const [empleado, setEmpleado] = useState<any>(null)
-  // Lista de reportes asignados al colaborador
-  const [reportes, setReportes] = useState<Reporte[]>([])
-  // Estados de carga
-  const [cargando, setCargando] = useState(true)
-  const [refrescando, setRefrescando] = useState(false)
+  useEffect(() => { cargarDatos() }, [])
 
-  // Se ejecuta al cargar la pantalla
-  useEffect(() => {
-    cargarDatos()
-  }, [])
-
-  // CARGA DE DATOS
   const cargarDatos = async () => {
     try {
       const datos = await cargarDatosEmpleado()
@@ -52,13 +37,8 @@ export default function HomeEmpleados() {
     }
   }
 
-  // Refrescar con gesto de deslizamiento
-  const onRefresh = () => {
-    setRefrescando(true)
-    cargarDatos()
-  }
+  const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
-  // ===== Función para imprimir PDF =====
   const imprimirPDF = async () => {
     try {
       await generarPDF(reportes, {
@@ -71,7 +51,12 @@ export default function HomeEmpleados() {
     }
   }
 
-  // PANTALLA DE CARGA
+  // ── NUEVO ──
+  const abrirDetalle = (reporte: Reporte) => {
+    setReporteSeleccionado(reporte)
+    setModalVisible(true)
+  }
+
   if (cargando) {
     return (
       <View style={styles.centeredContainer}>
@@ -81,65 +66,80 @@ export default function HomeEmpleados() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refrescando} onRefresh={onRefresh} colors={['#1DCDFE']} />
-      }
-    >
-      {/* ENCABEZADO */}
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Colaborador'}</Text>
-        <Text style={styles.role}>Tareas Asignadas</Text>
-      </View>
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={onRefresh} colors={['#1DCDFE']} />
+        }
+      >
+        {/* ENCABEZADO */}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Hola, {empleado?.nomEmpl || 'Colaborador'}</Text>
+          <Text style={styles.role}>Tareas Asignadas</Text>
+        </View>
 
-      {/* ===== Botón Imprimir PDF ===== */}
-      <TouchableOpacity style={styles.pdfButton} onPress={imprimirPDF}>
-        <Text style={styles.pdfButtonText}>Imprimir PDF</Text>
-      </TouchableOpacity>
+        {/* Botón PDF */}
+        <TouchableOpacity style={styles.pdfButton} onPress={imprimirPDF}>
+          <Text style={styles.pdfButtonText}>Imprimir PDF</Text>
+        </TouchableOpacity>
 
-      {/* LISTA DE REPORTES */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mis Tareas</Text>
-        {reportes.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
-            <Text style={styles.emptySubtext}>Las nuevas tareas aparecerán aquí</Text>
-          </View>
-        ) : (
-          reportes.map((reporte) => (
-            <View key={reporte.idReporte} style={styles.reportCard}>
-              <View style={styles.reportHeader}>
-                <Text style={styles.reportId}>#{reporte.idReporte}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reporte.estReporte) }]}>
-                  <Text style={styles.statusText}>{reporte.estReporte}</Text>
+        {/* LISTA DE REPORTES */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mis Tareas</Text>
+          {reportes.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
+              <Text style={styles.emptySubtext}>Las nuevas tareas aparecerán aquí</Text>
+            </View>
+          ) : (
+            reportes.map((reporte) => (
+              // ── CAMBIO: View → TouchableOpacity ──
+              <TouchableOpacity
+                key={reporte.idReporte}
+                style={styles.reportCard}
+                onPress={() => abrirDetalle(reporte)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.reportHeader}>
+                  <Text style={styles.reportId}>#{reporte.idReporte}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reporte.estReporte) }]}>
+                    <Text style={styles.statusText}>{reporte.estReporte}</Text>
+                  </View>
                 </View>
-              </View>
 
-              <Text style={styles.reportDesc} numberOfLines={2}>
-                {reporte.descriReporte}
-              </Text>
-
-              <View style={styles.reportFooter}>
-                <Text style={styles.reportDate}>
-                  {new Date(reporte.fecReporte).toLocaleDateString()}
+                <Text style={styles.reportDesc} numberOfLines={2}>
+                  {reporte.descriReporte}
                 </Text>
-                <Text style={[styles.reportPriority, { color: getPriorityColor(reporte.prioReporte) }]}>
-                  {reporte.prioReporte || 'Sin prioridad'}
-                </Text>
-              </View>
 
-              {reporte.usuario && (
-                <View style={styles.requesterInfo}>
-                  <Text style={styles.requesterLabel}>
-                    Solicitado por: {reporte.usuario.nomUser} {reporte.usuario.apeUser}
+                <View style={styles.reportFooter}>
+                  <Text style={styles.reportDate}>
+                    {new Date(reporte.fecReporte).toLocaleDateString()}
+                  </Text>
+                  <Text style={[styles.reportPriority, { color: getPriorityColor(reporte.prioReporte) }]}>
+                    {reporte.prioReporte || 'Sin prioridad'}
                   </Text>
                 </View>
-              )}
-            </View>
-          ))
-        )}
-      </View>
-    </ScrollView>
+
+                {reporte.usuario && (
+                  <View style={styles.requesterInfo}>
+                    <Text style={styles.requesterLabel}>
+                      Solicitado por: {reporte.usuario.nomUser} {reporte.usuario.apeUser}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      {/* ── NUEVO: Modal de detalle ── */}
+      <ReporteDetalleModal
+        visible={modalVisible}
+        reporte={reporteSeleccionado}
+        onClose={() => setModalVisible(false)}
+      />
+    </View>
   )
 }

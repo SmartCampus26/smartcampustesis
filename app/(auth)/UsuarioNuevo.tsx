@@ -79,7 +79,7 @@ export default function UsuarioNuevo() {
           <Ionicons name="person-add" size={50} color="#1DCDFE" />
           <Text style={styles.title}>Nuevo Usuario</Text>
           <Text style={styles.subtitle}>
-            Completa la información del docente o autoridad
+            Completa la información del docente o coordinador
           </Text>
         </View>
 
@@ -145,7 +145,7 @@ export default function UsuarioNuevo() {
               >
                 <Ionicons name="shield-checkmark" size={24} color={nuevoUsuario.rolUser === 'autoridad' ? '#FFF' : '#21D0B2'} />
                 <Text style={[styles.roleButtonText, nuevoUsuario.rolUser === 'autoridad' && styles.roleButtonTextActive]}>
-                  Autoridad
+                  Coordinador
                 </Text>
               </TouchableOpacity>
             </View>

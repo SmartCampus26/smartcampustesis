@@ -1,5 +1,5 @@
 import { supabase } from '../lib/Supabase'
-import { obtenerSesion } from '../util/Session'
+import { obtenerSesion, guardarSesion } from '../util/Session'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -46,10 +46,22 @@ export async function esDepartamentoSistemas(): Promise<boolean> {
 
 export async function crearUsuario(data: NuevoUsuarioData): Promise<void> {
   // LLAMADA A LA EDGE FUNCTION
+  const sesionAntes = await obtenerSesion()
+
   const { data: result, error } = await supabase.functions.invoke('quick-handler', {
     body: data,
   })
 
   if (error) throw error
   if (result?.error) throw new Error(result.error) // Error que viene de nuestra lógica
+  // Restaurar sesión si Supabase la pisó durante la creación
+  const { data: sessionData } = await supabase.auth.refreshSession()
+
+  if (!sessionData.session && sesionAntes) {
+    // Supabase perdió la sesión interna — restaurar la del empleado
+    await guardarSesion(sesionAntes)
+  } else if (sessionData.session && sesionAntes) {
+    // Sesión sigue activa — re-guardar para mantener sincronía
+    await guardarSesion(sesionAntes)
+  }
 }

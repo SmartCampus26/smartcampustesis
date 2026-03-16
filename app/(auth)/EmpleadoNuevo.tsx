@@ -1,4 +1,8 @@
-import  { useState } from 'react'
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import { Eye, EyeOff } from 'lucide-react-native'
+import * as React from 'react'
+import { useState } from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -9,16 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
 import { styles } from '../../src/components/empleadoNuevoStyles'
 import {
+  crearEmpleadoDB,
   NuevoEmpleadoForm,
   validarEmpleado,
-  crearEmpleadoDB,
 } from '../../src/services/EmpleadoNuevoService'
-import { Eye, EyeOff } from 'lucide-react-native'
-import * as React from 'react';
 
 export default function EmpleadoNuevo() {
   const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({

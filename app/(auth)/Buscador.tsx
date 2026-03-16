@@ -202,7 +202,7 @@ export default function ListadoMaxAutoridad() {
             usuario.rolUser === 'autoridad' ? styles.badgeAutoridad : styles.badgeDocente
           ]}>
             <Text style={styles.badgeText}>
-              {usuario.rolUser === 'autoridad' ? '👔 Autoridad' : '📚 Docente'}
+              {usuario.rolUser === 'autoridad' ? '👔 Coordinador' : '📚 Docente'}
             </Text>
           </View>
         </View>

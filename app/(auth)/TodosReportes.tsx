@@ -1,20 +1,11 @@
-// React y hooks para manejo de estado y ciclo de vida
-import  { useEffect, useState } from 'react'
-// Componentes nativos para interfaz, scroll, alertas y carga
+// app/(auth)/TodosReportes.tsx
+import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Alert, ScrollView,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-// Librería de íconos para reforzar la experiencia visual
 import { Ionicons } from '@expo/vector-icons'
-// Estilos separados
 import { styles } from '../../src/components/todosReportesStyles'
-// Lógica de negocio separada
 import {
   usuario,
   reporte,
@@ -25,34 +16,22 @@ import {
   getEstadoTexto,
   getPrioridadColor,
 } from '../../src/services/TodosReportesService'
+import { Reporte } from '../../src/types/Database'
+import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
+import * as React from 'react'
 
-import * as React from 'react';
-
-/**
- * Pantalla que muestra todos los reportes del sistema
- * Permite buscar, filtrar y visualizar reportes en modo solo lectura
- */
 export default function TodosReportes() {
-  // Lista de reportes obtenidos desde la base de datos
-  const [reportes, setReportes] = useState<reporte[]>([])
-  // Lista de usuarios para asociarlos a los reportes
-  const [usuarios, setUsuarios] = useState<usuario[]>([])
-  // Estado de carga general
-  const [cargando, setCargando] = useState(true)
-  // Texto de búsqueda
-  const [busqueda, setBusqueda] = useState('')
-  // Filtros por rol y estado
-  const [filtroRol, setFiltroRol] = useState<string>('todos')
+  const [reportes, setReportes]         = useState<reporte[]>([])
+  const [usuarios, setUsuarios]         = useState<usuario[]>([])
+  const [cargando, setCargando]         = useState(true)
+  const [busqueda, setBusqueda]         = useState('')
+  const [filtroRol, setFiltroRol]       = useState<string>('todos')
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible]               = useState(false)
 
-  // EFECTOS
-  // Carga inicial de usuarios y reportes
-  useEffect(() => {
-    cargarDatos()
-  }, [])
+  useEffect(() => { cargarDatos() }, [])
 
-  // FUNCIONES
-  // Obtiene usuarios y reportes desde Supabase
   const cargarDatos = async () => {
     setCargando(true)
     try {
@@ -61,16 +40,19 @@ export default function TodosReportes() {
       setReportes(repData)
     } catch (error: any) {
       Alert.alert('Error', error.message)
-      console.error(error)
     } finally {
       setCargando(false)
     }
   }
 
-  // Filtrado de reportes por búsqueda, rol y estado
   const reportesFiltrados = filtrarTodosReportes(reportes, usuarios, busqueda, filtroRol, filtroEstado)
 
-  // Muestra un indicador de carga mientras se obtienen los datos
+  // El reporte ya viene con usuario, objeto y lugar desde el service
+  const abrirDetalle = (rep: reporte) => {
+    setReporteSeleccionado(rep as unknown as Reporte)
+    setModalVisible(true)
+  }
+
   if (cargando) {
     return (
       <View style={styles.loadingContainer}>
@@ -80,11 +62,9 @@ export default function TodosReportes() {
     )
   }
 
-  // RENDER PRINCIPAL
   return (
     <View style={styles.container}>
-      {/* Header con estadísticas */}
-      {/* Muestra el total de reportes, docentes y autoridades */}
+      {/* Estadísticas */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Ionicons name="document-text" size={28} color="#1DCDFE" />
@@ -103,12 +83,11 @@ export default function TodosReportes() {
           <Text style={styles.statNumber}>
             {usuarios.filter(u => u.rolUser === 'autoridad').length}
           </Text>
-          <Text style={styles.statLabel}>Autoridades</Text>
+          <Text style={styles.statLabel}>Coordinadores</Text>
         </View>
       </View>
 
       {/* Búsqueda */}
-      {/* Permite buscar reportes por descripción o nombre del usuario */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#6B7280" />
         <TextInput
@@ -117,7 +96,6 @@ export default function TodosReportes() {
           value={busqueda}
           onChangeText={setBusqueda}
         />
-        {/* Botón para limpiar búsqueda */}
         {busqueda.length > 0 && (
           <TouchableOpacity onPress={() => setBusqueda('')}>
             <Ionicons name="close-circle" size={20} color="#9CA3AF" />
@@ -126,10 +104,8 @@ export default function TodosReportes() {
       </View>
 
       {/* Filtros */}
-      {/* Filtros por rol (docente / autoridad) y estado del reporte */}
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {/* Filtro Rol */}
           {(['todos', 'docente', 'autoridad'] as const).map((rol) => (
             <TouchableOpacity
               key={rol}
@@ -143,17 +119,16 @@ export default function TodosReportes() {
                 <Ionicons name="shield-checkmark" size={16} color={filtroRol === rol ? '#FFF' : '#34F5C5'} />
               )}
               <Text style={[styles.filterChipText, filtroRol === rol && styles.filterChipTextActive]}>
-                {rol === 'todos' ? 'Todos' : rol === 'docente' ? 'Docentes' : 'Autoridades'}
+                {rol === 'todos' ? 'Todos' : rol === 'docente' ? 'Docentes' : 'Coordinadores'}
               </Text>
             </TouchableOpacity>
           ))}
 
-          {/* Filtro Estado */}
           <View style={styles.filterDivider} />
 
           {([
-            { key: 'todos', label: 'Todos los Estados' },
-            { key: 'pendiente', label: '⏳ Pendiente' },
+            { key: 'todos',      label: 'Todos los Estados' },
+            { key: 'pendiente',  label: '⏳ Pendiente' },
             { key: 'en_proceso', label: '🔄 En Proceso' },
             { key: 'completado', label: '✅ Completado' },
           ] as const).map(({ key, label }) => (
@@ -170,8 +145,7 @@ export default function TodosReportes() {
         </ScrollView>
       </View>
 
-      {/* Lista de Reportes */}
-      {/* Muestra los reportes filtrados o un mensaje si no hay resultados */}
+      {/* Lista */}
       <ScrollView style={styles.reportesList}>
         {reportesFiltrados.length === 0 ? (
           <View style={styles.emptyState}>
@@ -187,42 +161,38 @@ export default function TodosReportes() {
               Mostrando {reportesFiltrados.length} de {reportes.length} reportes
             </Text>
 
-            {/* Renderizado individual de cada reporte */}
             {reportesFiltrados.map((reporte) => {
               const usuarioInfo = getUsuarioInfo(usuarios, reporte.idUser)
               return (
-                <View key={reporte.idReporte} style={styles.reportCard}>
-                  {/* Header del Reporte */}
-            {/* Header del Reporte */}
-              <View style={styles.reportHeader}>
-             {/* Fila 1: ID badge */}
-            <View style={styles.reportBadge}>
-          <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
-        </View>
+                <TouchableOpacity
+                  key={reporte.idReporte}
+                  style={styles.reportCard}
+                  onPress={() => abrirDetalle(reporte)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.reportHeader}>
+                    <View style={styles.reportBadge}>
+                      <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
+                    </View>
+                    <View style={styles.statusBadges}>
+                      {reporte.prioReporte && (
+                        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioReporte) }]}>
+                          <Text style={styles.prioridadText}>
+                            {reporte.prioReporte === 'alta' ? '🔴 Alta' :
+                             reporte.prioReporte === 'media' ? '🟡 Media' : '🟢 Baja'}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estReporte) }]}>
+                        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estReporte)}</Text>
+                      </View>
+                    </View>
+                  </View>
 
-      {/* Fila 2: Prioridad y Estado */}
-    <View style={styles.statusBadges}>
-      {reporte.prioReporte && (
-        <View style={[styles.prioridadBadge, { backgroundColor: getPrioridadColor(reporte.prioReporte) }]}>
-        <Text style={styles.prioridadText}>
-          {reporte.prioReporte === 'alta' ? '🔴 Alta' :
-           reporte.prioReporte === 'media' ? '🟡 Media' : '🟢 Baja'}
-        </Text>
-        </View>
-      )}
-      <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(reporte.estReporte) }]}>
-        <Text style={styles.estadoText}>{getEstadoTexto(reporte.estReporte)}</Text>
-      </View>
-   </View>
-      </View>
-
-                  {/* Contenido del Reporte */}
-                  <Text style={styles.reportTitle}>Reporte #{reporte.idReporte}</Text>
                   <Text style={styles.reportDesc} numberOfLines={3}>
                     {reporte.descriReporte || 'Sin descripción'}
                   </Text>
 
-                  {/* Info del Usuario */}
                   <View style={styles.userInfo}>
                     <View style={styles.userAvatar}>
                       <Ionicons
@@ -235,13 +205,12 @@ export default function TodosReportes() {
                       <Text style={styles.userName}>{usuarioInfo.nombre}</Text>
                       <View style={styles.userRolBadge}>
                         <Text style={styles.userRolText}>
-                          {usuarioInfo.rol === 'autoridad' ? '👔 Autoridad' : '📚 Docente'}
+                          {usuarioInfo.rol === 'autoridad' ? '👔 Coordinador' : '📚 Docente'}
                         </Text>
                       </View>
                     </View>
                   </View>
 
-                  {/* Metadata */}
                   <View style={styles.metadata}>
                     {reporte.fecReporte && (
                       <View style={styles.metadataItem}>
@@ -259,17 +228,22 @@ export default function TodosReportes() {
                     )}
                   </View>
 
-                  {/* Badge Solo Lectura */}
-                  <View style={styles.readOnlyBadge}>
+                  <View style={[styles.readOnlyBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
                     <Ionicons name="eye" size={16} color="#1DCDFE" />
-                    <Text style={styles.readOnlyText}>Solo lectura</Text>
+                    <Text style={styles.readOnlyText}>Ver detalle completo</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               )
             })}
           </View>
         )}
       </ScrollView>
+
+      <ReporteDetalleModal
+        visible={modalVisible}
+        reporte={reporteSeleccionado}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   )
 }

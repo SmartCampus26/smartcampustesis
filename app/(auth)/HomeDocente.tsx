@@ -1,55 +1,34 @@
-// Importa React y hooks para manejar estado y efectos
-import  { useEffect, useState } from 'react'
-// Componentes visuales de React Native
+// app/(auth)/HomeDocente.tsx
+import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Alert, RefreshControl,
+  ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
-// Iconos
 import { Ionicons } from '@expo/vector-icons'
-// Navegación entre pantallas
 import { router } from 'expo-router'
-// Tipo de dato Reporte
 import { Reporte } from '../../src/types/Database'
-// Manejo seguro del área superior (notch, barra de estado)
 import { SafeAreaView } from 'react-native-safe-area-context'
-// Lógica de carga de datos y estadísticas
 import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
-// Estilos
 import { homeDocenteStyles as styles } from '../../src/components/homeDocenteStyles'
+// ── NUEVO ──
+import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 
-import * as React from 'react'; 
+import * as React from 'react'
 
 export default function HomeUsuario() {
-  // ESTADOS (variables reactivas)
-
-  // Información del usuario logueado
-  const [usuario, setUsuario] = useState<any>(null)
-  // Lista de reportes creados por el usuario
-  const [reportes, setReportes] = useState<Reporte[]>([])
-  // Controla si los datos están cargando
-  const [cargando, setCargando] = useState(true)
-  // Controla la animación de refrescar
+  const [usuario, setUsuario]       = useState<any>(null)
+  const [reportes, setReportes]     = useState<Reporte[]>([])
+  const [cargando, setCargando]     = useState(true)
   const [refrescando, setRefrescando] = useState(false)
-  // Estadísticas de los reportes del usuario
   const [stats, setStats] = useState<HomeDocenteStats>({
-    total: 0,
-    pendientes: 0,
-    enProceso: 0,
-    resueltos: 0,
+    total: 0, pendientes: 0, enProceso: 0, resueltos: 0,
   })
+  // ── NUEVO: estado del modal ──
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
-  // EFECTO: se ejecuta al abrir la pantalla
-  useEffect(() => {
-    cargarDatos()
-  }, [])
+  useEffect(() => { cargarDatos() }, [])
 
-  // FUNCIÓN: Cargar datos del usuario y reportes
   const cargarDatos = async () => {
     try {
       const datos = await cargarDatosDocente()
@@ -59,34 +38,30 @@ export default function HomeUsuario() {
     } catch (error: any) {
       Alert.alert('Error', error.message)
     } finally {
-      // Finaliza estados de carga
       setCargando(false)
       setRefrescando(false)
     }
   }
 
-  // FUNCIÓN: Refrescar datos manualmente
-  const onRefresh = () => {
-    setRefrescando(true)
-    cargarDatos()
-  }
+  const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
   const handleCrearReporte = () => {
     if (!usuario?.idUser) {
       Alert.alert('Error', 'No se pudo identificar al usuario')
       return
     }
-
     router.push({
       pathname: '/CrearReporte',
-      params: {
-        idUser: usuario.idUser,
-        nombreUsuario: usuario.nomUser || 'Usuario'
-      }
+      params: { idUser: usuario.idUser, nombreUsuario: usuario.nomUser || 'Usuario' }
     })
   }
 
-  // PANTALLA DE CARGA
+  // ── NUEVO ──
+  const abrirDetalle = (reporte: Reporte) => {
+    setReporteSeleccionado(reporte)
+    setModalVisible(true)
+  }
+
   if (cargando) {
     return (
       <SafeAreaView style={styles.centeredContainer} edges={['top']}>
@@ -95,7 +70,6 @@ export default function HomeUsuario() {
     )
   }
 
-  // INTERFAZ PRINCIPAL
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -112,10 +86,8 @@ export default function HomeUsuario() {
           </View>
         </View>
 
-        {/* ===== TARJETAS DE ESTADÍSTICAS ====== */}
+        {/* ===== ESTADÍSTICAS ===== */}
         <View style={styles.statsContainer}>
-
-          {/* Total */}
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#13947F' }]}
             onPress={() => router.push({ pathname: '/ListadoReportes', params: { filtro: 'todos' } })}
@@ -125,7 +97,6 @@ export default function HomeUsuario() {
             <Text style={styles.statLabel}>Totales</Text>
           </TouchableOpacity>
 
-          {/* Pendientes */}
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#FFA726' }]}
             onPress={() => router.push({ pathname: '/ListadoReportes', params: { filtro: 'pendiente' } })}
@@ -135,7 +106,6 @@ export default function HomeUsuario() {
             <Text style={styles.statLabel}>Pendientes</Text>
           </TouchableOpacity>
 
-          {/* En proceso */}
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#42A5F5' }]}
             onPress={() => router.push({ pathname: '/ListadoReportes', params: { filtro: 'en proceso' } })}
@@ -145,7 +115,6 @@ export default function HomeUsuario() {
             <Text style={styles.statLabel}>En Proceso</Text>
           </TouchableOpacity>
 
-          {/* Resueltos */}
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#66BB6A' }]}
             onPress={() => router.push({ pathname: '/ListadoReportes', params: { filtro: 'resuelto' } })}
@@ -154,32 +123,61 @@ export default function HomeUsuario() {
             <Text style={styles.statNumber}>{stats.resueltos}</Text>
             <Text style={styles.statLabel}>Resueltos</Text>
           </TouchableOpacity>
-
         </View>
 
-        {/* ==== BOTÓN CREAR REPORTE ===== */}
-        {/* Permite al docente acceder al formulario de creación de reportes */}
+        {/* ===== REPORTES RECIENTES ===== */}
+        {/* Si el HomeDocente muestra reportes, renderizarlos como cards tocables */}
+        {reportes.length > 0 && (
+          <View style={styles.createSection}>
+            {reportes.slice(0, 3).map((reporte) => (
+              <TouchableOpacity
+                key={reporte.idReporte}
+                onPress={() => abrirDetalle(reporte)}
+                style={{
+                  backgroundColor: '#F9FAFB',
+                  borderRadius: 12,
+                  padding: 14,
+                  marginBottom: 10,
+                  borderLeftWidth: 4,
+                  borderLeftColor: '#21D0B2',
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: '#2F455C' }}>
+                  #{reporte.idReporte}
+                </Text>
+                <Text style={{ color: '#6B7280', marginTop: 4 }} numberOfLines={2}>
+                  {reporte.descriReporte}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ===== BOTÓN CREAR REPORTE ===== */}
         <View style={styles.createSection}>
           <TouchableOpacity style={styles.createButton} onPress={handleCrearReporte}>
             <View style={styles.createButtonContent}>
-              {/* Ícono visual del botón */}
               <View style={styles.createIcon}>
                 <Ionicons name="add" size={28} color="#FFFFFF" />
               </View>
-              {/* Texto descriptivo del botón */}
               <View style={styles.createTextContainer}>
                 <Text style={styles.createTitle}>Crear Nuevo Reporte</Text>
                 <Text style={styles.createSubtitle}>Reporta un problema o solicitud</Text>
               </View>
-              {/* Flecha que indica navegación */}
               <Ionicons name="chevron-forward" size={24} color="#21D0B2" />
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* Espacio inferior para evitar que el contenido quede cortado */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ── NUEVO: Modal de detalle ── */}
+      <ReporteDetalleModal
+        visible={modalVisible}
+        reporte={reporteSeleccionado}
+        onClose={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   )
 }

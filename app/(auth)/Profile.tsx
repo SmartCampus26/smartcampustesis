@@ -19,6 +19,8 @@ import { cargarPerfil, cerrarSesion, ProfileData } from '../../src/services/Prof
 // Contexto para limpiar fotos guardadas (solo usuarios)
 import { useSaved } from '../Camera/context/SavedContext' 
 
+import { Linking } from 'react-native' 
+
 import * as React from 'react';
 
 export default function ProfileScreen() {
@@ -27,6 +29,15 @@ export default function ProfileScreen() {
 
   // Estado que almacena los datos del perfil
   const [perfil, setPerfil] = useState<ProfileData | null>(null)
+
+  const abrirWhatsApp = () => {
+    const mensaje = encodeURIComponent('Hola, tengo una consulta sobre SmartCampus 👋')
+    Linking.openURL(`whatsapp://send?phone=593984672753&text=${mensaje}`)
+      .catch(() => {
+        // Si no tiene WhatsApp instalado, abre el navegador
+        Linking.openURL(`https://wa.me/593984672753?text=${mensaje}`)
+      })
+  }
 
   // Estado que controla el indicador de carga
   const [cargando, setCargando] = useState(true)
@@ -170,15 +181,18 @@ export default function ProfileScreen() {
       {/* ── Soporte ── */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Soporte</Text>
-        <TouchableOpacity style={s.menuItem} onPress={() => Alert.alert('Ayuda y Soporte', 'Contacta al administrador: 098 467 2753')}>
-          <View style={s.menuItemLeft}>
-            <View style={[s.menuIcon, { backgroundColor: '#E0F7FA' }]}>
-              <Ionicons name="help-circle-outline" size={20} color="#00ACC1" />
-            </View>
-            <Text style={s.menuItemText}>Ayuda y Soporte</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
-        </TouchableOpacity>
+        <TouchableOpacity 
+          style={s.menuItem} 
+          onPress={abrirWhatsApp}  // ← reemplaza el Alert.alert anterior
+          >
+        <View style={s.menuItemLeft}>
+      <View style={[s.menuIcon, { backgroundColor: '#E0F7FA' }]}>
+      <Ionicons name="help-circle-outline" size={20} color="#00ACC1" />
+      </View>
+      <Text style={s.menuItemText}>Ayuda y Soporte</Text>
+    </View>
+      <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
+    </TouchableOpacity>
         <TouchableOpacity style={s.menuItem} onPress={() => Alert.alert('Acerca de la App', 'Sistema de Gestión de Reportes v1.0\n\nDesarrollado para la gestión eficiente de reportes municipales.', [{ text: 'OK' }])}>
           <View style={s.menuItemLeft}>
             <View style={[s.menuIcon, { backgroundColor: '#F3E5F5' }]}>

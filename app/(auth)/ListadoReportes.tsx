@@ -1,13 +1,8 @@
-import  { useEffect, useState } from 'react'
+// app/(auth)/ListadoReportes.tsx
+import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Alert, RefreshControl, ScrollView,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
@@ -20,20 +15,24 @@ import {
   getStatusColor,
   getPriorityColor,
 } from '../../src/services/ListadoReportesService'
+// ── NUEVO ──
+import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 
-import * as React from 'react';
+import * as React from 'react'
 
 export default function MisReportes() {
   const { filtro } = useLocalSearchParams<{ filtro?: string }>()
 
-  const [reportes, setReportes] = useState<Reporte[]>([])
+  const [reportes, setReportes]                 = useState<Reporte[]>([])
   const [reportesFiltrados, setReportesFiltrados] = useState<Reporte[]>([])
-  const [cargando, setCargando] = useState(true)
-  const [refrescando, setRefrescando] = useState(false)
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
-  const [busqueda, setBusqueda] = useState('')
+  const [cargando, setCargando]                 = useState(true)
+  const [refrescando, setRefrescando]           = useState(false)
+  const [filtroEstado, setFiltroEstado]         = useState<FiltroEstado>('todos')
+  const [busqueda, setBusqueda]                 = useState('')
+  // ── NUEVO ──
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible]               = useState(false)
 
-  // Aplica filtro inicial recibido por ruta
   useEffect(() => {
     if (filtro && ['todos', 'pendiente', 'en proceso', 'resuelto'].includes(filtro)) {
       setFiltroEstado(filtro as FiltroEstado)
@@ -59,12 +58,10 @@ export default function MisReportes() {
 
   const onRefresh = () => { setRefrescando(true); fetchReportes() }
 
+  // ── CAMBIO: reemplaza el Alert anterior ──
   const handleVerDetalle = (reporte: Reporte) => {
-    Alert.alert(
-      `Reporte #${reporte.idReporte}`,
-      `Estado: ${reporte.estReporte}\n${reporte.descriReporte}`,
-      [{ text: 'OK' }]
-    )
+    setReporteSeleccionado(reporte)
+    setModalVisible(true)
   }
 
   const contarPor = (estado: string) =>
@@ -114,10 +111,10 @@ export default function MisReportes() {
         contentContainerStyle={styles.filtersContent}
       >
         {([
-          { key: 'todos', label: `Todos (${reportes.length})`, color: null },
-          { key: 'pendiente', label: `Pendientes (${contarPor('pendiente')})`, color: '#FFA726' },
+          { key: 'todos',      label: `Todos (${reportes.length})`,            color: null },
+          { key: 'pendiente',  label: `Pendientes (${contarPor('pendiente')})`, color: '#FFA726' },
           { key: 'en proceso', label: `En Proceso (${contarPor('en proceso')})`, color: '#42A5F5' },
-          { key: 'resuelto', label: `Resueltos (${contarPor('resuelto')})`, color: '#66BB6A' },
+          { key: 'resuelto',   label: `Resueltos (${contarPor('resuelto')})`,   color: '#66BB6A' },
         ] as { key: FiltroEstado; label: string; color: string | null }[]).map(({ key, label, color }) => (
           <TouchableOpacity
             key={key}
@@ -164,7 +161,7 @@ export default function MisReportes() {
             <TouchableOpacity
               key={reporte.idReporte}
               style={styles.reportCard}
-              onPress={() => handleVerDetalle(reporte)}
+              onPress={() => handleVerDetalle(reporte)}   // ← abre el modal
               activeOpacity={0.7}
             >
               <View style={styles.reportHeader}>
@@ -213,6 +210,13 @@ export default function MisReportes() {
         )}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ── NUEVO: Modal de detalle ── */}
+      <ReporteDetalleModal
+        visible={modalVisible}
+        reporte={reporteSeleccionado}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   )
 }

@@ -86,7 +86,7 @@ export default function CrearMenu() {
 
           {/* DESCRIPCIÓN */}
           <Text style={styles.cardDescription}>
-            Docentes y autoridades del sistema educativo
+            Docentes y coordinadorer del sistema educativo
           </Text>
 
 
@@ -97,7 +97,7 @@ export default function CrearMenu() {
             <View style={styles.feature}>
               <Ionicons name="checkmark-circle" size={18} color="#21D0B2" />
               <Text style={styles.featureText}>
-                Rol: Docente o Autoridad
+                Rol: Docente o Coordinador
               </Text>
             </View>
 
