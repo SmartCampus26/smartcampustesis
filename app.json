@@ -35,7 +35,8 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/logo_tesis.png"
+      "favicon": "./assets/images/logo_tesis.png",
+      "display": "standalone"
     },
     "plugins": [
       "expo-router",

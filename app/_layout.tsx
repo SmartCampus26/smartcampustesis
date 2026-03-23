@@ -11,22 +11,40 @@ import { ToastProvider } from "../src/components/ToastContext";
 import { SesionProvider, useSesion } from './Camera/context/SesionContext' 
 
 function RouteGuard() {
-  const { sesion, cargando } = useSesion(); // ✅ Ahora sí puede leer el contexto
+  const { sesion, cargando } = useSesion();
   const segments = useSegments();
   const router = useRouter();
+
   useEffect(() => {
     if (cargando) return;
 
-    const inAuthGroup = segments[0] === '(auth)'; // ajusta si tu carpeta se llama diferente
+    const enAuth = segments[0] === '(auth)';
 
-    if (!sesion && !inAuthGroup) {
+    if (!sesion && enAuth) {
+      // Sin sesión dentro de auth → al login
       router.replace('/');
-    } else if (sesion && inAuthGroup) {
-      router.replace('/');
+      return;
+    }
+
+    if (sesion && !enAuth) {
+      // Con sesión fuera de auth → redirigir según rol
+      const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol;
+
+      switch (rol) {
+        case 'autoridad':
+          router.replace('/(auth)/HomeAutoridad'); break;
+        case 'docente':
+          router.replace('/(auth)/HomeDocente'); break;
+        case 'mantenimiento':
+        case 'sistemas':
+          router.replace('/(auth)/HomeEmpleado'); break;
+        default:
+          router.replace('/'); break;
+      }
     }
   }, [sesion, cargando, segments]);
 
-  return null; // Solo lógica, no renderiza nada
+  return null;
 }
 
 export default function RootLayout() {
