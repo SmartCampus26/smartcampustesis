@@ -55,13 +55,4 @@ export async function crearUsuario(data: NuevoUsuarioData): Promise<void> {
   if (error) throw error
   if (result?.error) throw new Error(result.error) // Error que viene de nuestra lógica
   // Restaurar sesión si Supabase la pisó durante la creación
-  const { data: sessionData } = await supabase.auth.refreshSession()
-
-  if (!sessionData.session && sesionAntes) {
-    // Supabase perdió la sesión interna — restaurar la del empleado
-    await guardarSesion(sesionAntes)
-  } else if (sessionData.session && sesionAntes) {
-    // Sesión sigue activa — re-guardar para mantener sincronía
-    await guardarSesion(sesionAntes)
   }
-}

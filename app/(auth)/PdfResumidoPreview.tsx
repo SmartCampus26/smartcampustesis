@@ -100,7 +100,7 @@ export default function PdfResumidoPreview() {
       <View style={styles.centrado}>
         <Ionicons name="alert-circle-outline" size={56} color="#EF4444" />
         <Text style={styles.errorText}>{error || 'Error al cargar datos'}</Text>
-        <TouchableOpacity style={styles.btnVolver} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.btnVolver} onPress={() => router.replace('/HomeAutoridad')}>
           <Ionicons name="arrow-back-outline" size={18} color="#6b7280" />
           <Text style={styles.btnVolverText}>Volver</Text>
         </TouchableOpacity>
@@ -261,7 +261,7 @@ export default function PdfResumidoPreview() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnVolver} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.btnVolver} onPress={() => router.replace('/HomeEmpleado')}>
           <Ionicons name="arrow-back-outline" size={18} color="#6b7280" />
           <Text style={styles.btnVolverText}>Volver</Text>
         </TouchableOpacity>

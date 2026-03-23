@@ -20,6 +20,7 @@ import { Linking } from 'react-native'
 // Toast global para notificaciones de error e info
 import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react';
+import { useSesion } from '../Camera/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -32,11 +33,13 @@ export default function ProfileScreen() {
   const router = useRouter()
   const { clearSavedPhotos } = useSaved()
   const { showToast } = useToast()
+  const { cerrarSesion } = useSesion()
 
   // Estado que almacena los datos del perfil
   const [perfil, setPerfil] = useState<ProfileData | null>(null)
   // Estado que controla el indicador de carga
   const [cargando, setCargando] = useState(true)
+  const [confirmando, setConfirmando] = useState(false)
 
   /**
    * Abre WhatsApp con un mensaje predefinido para contactar soporte.
@@ -64,30 +67,15 @@ export default function ProfileScreen() {
    * Usa Alert nativo para la confirmación porque requiere 2 botones (Cancelar / Cerrar Sesión).
    * Los errores de cierre se reportan vía toast global.
    */
-  const handleCerrarSesion = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cerrarSesion()
-              // Si el usuario no es empleado, limpiar fotos guardadas de la cámara
-              if (!perfil?.esEmpleado) clearSavedPhotos()
-              router.replace('/')
-            } catch {
-              showToast('No se pudo cerrar la sesión', 'error')
-            }
-          },
-        },
-      ]
-    )
+  const handleCerrarSesion = async () => {
+    try {
+      await cerrarSesion()
+      if (!perfil?.esEmpleado) clearSavedPhotos()
+      router.replace('/')
+    } catch {
+      showToast('No se pudo cerrar la sesión', 'error')
+    }
   }
-
   // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando || !perfil) {
@@ -219,11 +207,30 @@ export default function ProfileScreen() {
 
       {/* ── BOTÓN DE CERRAR SESIÓN ── */}
       <View style={s.section}>
-        <TouchableOpacity style={s.logoutButton} onPress={handleCerrarSesion}>
-          <Ionicons name="log-out-outline" size={20} color="#FF5252" />
-          <Text style={s.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity
+    style={[s.logoutButton, confirmando && { borderColor: '#FF5252', backgroundColor: '#FFF5F5' }]}
+    onPress={async () => {
+      if (!confirmando) {
+        setConfirmando(true)
+        showToast('Toca de nuevo para confirmar cierre de sesión', 'info')
+        setTimeout(() => setConfirmando(false), 3000)
+        return
+      }
+      try {
+        await cerrarSesion()
+        if (!perfil?.esEmpleado) clearSavedPhotos()
+        router.replace('/')
+      } catch {
+        showToast('No se pudo cerrar la sesión', 'error')
+      }
+    }}
+  >
+    <Ionicons name="log-out-outline" size={20} color="#FF5252" />
+    <Text style={s.logoutText}>
+      {confirmando ? '¿Confirmar cierre?' : 'Cerrar Sesión'}
+    </Text>
+  </TouchableOpacity>
+</View>
 
       <View style={s.versionContainer}>
         <Text style={s.versionText}>Versión 1.0.0</Text>

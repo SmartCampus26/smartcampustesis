@@ -1,5 +1,4 @@
 import { supabase } from '../lib/Supabase'
-import { obtenerSesion, guardarSesion } from '../util/Session'
 
 export interface NuevoEmpleadoForm {
   nomEmpl: string
@@ -31,9 +30,6 @@ export const validarEmpleado = (form: NuevoEmpleadoForm): string | null => {
  * Supabase Auth puede pisarla al crear un nuevo usuario.
  */
 export const crearEmpleadoDB = async (form: NuevoEmpleadoForm): Promise<void> => {
-  // Guardar sesión del jefe ANTES de invocar la función
-  const sesionAntes = await obtenerSesion()
-
   const { data, error } = await supabase.functions.invoke('crear-empleado', {
     body: {
       nomEmpl: form.nomEmpl,
@@ -47,14 +43,6 @@ export const crearEmpleadoDB = async (form: NuevoEmpleadoForm): Promise<void> =>
   })
 
   if (error) throw error
-  if (data?.error) throw new Error(data.error)
+  if (data?.error) throw new Error(data.error) 
 
-  // Restaurar sesión del jefe si Supabase la pisó durante la creación
-  const { data: sessionData } = await supabase.auth.refreshSession()
-
-  if (!sessionData.session && sesionAntes) {
-    await guardarSesion(sesionAntes)
-  } else if (sessionData.session && sesionAntes) {
-    await guardarSesion(sesionAntes)
   }
-}

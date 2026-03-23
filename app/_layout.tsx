@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SavedProvider } from "./Camera/context/SavedContext";
 import * as React from 'react';
@@ -8,9 +8,30 @@ import { router } from 'expo-router';
 import { supabase } from '../src/lib/Supabase';
 import { NetworkProvider } from "./Camera/context/Networkcontext";
 import { ToastProvider } from "../src/components/ToastContext";
+import { SesionProvider, useSesion } from './Camera/context/SesionContext' 
 
+function RouteGuard() {
+  const { sesion, cargando } = useSesion(); // ✅ Ahora sí puede leer el contexto
+  const segments = useSegments();
+  const router = useRouter();
+  useEffect(() => {
+    if (cargando) return;
+
+    const inAuthGroup = segments[0] === '(auth)'; // ajusta si tu carpeta se llama diferente
+
+    if (!sesion && !inAuthGroup) {
+      router.replace('/');
+    } else if (sesion && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [sesion, cargando, segments]);
+
+  return null; // Solo lógica, no renderiza nada
+}
 
 export default function RootLayout() {
+
+  const router = useRouter()
 
   useEffect(() => {
     console.log('🔗 Mi URL de desarrollo:', Linking.createURL('reset-password'))
@@ -85,6 +106,8 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NetworkProvider>
         <ToastProvider>
+        <SesionProvider>     
+        <RouteGuard />
           <SavedProvider>
             <Stack
               screenOptions={{
@@ -92,6 +115,7 @@ export default function RootLayout() {
               }}
             />
           </SavedProvider>
+          </SesionProvider>     
         </ToastProvider>
       </NetworkProvider>
     </GestureHandlerRootView>

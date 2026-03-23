@@ -331,7 +331,7 @@ export default function PdfPersonalPreview() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnVolver} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.btnVolver} onPress={() => router.replace('/HomeEmpleado')}>
           <Ionicons name="arrow-back-outline" size={18} color="#6b7280" />
           <Text style={styles.btnVolverText}>Volver</Text>
         </TouchableOpacity>

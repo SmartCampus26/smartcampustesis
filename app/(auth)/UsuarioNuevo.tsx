@@ -33,6 +33,7 @@ import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoS
 // Toast global para notificaciones
 import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
+import { useSesion } from '../Camera/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ import * as React from 'react'
  */
 export default function UsuarioNuevo() {
   const { showToast } = useToast()
+  const { refrescarSesion } = useSesion()  
 
   // ── Estado del formulario ─────────────────────────────────────────────────
   // Se inicializa con USUARIO_INICIAL para garantizar valores por defecto limpios
@@ -80,12 +82,13 @@ export default function UsuarioNuevo() {
     setCargando(true)
     try {
       await crearUsuario(nuevoUsuario)
+      await refrescarSesion() 
       showToast(
         'Usuario registrado. Se envió un enlace de verificación a ' + nuevoUsuario.correoUser,
         'success',
         4000
       )
-      setTimeout(() => router.back(), 4000)
+      setTimeout(() => router.replace('/(auth)/CrearMenu'), 4000) 
     } catch (error) {
       if (error instanceof Error) {
         showToast(error.message, 'error')
@@ -194,7 +197,7 @@ export default function UsuarioNuevo() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => router.replace('/(auth)/CrearMenu')}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 

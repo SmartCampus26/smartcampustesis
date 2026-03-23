@@ -24,6 +24,8 @@ import {
   validarEmpleado,
 } from '../../src/services/EmpleadoNuevoService'
 import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../Camera/context/SesionContext'
+
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -34,6 +36,7 @@ import { useToast } from '../../src/components/ToastContext'
  */
 export default function EmpleadoNuevo() {
   const { showToast } = useToast()
+  const { sesion, refrescarSesion } = useSesion() 
 
   // ── Estado del formulario ─────────────────────────────────────────────────
   const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({
@@ -66,16 +69,14 @@ export default function EmpleadoNuevo() {
    */
   const handleCrear = async () => {
     const error = validarEmpleado(nuevoEmpleado)
-    if (error) {
-      showToast(error, 'error')
-      return
-    }
+    if (error) { showToast(error, 'error'); return }
 
     setCargando(true)
     try {
       await crearEmpleadoDB(nuevoEmpleado)
+      await refrescarSesion()  // ← resincroniza el contexto con AsyncStorage
       showToast('Colaborador creado. Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl, 'success', 4000)
-      setTimeout(() => router.back(), 4000)
+      setTimeout(() => router.replace('/(auth)/CrearMenu'), 4000)
     } catch (err: any) {
       showToast(err.message || 'No se pudo crear el colaborador', 'error')
     } finally {
@@ -250,7 +251,7 @@ export default function EmpleadoNuevo() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => router.replace('/(auth)/CrearMenu')}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
 

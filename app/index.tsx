@@ -30,6 +30,7 @@ import { Ionicons } from '@expo/vector-icons'
 // Toast global para notificaciones (reemplaza Alert)
 import { useToast } from '../src/components/ToastContext'
 import * as React from 'react';
+import { useSesion } from './Camera/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ import * as React from 'react';
  */
 export default function LoginScreen() {
   const { showToast } = useToast()
+  const { iniciarSesion } = useSesion()   
 
   // ── Estado del formulario ─────────────────────────────────────────────────
   const [correo, setCorreo]               = useState('')
@@ -68,6 +70,7 @@ export default function LoginScreen() {
     setCargando(true)
     try {
       const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
+      await iniciarSesion(sesion)
 
       if (sesion.tipo === 'usuario') {
         if (sesion.rol === 'autoridad') {

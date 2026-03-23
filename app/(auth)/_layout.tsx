@@ -1,11 +1,9 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Redirect, Tabs } from 'expo-router'
-import { useEffect, useState } from 'react'
 import { ActivityIndicator, View } from 'react-native'
-import { Sesion } from '../../src/types/Database'
-import { obtenerSesion } from '../../src/util/Session'
 import { Platform } from 'react-native'
 import * as React from 'react';
+import { useSesion } from '../Camera/context/SesionContext' 
 
 const COLORS = {
   autoridad:     { active: '#1DCDFE', header: '#2F455C' },
@@ -15,15 +13,17 @@ const COLORS = {
 }
 
 export default function UnifiedLayout() {
-  const [sesion, setSesion]   = useState<Sesion | null>(null)
-  const [cargando, setCargando] = useState(true)
+  const { sesion, cargando } = useSesion()
+  
+  if (cargando) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1DCDFE" />
+      </View>
+    )
+  }
 
-  useEffect(() => {
-    obtenerSesion().then((data) => {
-      setSesion(data)
-      setCargando(false)
-    })
-  }, [])
+  if (!sesion) return <Redirect href="/" />
 
   if (cargando) {
     return (
