@@ -1,3 +1,15 @@
+// 📋 ReportesPendientes.tsx
+// Pantalla de gestión de reportes para empleados y jefes de área.
+//
+// Comportamiento según rol:
+//   - Colaborador: ve sus reportes asignados y puede editar estado/prioridad/comentario.
+//   - Jefe: ve reportes sin asignar y asignados (tabs), puede asignar/reasignar
+//           colaboradores y eliminar reportes.
+//
+// Subcomponentes:
+//   - ImagenZoomModal: modal con zoom + pan para ver las fotos del reporte
+//   - FormularioEdicion: formulario inline para editar estado, prioridad y comentario
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -42,20 +54,26 @@ import {
   eliminarReporte,
 } from '../../src/services/ReportesPendientesService'
 import { Empleado } from '../../src/types/Database'
+import { useToast } from '../../src/components/ToastContext'
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 
+/** Tabs disponibles para el jefe: reportes sin asignar o ya asignados */
 type TabJefe = 'sinAsignar' | 'asignados'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Subcomponente: ImagenZoomModal
+// Modal de pantalla completa con zoom (pinch) y desplazamiento (pan)
+// para ver las fotos adjuntas a un reporte en detalle.
 // ─────────────────────────────────────────────────────────────────────────────
 const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = ({ uri, onClose }) => {
-  // Zoom
+  // ── Valores animados de zoom ──────────────────────────────────────────────
   const scale     = useSharedValue(1)
   const lastScale = useSharedValue(1)
 
-  // Posición
+  // ── Valores animados de posición ─────────────────────────────────────────
   const translateX     = useSharedValue(0)
   const translateY     = useSharedValue(0)
   const lastTranslateX = useSharedValue(0)
@@ -80,7 +98,7 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
   const onPinchStateChange = (event: any) => {
     if (event.nativeEvent.state === State.END) {
       lastScale.value = scale.value
-      // Si vuelve a 1 resetea posición
+      // Si vuelve a escala 1, resetea la posición al centro
       if (scale.value <= 1) {
         translateX.value = withTiming(0)
         translateY.value = withTiming(0)
@@ -90,7 +108,7 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
     }
   }
 
-  // ── Pan: mover la imagen cuando está con zoom ──
+  // ── Pan: mover la imagen cuando está con zoom activo ──
   const onPanEvent = (event: any) => {
     if (scale.value > 1) {
       translateX.value = lastTranslateX.value + event.nativeEvent.translationX
@@ -105,7 +123,9 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
     }
   }
 
-  // ── Cerrar: resetea todo ──
+  /**
+   * Cierra el modal y resetea todos los valores de zoom y posición.
+   */
   const handleClose = () => {
     scale.value          = withTiming(1)
     lastScale.value      = 1
@@ -142,7 +162,7 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
             <Ionicons name="close" size={28} color="#FFF" />
           </TouchableOpacity>
 
-          {/* PinchGestureHandler + PanGestureHandler combinados */}
+          {/* PanGestureHandler + PinchGestureHandler combinados para zoom y movimiento */}
           <PanGestureHandler
             ref={panRef}
             simultaneousHandlers={pinchRef}
@@ -187,7 +207,11 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Subcomponente: FormularioEdicion
+// Formulario inline para que el colaborador/jefe edite estado,
+// prioridad y comentario de un reporte sin salir de la pantalla.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Props del formulario de edición de reporte */
 interface FormularioEdicionProps {
   nuevoEstado: string
   nuevaPrioridad: string
@@ -211,6 +235,8 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
 }) => (
   <View style={styles.editFormContainer}>
     <View style={styles.editForm}>
+
+      {/* Selector de estado */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Estado</Text>
         <View style={styles.pickerContainer}>
@@ -228,6 +254,7 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
         </View>
       </View>
 
+      {/* Selector de prioridad */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Prioridad</Text>
         <View style={styles.pickerContainer}>
@@ -245,6 +272,7 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
         </View>
       </View>
 
+      {/* Campo de comentario libre */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Comentario</Text>
         <TextInput
@@ -259,6 +287,7 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
         />
       </View>
 
+      {/* Botones de acción del formulario */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.saveButton} onPress={onGuardar}>
           <Ionicons name="checkmark-circle-outline" size={18} color={colors.bg} />
@@ -274,35 +303,54 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Componente principal
+// Componente principal: ReportesPendientes
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pantalla de reportes pendientes para empleados y jefes.
+ * Al montar, detecta el rol del empleado autenticado y carga
+ * los reportes correspondientes (propios o del departamento).
+ */
 const ReportesPendientes: React.FC = () => {
+  const { showToast } = useToast()
 
-  const [esJefe, setEsJefe] = useState(false)
+  // ── Datos de sesión ───────────────────────────────────────────────────────
+  const [esJefe, setEsJefe]             = useState(false)
   const [empleadoActual, setEmpleadoActual] = useState<string | null>(null)
-  const [nombreJefe, setNombreJefe] = useState('')
-  const [depto, setDepto] = useState('')
+  const [nombreJefe, setNombreJefe]     = useState('')
+  const [depto, setDepto]               = useState('')
 
-  const [reportes, setReportes] = useState<ReporteCompleto[]>([])
+  // ── Datos de reportes ─────────────────────────────────────────────────────
+  const [reportes, setReportes]                   = useState<ReporteCompleto[]>([])
   const [reportesAsignados, setReportesAsignados] = useState<ReporteCompleto[]>([])
-  const [colaboradores, setColaboradores] = useState<Empleado[]>([])
+  const [colaboradores, setColaboradores]         = useState<Empleado[]>([])
 
-  const [loading, setLoading] = useState(true)
+  // ── Estado de UI ──────────────────────────────────────────────────────────
+  const [loading, setLoading]     = useState(true)
   const [recargando, setRecargando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]         = useState<string | null>(null)
   const [tabActivo, setTabActivo] = useState<TabJefe>('sinAsignar')
 
-  const [editando, setEditando] = useState<string | null>(null)
+  // ── Estado de edición inline ──────────────────────────────────────────────
+  const [editando, setEditando]           = useState<string | null>(null)
   const [nuevoComentario, setNuevoComentario] = useState('')
-  const [nuevaPrioridad, setNuevaPrioridad] = useState('')
-  const [nuevoEstado, setNuevoEstado] = useState('')
+  const [nuevaPrioridad, setNuevaPrioridad]   = useState('')
+  const [nuevoEstado, setNuevoEstado]         = useState('')
 
-  const [modalVisible, setModalVisible] = useState(false)
+  // ── Estado del modal de asignación y zoom de imagen ───────────────────────
+  const [modalVisible, setModalVisible]           = useState(false)
   const [reporteSeleccionado, setReporteSeleccionado] = useState<ReporteCompleto | null>(null)
-  const [imagenZoom, setImagenZoom] = useState<string | null>(null)
+  const [imagenZoom, setImagenZoom]               = useState<string | null>(null)
 
   useEffect(() => { iniciar() }, [])
 
+  // ── Inicialización ────────────────────────────────────────────────────────
+
+  /**
+   * Carga la sesión del empleado y los reportes correspondientes a su rol.
+   * Para jefes: carga colaboradores, reportes sin asignar y asignados en paralelo.
+   * Para colaboradores: carga solo los reportes propios.
+   */
   const iniciar = async () => {
     try {
       const sesion = await obtenerSesionEmpleado()
@@ -332,6 +380,10 @@ const ReportesPendientes: React.FC = () => {
     }
   }
 
+  /**
+   * Recarga los reportes según el rol activo.
+   * Se activa por pull-to-refresh o después de mutaciones.
+   */
   const recargar = async () => {
     setRecargando(true)
     try {
@@ -347,19 +399,31 @@ const ReportesPendientes: React.FC = () => {
         setReportes(data)
       }
     } catch (err: any) {
-      Alert.alert('Error al recargar', err.message)
+      // Error de recarga — toast en lugar de Alert
+      showToast(err.message || 'Error al recargar', 'error')
     } finally {
       setRecargando(false)
     }
   }
 
+  /**
+   * Abre el modal de selección de colaborador para el reporte dado.
+   * @param reporte - Reporte al que se asignará un colaborador
+   */
   const abrirModal = (reporte: ReporteCompleto) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
 
+  /**
+   * Solicita confirmación y asigna (o reasigna) un colaborador al reporte.
+   * La confirmación usa Alert nativo porque requiere 2 botones (Cancelar / Confirmar).
+   * Los errores del resultado se reportan vía toast.
+   * @param colaborador - Empleado al que se asigna el reporte
+   */
   const confirmarAsignacion = (colaborador: Empleado) => {
     const yaAsignado = !!reporteSeleccionado?.idEmpl
+    // ⚠️ Alert se mantiene — confirmación destructiva con 2 botones
     Alert.alert(
       yaAsignado ? 'Confirmar reasignación' : 'Confirmar asignación',
       `¿${yaAsignado ? 'Reasignar' : 'Asignar'} este reporte a ${colaborador.nomEmpl} ${colaborador.apeEmpl}?`,
@@ -374,11 +438,13 @@ const ReportesPendientes: React.FC = () => {
                 colaborador.idEmpl,
                 nombreJefe
               )
-              Alert.alert('✅ Éxito', `Reporte ${yaAsignado ? 'reasignado' : 'asignado'} correctamente`)
+              // Éxito → toast global
+              showToast(`Reporte ${yaAsignado ? 'reasignado' : 'asignado'} correctamente`, 'success')
               setModalVisible(false)
               recargar()
             } catch (err: any) {
-              Alert.alert('Error', err.message)
+              // Error → toast global
+              showToast(err.message || 'Error al asignar', 'error')
             }
           },
         },
@@ -386,6 +452,11 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
+  /**
+   * Activa el modo de edición inline para el reporte dado.
+   * Pre-carga los valores actuales de estado, prioridad y comentario.
+   * @param reporte - Reporte a editar
+   */
   const iniciarEdicion = (reporte: ReporteCompleto) => {
     setEditando(reporte.idReporte)
     setNuevoComentario(reporte.comentReporte || '')
@@ -393,6 +464,7 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado(reporte.estReporte)
   }
 
+  /** Cancela la edición inline y limpia el estado del formulario */
   const cancelarEdicion = () => {
     setEditando(null)
     setNuevoComentario('')
@@ -400,6 +472,11 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado('')
   }
 
+  /**
+   * Guarda los cambios del formulario de edición en Supabase.
+   * Muestra toast de error si la operación falla.
+   * @param idReporte - ID del reporte a actualizar
+   */
   const guardarCambios = async (idReporte: string) => {
     try {
       const reporteActual =
@@ -410,13 +487,19 @@ const ReportesPendientes: React.FC = () => {
       await recargar()
       cancelarEdicion()
     } catch (err: any) {
-      Alert.alert('Error al guardar', err.message)
+      // Error al guardar → toast global
+      showToast(err.message || 'Error al guardar', 'error')
     }
-    // ❌ confirmarEliminacion NO debe ir aquí adentro
   }
-  
-  // ✅ Función independiente, al mismo nivel
+
+  /**
+   * Solicita confirmación y elimina el reporte de la BD.
+   * La confirmación usa Alert nativo porque es una acción destructiva con 2 botones.
+   * Los errores del resultado se reportan vía toast.
+   * @param idReporte - ID del reporte a eliminar
+   */
   const confirmarEliminacion = (idReporte: string) => {
+    // ⚠️ Alert se mantiene — confirmación destructiva con 2 botones (Cancelar / Eliminar)
     Alert.alert(
       'Eliminar reporte',
       '¿Estás seguro? Esta acción no se puede deshacer.',
@@ -430,7 +513,8 @@ const ReportesPendientes: React.FC = () => {
               await eliminarReporte(idReporte)
               await recargar()
             } catch (err: any) {
-              Alert.alert('Error al eliminar', err.message)
+              // Error al eliminar → toast global
+              showToast(err.message || 'Error al eliminar', 'error')
             }
           },
         },
@@ -438,18 +522,35 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
+  /**
+   * Genera las iniciales de nombre y apellido para los avatares.
+   * @param nombre   - Primer nombre del empleado/usuario
+   * @param apellido - Primer apellido del empleado/usuario
+   */
   const getIniciales = (nombre?: string, apellido?: string) =>
     `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`.toUpperCase()
 
+  // ── Render de tarjeta de reporte ──────────────────────────────────────────
+
+  /**
+   * Renderiza la tarjeta completa de un reporte.
+   * Incluye: foto (con zoom al tocar), datos del usuario, objeto, ubicación,
+   * badges de estado/prioridad, colaborador asignado, comentario y acciones.
+   *
+   * @param reporte           - Reporte completo con relaciones cargadas
+   * @param permitirReasignar - true si el botón de asignación debe decir "Reasignar"
+   */
   const renderTarjeta = (reporte: ReporteCompleto, permitirReasignar = false) => {
-    const enEdicion = editando === reporte.idReporte
-    const colorEstado = getColorEstado(reporte.estReporte)
+    const enEdicion      = editando === reporte.idReporte
+    const colorEstado    = getColorEstado(reporte.estReporte)
     const colorPrioridad = getColorPrioridad(reporte.prioReporte)
 
     return (
       <View key={reporte.idReporte} style={styles.card}>
+        {/* Barra de acento de color según estado */}
         <View style={[styles.cardAccentBar, { backgroundColor: colorEstado }]} />
 
+        {/* Foto del reporte — abre ImagenZoomModal al tocar */}
         {reporte.imgReporte?.length > 0 && (
           <TouchableOpacity
             activeOpacity={0.85}
@@ -473,6 +574,8 @@ const ReportesPendientes: React.FC = () => {
         )}
 
         <View style={styles.cardContent}>
+
+          {/* Sección del usuario que reportó */}
           <View style={styles.userSection}>
             <View style={styles.userAvatar}>
               <Text style={styles.userAvatarText}>
@@ -488,6 +591,7 @@ const ReportesPendientes: React.FC = () => {
             </View>
           </View>
 
+          {/* Título del objeto y fecha */}
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{reporte.objeto?.nomObj || 'Sin título'}</Text>
             <Text style={styles.cardDate}>
@@ -499,6 +603,7 @@ const ReportesPendientes: React.FC = () => {
 
           <Text style={styles.cardDescription}>{reporte.descriReporte}</Text>
 
+          {/* Chips de ubicación y objeto */}
           <View style={styles.infoGrid}>
             {reporte.lugar && (
               <View style={styles.infoChip}>
@@ -530,6 +635,7 @@ const ReportesPendientes: React.FC = () => {
             )}
           </View>
 
+          {/* Badges de estado y prioridad */}
           <View style={styles.badgeRow}>
             <View style={[styles.badgeWrap, { borderColor: colorEstado, backgroundColor: `${colorEstado}18` }]}>
               <View style={[styles.badgeDot, { backgroundColor: colorEstado }]} />
@@ -541,6 +647,7 @@ const ReportesPendientes: React.FC = () => {
             </View>
           </View>
 
+          {/* Colaborador asignado (si existe) */}
           {reporte.empleado && (
             <View style={styles.assigneeContainer}>
               <Ionicons name="person-circle-outline" size={18} color={colors.textSecondary} />
@@ -553,6 +660,7 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
+          {/* Comentario del colaborador (solo si no está en modo edición) */}
           {!enEdicion && reporte.comentReporte && (
             <View style={styles.commentContainer}>
               <View style={styles.commentHeader}>
@@ -563,6 +671,7 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
+          {/* Formulario de edición inline o botones de acción */}
           {enEdicion ? (
             <FormularioEdicion
               nuevoEstado={nuevoEstado}
@@ -576,20 +685,24 @@ const ReportesPendientes: React.FC = () => {
             />
           ) : (
             <View style={styles.actionRow}>
+              {/* Editar estado/prioridad/comentario */}
               <TouchableOpacity style={styles.editButton} onPress={() => iniciarEdicion(reporte)}>
                 <Ionicons name="create-outline" size={17} color={colors.accent} />
                 <Text style={styles.editButtonText}>Editar</Text>
               </TouchableOpacity>
 
+              {/* Eliminar reporte — solo jefes */}
               {esJefe && (
-    <TouchableOpacity
-      style={[styles.cancelButton, { borderColor: '#DC143C' }]}
-      onPress={() => confirmarEliminacion(reporte.idReporte)}
-    >
-      <Ionicons name="trash-outline" size={17} color="#DC143C" />
-      <Text style={[styles.cancelButtonText, { color: '#DC143C' }]}>Eliminar</Text>
-    </TouchableOpacity>
-  )}
+                <TouchableOpacity
+                  style={[styles.cancelButton, { borderColor: '#DC143C' }]}
+                  onPress={() => confirmarEliminacion(reporte.idReporte)}
+                >
+                  <Ionicons name="trash-outline" size={17} color="#DC143C" />
+                  <Text style={[styles.cancelButtonText, { color: '#DC143C' }]}>Eliminar</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Asignar / Reasignar colaborador — solo jefes */}
               {esJefe && (
                 <TouchableOpacity style={styles.assignButton} onPress={() => abrirModal(reporte)}>
                   <Ionicons name="person-add-outline" size={17} color={colors.bg} />
@@ -598,13 +711,14 @@ const ReportesPendientes: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
               )}
-
             </View>
           )}
         </View>
       </View>
     )
   }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -614,6 +728,8 @@ const ReportesPendientes: React.FC = () => {
       </View>
     )
   }
+
+  // ── Error de inicialización ───────────────────────────────────────────────
 
   if (error) {
     return (
@@ -628,9 +744,12 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
+  // Lista de reportes según tab activo (jefe) o todos (colaborador)
   const reportesMostrados = esJefe
     ? (tabActivo === 'sinAsignar' ? reportes : reportesAsignados)
     : reportes
+
+  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <View style={{ flex: 1 }}>
@@ -650,6 +769,9 @@ const ReportesPendientes: React.FC = () => {
             {esJefe ? 'Gestión de Reportes' : 'Mis Reportes'}
           </Text>
 
+          {/* ── TABS (solo para jefes) ──────────────────────────────────────
+              Sin asignar: reportes que aún no tienen colaborador.
+              Asignados: reportes ya en progreso del departamento. ── */}
           {esJefe && (
             <View style={styles.tabsContainer}>
               <TouchableOpacity
@@ -671,6 +793,7 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
+          {/* ── LISTA DE REPORTES o estado vacío ── */}
           {reportesMostrados.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="folder-open-outline" size={72} color={colors.textMuted} />
@@ -692,13 +815,14 @@ const ReportesPendientes: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* ── MODAL ZOOM IMAGEN ── */}
+      {/* Modal de zoom para imágenes del reporte */}
       <ImagenZoomModal
         uri={imagenZoom}
         onClose={() => setImagenZoom(null)}
       />
 
-      {/* ── MODAL COLABORADORES ── */}
+      {/* ── MODAL DE SELECCIÓN DE COLABORADOR ──────────────────────────────
+          Permite al jefe elegir a quién asignar o reasignar el reporte. ── */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -717,6 +841,7 @@ const ReportesPendientes: React.FC = () => {
               </TouchableOpacity>
             </View>
 
+            {/* Lista de colaboradores disponibles en el departamento */}
             <ScrollView showsVerticalScrollIndicator={false}>
               {colaboradores.length === 0 ? (
                 <Text style={styles.modalEmptyText}>

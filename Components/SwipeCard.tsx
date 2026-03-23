@@ -1,7 +1,7 @@
 // 🎯 SwipeCard: Tarjeta interactiva con gestos de deslizamiento
 // Permite guardar o descartar una imagen mediante swipe horizontal
 import * as React from 'react';
-import { StyleSheet, View, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, Text } from 'react-native';
 // Manejo de gestos táctiles
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 // Animaciones de alto rendimiento
@@ -15,27 +15,47 @@ import Animated, {
 // Iconos visuales
 import { Heart, X, Camera } from 'lucide-react-native';
 
-// Ancho de pantalla para cálculos de swipe
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Dimensiones de pantalla para cálculos de swipe y tamaño de tarjeta
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Distancia mínima para considerar un swipe válido
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
+
+// Tamaño de la tarjeta: ancho fijo, alto limitado para que la barra superior siempre sea visible
+const CARD_WIDTH  = SCREEN_WIDTH * 0.9;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.52; // ← ajustado para dejar espacio arriba y abajo
 
 //Props del componente SwipeCard
 interface SwipeCardProps {
   photoUri?: string; // Imagen a mostrar en la tarjeta
   onSwipeLeft: () => void; // Acción al deslizar a la izquierda (guardar)
   onSwipeRight: () => void; // Acción al deslizar a la derecha (descartar)
+  // Callback que informa la dirección activa mientras el usuario arrastra
+  // 'left' = apuntando a guardar | 'right' = apuntando a descartar | null = sin dirección
+  onSwipeDirectionChange?: (direction: 'left' | 'right' | null) => void;
 }
 
 /**
  * Componente SwipeCard
  * Renderiza una tarjeta interactiva que permite guardar o descartar
  * una imagen mediante gestos de deslizamiento (swipe).
+ *
+ * Los badges GUARDAR / DESCARTAR se renderizan FUERA de la tarjeta
+ * para que la imagen nunca los tape.
  */
-export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
+export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight, onSwipeDirectionChange }: SwipeCardProps) {
   // Valores compartidos que controlan la posición de la tarjeta
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+  // Rastrea la dirección actual para evitar llamadas redundantes al callback
+  const currentDirection = useSharedValue<'left' | 'right' | null>(null);
+
+  /**
+   * Notifica al padre sobre la dirección activa.
+   * Se ejecuta en el hilo JS mediante runOnJS.
+   */
+  const notifyDirection = (direction: 'left' | 'right' | null) => {
+    onSwipeDirectionChange?.(direction);
+  };
 
   /**
    * Gesto de arrastre (Pan)
@@ -46,6 +66,22 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
       // Actualiza la posición de la tarjeta mientras se arrastra
       translateX.value = event.translationX;
       translateY.value = event.translationY;
+
+      // Notifica la dirección activa solo cuando cambia, para no saturar el hilo JS
+      if (event.translationX < -SWIPE_THRESHOLD / 2 && currentDirection.value !== 'left') {
+        currentDirection.value = 'left';
+        runOnJS(notifyDirection)('left');
+      } else if (event.translationX > SWIPE_THRESHOLD / 2 && currentDirection.value !== 'right') {
+        currentDirection.value = 'right';
+        runOnJS(notifyDirection)('right');
+      } else if (
+        Math.abs(event.translationX) <= SWIPE_THRESHOLD / 2 &&
+        currentDirection.value !== null
+      ) {
+        // Regresó al centro sin superar el umbral
+        currentDirection.value = null;
+        runOnJS(notifyDirection)(null);
+      }
     })
     .onEnd((event) => {
       // Swipe a la izquierda → Guardar
@@ -58,14 +94,16 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
         translateX.value = withSpring(SCREEN_WIDTH);
         runOnJS(onSwipeRight)();
       }
-      // Swipe insuficiente → Regresa al centro
+      // Swipe insuficiente → Regresa al centro y limpia dirección
       else {
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
+        currentDirection.value = null;
+        runOnJS(notifyDirection)(null);
       }
     });
 
-   /**
+  /**
    * Estilo animado de la tarjeta
    * Incluye traslación y rotación según la posición horizontal
    */
@@ -75,7 +113,6 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
       [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
       [-30, 0, 30]
     );
-
     return {
       transform: [
         { translateX: translateX.value },
@@ -86,33 +123,47 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
   });
 
   /**
-   * Estilo del ícono de guardar (corazón)
+   * Estilo del badge GUARDAR — flota sobre la tarjeta, esquina superior izquierda
    * Aparece progresivamente al deslizar a la izquierda
    */
-  const heartStyle = useAnimatedStyle(() => {
+  const saveStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       translateX.value,
       [-SWIPE_THRESHOLD, -SWIPE_THRESHOLD / 2, 0],
       [1, 0.5, 0]
     );
-    return { opacity };
+    const scale = interpolate(
+      translateX.value,
+      [-SWIPE_THRESHOLD, -SWIPE_THRESHOLD / 2, 0],
+      [1, 0.85, 0.7]
+    );
+    return { opacity, transform: [{ scale }] };
   });
 
   /**
-   * Estilo del ícono de descartar (X)
+   * Estilo del badge DESCARTAR — flota sobre la tarjeta, esquina superior derecha
    * Aparece progresivamente al deslizar a la derecha
    */
-  const xStyle = useAnimatedStyle(() => {
+  const discardStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       translateX.value,
       [0, SWIPE_THRESHOLD / 2, SWIPE_THRESHOLD],
       [0, 0.5, 1]
     );
-    return { opacity };
+    const scale = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD / 2, SWIPE_THRESHOLD],
+      [0.7, 0.85, 1]
+    );
+    return { opacity, transform: [{ scale }] };
   });
 
   return (
+    // El contenedor usa position: 'relative' para que los badges absolutos
+    // se posicionen respecto a él, no respecto a la tarjeta con imagen
     <View style={styles.container}>
+
+      {/* ── Tarjeta con imagen (se mueve con el gesto) ─────────────────── */}
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.card, animatedCardStyle]}>
           {/* Muestra la imagen capturada o un icono de cámara */}
@@ -123,18 +174,21 @@ export default function SwipeCard({ photoUri, onSwipeLeft, onSwipeRight }: Swipe
               <Camera size={120} color="#34F5C5" strokeWidth={1.5} />
             </View>
           )}
-
-          {/* 💚 Indicador visual de guardar */}
-          <Animated.View style={[styles.overlay, styles.leftOverlay, heartStyle]}>
-            <Heart size={80} color="#34F5C5" fill="#34F5C5" />
-          </Animated.View>
-
-          {/* ❌ Indicador visual de descartar */}
-          <Animated.View style={[styles.overlay, styles.rightOverlay, xStyle]}>
-            <X size={80} color="#2F455C" strokeWidth={3} />
-          </Animated.View>
         </Animated.View>
       </GestureDetector>
+
+      {/* ── Badge GUARDAR — fuera de la tarjeta, siempre encima ────────── */}
+      <Animated.View style={[styles.badge, styles.badgeSave, saveStyle]} pointerEvents="none">
+        <Heart size={28} color="#FFFFFF" fill="#FFFFFF" />
+        <Text style={styles.badgeText}>GUARDAR</Text>
+      </Animated.View>
+
+      {/* ── Badge DESCARTAR — fuera de la tarjeta, siempre encima ─────── */}
+      <Animated.View style={[styles.badge, styles.badgeDiscard, discardStyle]} pointerEvents="none">
+        <X size={28} color="#FFFFFF" strokeWidth={3} />
+        <Text style={styles.badgeText}>DESCARTAR</Text>
+      </Animated.View>
+
     </View>
   );
 }
@@ -144,11 +198,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 12,
   },
   card: {
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_WIDTH * 1.3,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT, // ← altura limitada, no cubre toda la pantalla
     backgroundColor: '#FFFFFF',
     borderRadius: 32,
     justifyContent: 'center',
@@ -169,29 +223,47 @@ const styles = StyleSheet.create({
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'linear-gradient(135deg, #1DCDFE 0%, #21D0B2 100%)',
     width: '100%',
     height: '100%',
   },
-  overlay: {
+
+  // ── Badges flotantes (fuera de la tarjeta, no tapados por la imagen) ──
+  badge: {
     position: 'absolute',
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 100,
-    padding: 20,
-    backdropFilter: 'blur(10px)',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    top: 20, // Alineado con la parte superior de la tarjeta
   },
-  leftOverlay: {
-    top: 80,
-    left: 30,
-    borderWidth: 4,
-    borderColor: 'rgba(52, 245, 197, 0.4)',
+  badgeSave: {
+    left: 16,
+    backgroundColor: '#21D0B2',
+    shadowColor: '#21D0B2',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  rightOverlay: {
-    top: 80,
-    right: 30,
-    borderWidth: 4,
-    borderColor: 'rgba(47, 69, 92, 0.3)',
+  badgeDiscard: {
+    right: 16,
+    backgroundColor: '#e63946',
+    shadowColor: '#e63946',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

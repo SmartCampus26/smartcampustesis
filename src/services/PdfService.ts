@@ -3,9 +3,8 @@
 // ===============================
 
 import * as Print from 'expo-print'
-import * as Sharing from 'expo-sharing'
 import * as FileSystem from 'expo-file-system/legacy'
-import { Alert } from 'react-native'
+import { guardarEnDescargas } from './DescargaPdfUtil'
 import { obtenerSesion } from '../util/Session'
 import { obtenerEstadisticas } from './filtrosReportes'
 import { Reporte, esEmpleado, esUsuario } from '../types/Database'
@@ -128,7 +127,7 @@ function generarGraficoPieSVG(stats: {
 // FUNCIÓN: GENERAR GRÁFICO DE BARRAS POR PRIORIDAD
 // ============================================
 function generarGraficoBarrasPrioridad(reportes: Reporte[]): string {
-  // ← FIX: comparar con toLowerCase() para cubrir "Alta", "ALTA", "alta"
+  // Comparar con toLowerCase() para cubrir "Alta", "ALTA", "alta"
   const conteo = {
     alta:  reportes.filter(r => r.prioReporte?.toLowerCase() === 'alta').length,
     media: reportes.filter(r => r.prioReporte?.toLowerCase() === 'media').length,
@@ -162,6 +161,13 @@ function generarGraficoBarrasPrioridad(reportes: Reporte[]): string {
 // FUNCIONES AUXILIARES
 // ============================================
 
+/**
+ * Construye el nombre del archivo PDF con fecha y nombre del generador.
+ * Limpia caracteres especiales para compatibilidad con el sistema de archivos.
+ *
+ * @param nombreGenerador - Nombre de quien genera el PDF
+ * @returns Nombre de archivo seguro
+ */
 function construirNombreArchivo(nombreGenerador?: string): string {
   const fechaArchivo = new Date().toISOString().split('T')[0]
   const nombreLimpio = (nombreGenerador || 'Sistema')
@@ -171,26 +177,46 @@ function construirNombreArchivo(nombreGenerador?: string): string {
   return `informe_${fechaArchivo}_${nombreLimpio}.pdf`
 }
 
-async function renombrarArchivoPDF(uriOriginal: string, nombreArchivo: string): Promise<string> {
-  const ultimaBarraPos: number = uriOriginal.lastIndexOf('/') + 1
-  const directorioBase = uriOriginal.substring(0, ultimaBarraPos)
-  const nuevaUri = `${directorioBase}${nombreArchivo}`
-  await FileSystem.moveAsync({ from: uriOriginal, to: nuevaUri })
-  return nuevaUri
+/**
+ * Mueve el PDF temporal generado por expo-print a una ruta con nombre descriptivo.
+ * Se usa documentDirectory para que el archivo persista y sea accesible.
+ *
+ * @param uriOriginal - URI temporal devuelta por Print.printToFileAsync
+ * @param nombreArchivo - Nombre final del archivo
+ * @returns Nueva URI del archivo con nombre correcto
+ */
+async function guardarPDFEnDispositivo(uriOriginal: string, nombreArchivo: string): Promise<string> {
+  const dirDestino = FileSystem.documentDirectory
+  if (!dirDestino) throw new Error('No se pudo acceder al directorio de documentos')
+
+  const uriDestino = `${dirDestino}${nombreArchivo}`
+  await FileSystem.moveAsync({ from: uriOriginal, to: uriDestino })
+  return uriDestino
 }
 
 // ============================================
-// FUNCIÓN PRINCIPAL: GENERAR PDF
+// FUNCIÓN PRINCIPAL: GENERAR Y DESCARGAR PDF
 // ============================================
 
+/**
+ * Genera el PDF individual de reportes y lo descarga directamente al dispositivo.
+ *
+ * CAMBIO RESPECTO A LA VERSIÓN ANTERIOR:
+ * - Se eliminó expo-sharing (causaba el error "Another share request is being processed")
+ * - Ahora el archivo se guarda en FileSystem.documentDirectory (descarga directa)
+ * - Retorna la URI del archivo guardado para que la UI pueda mostrársela al usuario
+ *
+ * @param reportes - Lista de reportes a incluir en el PDF
+ * @param opciones - Configuración del PDF (título, columnas a mostrar, gráficos)
+ * @returns URI del archivo PDF guardado en el dispositivo
+ */
 export async function generarPDF(
   reportes: Reporte[],
   opciones: OpcionesPDF = { mostrarGraficos: true }
 ) {
   try {
     if (!reportes || reportes.length === 0) {
-      Alert.alert('Advertencia', 'No hay reportes para generar el PDF')
-      return
+      throw new Error('No hay reportes para generar el PDF')
     }
 
     const stats = obtenerEstadisticas(reportes)
@@ -240,7 +266,7 @@ export async function generarPDF(
 
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            padding: 40px;
+            padding: 24px 30px;
             color: #1f2937;
             background: #ffffff;
           }
@@ -258,7 +284,6 @@ export async function generarPDF(
           .fecha-generacion { color: #6b7280; font-size: 14px; margin-top: 8px; }
           .generado-por { color: #059669; font-size: 16px; font-weight: 600; margin-top: 12px; }
 
-          /* ← FIX FINAL: texto oscuro sobre blanco — expo-print siempre renderiza esto */
           .resumen {
             border: 2px solid #1e40af;
             border-radius: 12px;
@@ -368,7 +393,6 @@ export async function generarPDF(
           .prioridad-alta     { background: #FEE2E2; color: #991b1b; }
           .prioridad-media    { background: #FED7AA; color: #9a3412; }
           .prioridad-baja     { background: #E0E7FF; color: #3730a3; }
-          /* ← FIX: badge para "no asignada" */
           .prioridad-no-asignada { background: #F3F4F6; color: #6b7280; }
 
           .descripcion { max-width: 400px; font-size: 12px; color: #4b5563; line-height: 1.4; }
@@ -385,10 +409,9 @@ export async function generarPDF(
           .no-data { text-align: center; padding: 40px; color: #6b7280; font-style: italic; }
 
           @media print {
-            body { padding: 20px; }
-            .stat-card { break-inside: avoid; }
-            tr { break-inside: avoid; }
-            .page-break { page-break-after: always; }
+            body { padding: 16px 20px; }
+            .stat-card { page-break-inside: avoid; break-inside: avoid; }
+            tr { page-break-inside: avoid; break-inside: avoid; }
           }
         </style>
       </head>
@@ -405,7 +428,7 @@ export async function generarPDF(
           ` : ''}
         </div>
 
-        <!-- RESUMEN EJECUTIVO — 100% inline styles, sin CSS externo -->
+        <!-- RESUMEN EJECUTIVO — inline styles para compatibilidad expo-print -->
         <div style="border:2px solid #1e40af; border-radius:12px; padding:24px; margin-bottom:32px;">
           <h2 style="font-size:22px; font-weight:bold; color:#1e40af; text-align:center; margin-bottom:20px; margin-top:0;">
             Resumen Ejecutivo
@@ -455,7 +478,6 @@ export async function generarPDF(
                     year: 'numeric', month: 'short', day: 'numeric'
                   })
                   const estadoNormalizado = r.estReporte?.toLowerCase().replace(/\s+/g, '-') || 'default'
-                  // ← FIX: normalizar prioridad incluyendo "no asignada"
                   const prioridadNormalizada = r.prioReporte?.toLowerCase().replace(/\s+/g, '-') || 'no-asignada'
                   const nombreUsuario  = r.usuario  ? `${r.usuario.nomUser} ${r.usuario.apeUser}`   : 'N/A'
                   const nombreEmpleado = r.empleado ? `${r.empleado.nomEmpl} ${r.empleado.apeEmpl}` : 'Sin asignar'
@@ -487,7 +509,7 @@ export async function generarPDF(
           <p>© ${new Date().getFullYear()} - Sistema de Gestión de Reportes</p>
         </div>
 
-        <div class="page-break"></div>
+        <div style="page-break-before:always;"></div>
 
         <!-- PÁGINA 2: GRÁFICOS -->
         ${opciones.mostrarGraficos !== false ? `
@@ -503,26 +525,19 @@ export async function generarPDF(
       </html>
     `
 
-    const { uri } = await Print.printToFileAsync({ html, base64: false })
-    const nombreArchivo  = construirNombreArchivo(nombreGenerador)
-    const uriConNombre   = await renombrarArchivoPDF(uri, nombreArchivo)
-    const canShare       = await Sharing.isAvailableAsync()
+    // ── DESCARGA DIRECTA a carpeta Descargas del dispositivo ────────────────
+    // En Android abre selector de carpeta (StorageAccessFramework)
+    // En iOS guarda en documentDirectory (visible desde app Archivos)
+    const { uri: uriTemporal } = await Print.printToFileAsync({ html, base64: false })
+    const nombreArchivo = construirNombreArchivo(nombreGenerador)
+    const uriDestino    = await guardarEnDescargas(uriTemporal, nombreArchivo)
 
-    if (canShare) {
-      await Sharing.shareAsync(uriConNombre, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Compartir Informe de Reportes',
-        UTI: 'com.adobe.pdf'
-      })
-    } else {
-      Alert.alert('Compartir no disponible', 'No se puede compartir el archivo en este dispositivo')
-    }
+    // El archivo queda en documentDirectory. La pantalla muestra el resultado.
 
-    return uriConNombre
+    return uriDestino
 
   } catch (error) {
     console.error('Error al generar PDF:', error)
-    Alert.alert('Error', 'No se pudo generar el PDF. Por favor, intenta nuevamente.')
     throw error
   }
 }

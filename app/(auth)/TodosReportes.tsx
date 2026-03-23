@@ -1,7 +1,11 @@
-// app/(auth)/TodosReportes.tsx
+// 📋 TodosReportes.tsx
+// Pantalla de visualización de TODOS los reportes del sistema para la autoridad.
+// Permite filtrar por rol del usuario (docente / coordinador) y por estado,
+// buscar por texto, y ver el detalle completo de cada reporte en un modal.
+
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, ScrollView,
+  ActivityIndicator, ScrollView,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,20 +22,38 @@ import {
 } from '../../src/services/TodosReportesService'
 import { Reporte } from '../../src/types/Database'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Listado global de reportes para la autoridad.
+ * Carga todos los usuarios y reportes del sistema al montar.
+ * Los filtros se aplican en memoria sobre la lista completa.
+ */
 export default function TodosReportes() {
-  const [reportes, setReportes]         = useState<reporte[]>([])
-  const [usuarios, setUsuarios]         = useState<usuario[]>([])
-  const [cargando, setCargando]         = useState(true)
+  const { showToast } = useToast()
+
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [reportes, setReportes] = useState<reporte[]>([])
+  const [usuarios, setUsuarios] = useState<usuario[]>([])
+  const [cargando, setCargando] = useState(true)
+
+  // ── Estado de filtros y búsqueda ─────────────────────────────────────────
   const [busqueda, setBusqueda]         = useState('')
   const [filtroRol, setFiltroRol]       = useState<string>('todos')
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
+
+  // ── Estado del modal de detalle ──────────────────────────────────────────
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   const [modalVisible, setModalVisible]               = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
+  /**
+   * Carga todos los usuarios y reportes del sistema desde Supabase.
+   */
   const cargarDatos = async () => {
     setCargando(true)
     try {
@@ -39,19 +61,26 @@ export default function TodosReportes() {
       setUsuarios(usuData)
       setReportes(repData)
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      showToast(error.message || 'Error al cargar reportes', 'error')
     } finally {
       setCargando(false)
     }
   }
 
+  // Lista filtrada en memoria según búsqueda, rol y estado
   const reportesFiltrados = filtrarTodosReportes(reportes, usuarios, busqueda, filtroRol, filtroEstado)
 
-  // El reporte ya viene con usuario, objeto y lugar desde el service
+  /**
+   * Abre el modal de detalle completo para el reporte seleccionado.
+   * El reporte viene del servicio ya con usuario, objeto y lugar incluidos.
+   * @param rep - Reporte a visualizar
+   */
   const abrirDetalle = (rep: reporte) => {
     setReporteSeleccionado(rep as unknown as Reporte)
     setModalVisible(true)
   }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -62,9 +91,12 @@ export default function TodosReportes() {
     )
   }
 
+  // ── Render principal ──────────────────────────────────────────────────────
+
   return (
     <View style={styles.container}>
-      {/* Estadísticas */}
+
+      {/* ── TARJETAS DE ESTADÍSTICAS RÁPIDAS ── */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Ionicons name="document-text" size={28} color="#1DCDFE" />
@@ -87,7 +119,7 @@ export default function TodosReportes() {
         </View>
       </View>
 
-      {/* Búsqueda */}
+      {/* ── BARRA DE BÚSQUEDA ── */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#6B7280" />
         <TextInput
@@ -103,9 +135,11 @@ export default function TodosReportes() {
         )}
       </View>
 
-      {/* Filtros */}
+      {/* ── FILTROS: ROL Y ESTADO ── */}
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+
+          {/* Filtros por rol del creador del reporte */}
           {(['todos', 'docente', 'autoridad'] as const).map((rol) => (
             <TouchableOpacity
               key={rol}
@@ -126,6 +160,7 @@ export default function TodosReportes() {
 
           <View style={styles.filterDivider} />
 
+          {/* Filtros por estado del reporte */}
           {([
             { key: 'todos',      label: 'Todos los Estados' },
             { key: 'pendiente',  label: '⏳ Pendiente' },
@@ -145,9 +180,10 @@ export default function TodosReportes() {
         </ScrollView>
       </View>
 
-      {/* Lista */}
+      {/* ── LISTA DE REPORTES ── */}
       <ScrollView style={styles.reportesList}>
         {reportesFiltrados.length === 0 ? (
+          // Estado vacío
           <View style={styles.emptyState}>
             <Ionicons name="document-text-outline" size={80} color="#E5E7EB" />
             <Text style={styles.emptyTitle}>No hay reportes</Text>
@@ -170,6 +206,7 @@ export default function TodosReportes() {
                   onPress={() => abrirDetalle(reporte)}
                   activeOpacity={0.75}
                 >
+                  {/* Cabecera: ID, prioridad y estado */}
                   <View style={styles.reportHeader}>
                     <View style={styles.reportBadge}>
                       <Text style={styles.reportBadgeText}>#{reporte.idReporte}</Text>
@@ -193,6 +230,7 @@ export default function TodosReportes() {
                     {reporte.descriReporte || 'Sin descripción'}
                   </Text>
 
+                  {/* Info del usuario que creó el reporte */}
                   <View style={styles.userInfo}>
                     <View style={styles.userAvatar}>
                       <Ionicons
@@ -211,6 +249,7 @@ export default function TodosReportes() {
                     </View>
                   </View>
 
+                  {/* Metadata: fecha y comentarios */}
                   <View style={styles.metadata}>
                     {reporte.fecReporte && (
                       <View style={styles.metadataItem}>
@@ -228,6 +267,7 @@ export default function TodosReportes() {
                     )}
                   </View>
 
+                  {/* Indicador de modo solo lectura */}
                   <View style={[styles.readOnlyBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
                     <Ionicons name="eye" size={16} color="#1DCDFE" />
                     <Text style={styles.readOnlyText}>Ver detalle completo</Text>
@@ -239,6 +279,7 @@ export default function TodosReportes() {
         )}
       </ScrollView>
 
+      {/* Modal de detalle completo del reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}

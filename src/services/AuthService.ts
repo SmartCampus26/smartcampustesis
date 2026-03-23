@@ -3,7 +3,7 @@
 
 import { supabase } from '../lib/Supabase'
 //Se importa la conexión a Supabase ya configurada para poder usarla y hacer consultas a la base de datos
-import { Empleado, Sesion, Usuario } from '../types/Database'
+import { Sesion} from '../types/Database'
 // Trae los tipos para que TypeScript sepa cómo lucen los datos de usuario, empleado y sesion
 import AsyncStorage from '@react-native-async-storage/async-storage'
 //se importa AsyncStorage para poder almacenar la sesión del usuario en el dispositivo de forma local
@@ -37,7 +37,7 @@ export const loginPersonalizado = async (
   contrasena: string,
   tipo: 'usuario' | 'empleado'
 ): Promise<Sesion> => {
-  try { // <--- ESTO ES LO QUE FALTABA
+  try {
     // 1. AUTH DE SUPABASE (Validar credenciales reales)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: correo,
@@ -79,7 +79,7 @@ export const loginPersonalizado = async (
     await guardarSesionLocal(sesion)
     return sesion
 
-  } catch (error: any) { // <--- Este catch ahora sí tiene su try
+  } catch (error: any) {
     console.error('Error en login:', error.message)
     throw new Error(error.message || 'Error al iniciar sesión')
   }
@@ -97,12 +97,26 @@ export const logout = async () => {
 // ===============================
 // SESIÓN ACTUAL
 // ===============================
+
+/**
+ * Obtiene la sesión activa del usuario.
+ *
+ * CORRECCIÓN: Ya no depende de supabase.auth.getSession() porque Supabase Auth
+ * tarda en restaurarse al reiniciar la app (Fast Refresh / Expo Go), causando
+ * que retornara null aunque la sesión estuviera guardada en AsyncStorage.
+ *
+ * Ahora lee directamente de AsyncStorage, que siempre está disponible
+ * de forma inmediata sin importar el estado de Supabase Auth.
+ */
 export const obtenerSesion = async (): Promise<Sesion | null> => {
-  const { data } = await supabase.auth.getSession()
-  if (data.session) {
-    return obtenerSesionLocal()
+  try {
+    const sesionString = await AsyncStorage.getItem('sesion')
+    if (!sesionString) return null
+    return JSON.parse(sesionString) as Sesion
+  } catch (error) {
+    console.error('Error al obtener sesión:', error)
+    return null
   }
-  return null
 }
 
 // ===============================
@@ -119,10 +133,8 @@ const guardarSesionLocal = async (sesion: Sesion) => {
 // Obtiene la sesión almacenada localmente
 // Devuelve null si no existe
 const obtenerSesionLocal = async (): Promise<Sesion | null> => {
-
   // Recupera el valor almacenado con la clave 'sesion'
   const sesion = await AsyncStorage.getItem('sesion')
-
   // Si existe, lo convierte nuevamente a objeto
   // Si no existe, devuelve null
   return sesion ? JSON.parse(sesion) : null
@@ -131,7 +143,6 @@ const obtenerSesionLocal = async (): Promise<Sesion | null> => {
 // Elimina la sesión del almacenamiento local
 // Se usa cuando el usuario cierra sesión
 const eliminarSesionLocal = async () => {
-
   // Borra la clave 'sesion' del AsyncStorage
   await AsyncStorage.removeItem('sesion')
 }

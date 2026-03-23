@@ -267,4 +267,35 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+
+  // ─── Toast ──────────────────────────────────────────────────────────────────
+  toast: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 80,          
+    transform: [],       
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  toastDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  toastText: {
+    color: '#f1f1f1',
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
 })

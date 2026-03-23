@@ -15,10 +15,25 @@ export interface HomeEmpleadoData {
  * Obtiene la sesión del empleado, verifica que sea de tipo 'empleado'
  * y filtra los reportes que le han sido asignados.
  *
+ * Incluye reintento automático si la sesión aún no está disponible
+ * (puede ocurrir al volver de pantallas secundarias mientras AsyncStorage
+ * todavía está cargando la sesión en memoria).
+ *
  * @returns Datos del empleado y su lista de reportes asignados
  */
 export async function cargarDatosEmpleado(): Promise<HomeEmpleadoData> {
-  const sesion = await obtenerSesion()
+  // Intentar obtener la sesión con hasta 3 reintentos de 300ms
+  // Esto resuelve el caso donde AsyncStorage tarda en devolver
+  // la sesión al volver de una pantalla secundaria
+  let sesion = await obtenerSesion()
+
+  if (!sesion) {
+    for (let intento = 1; intento <= 3; intento++) {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      sesion = await obtenerSesion()
+      if (sesion) break
+    }
+  }
 
   // Verificar que la sesión sea de tipo empleado
   // Si es usuario (docente/autoridad), no debe llegar aquí
@@ -32,7 +47,7 @@ export async function cargarDatosEmpleado(): Promise<HomeEmpleadoData> {
 
   // Filtra solo los reportes asignados al empleado
   const reportes = (reportesData || []).filter(
-    (r: Reporte) => r.idEmpl === sesion.id
+    (r: Reporte) => r.idEmpl === sesion!.id
   )
 
   return { empleado: sesion.data, reportes }

@@ -6,6 +6,9 @@ import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { supabase } from '../src/lib/Supabase';
+import { NetworkProvider } from "./Camera/context/Networkcontext";
+import { ToastProvider } from "../src/components/ToastContext";
+
 
 export default function RootLayout() {
 
@@ -80,13 +83,17 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SavedProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
-      </SavedProvider>
+      <NetworkProvider>
+        <ToastProvider>
+          <SavedProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            />
+          </SavedProvider>
+        </ToastProvider>
+      </NetworkProvider>
     </GestureHandlerRootView>
   );
 }

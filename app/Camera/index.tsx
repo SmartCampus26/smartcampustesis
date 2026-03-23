@@ -19,7 +19,13 @@ export default function HomeScreen() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraType, setCameraType] = useState<CameraType>('back');
   const [showFeedback, setShowFeedback] = useState<'saved' | 'discarded' | null>(null);
+  // ── Dirección activa mientras el usuario arrastra la tarjeta
+  // null = sin arrastrar | 'left' = apuntando a guardar | 'right' = apuntando a descartar
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const cameraRef = useRef<CameraView>(null);
+
+  // ✅ Límite: solo se permite 1 foto guardada por reporte
+  const hasReachedLimit = savedPhotos.length >= 1;
 
   const requestPermissions = async () => {
     if (!cameraPermission?.granted) {
@@ -40,6 +46,15 @@ export default function HomeScreen() {
   };
 
   const handleOpenCamera = async () => {
+    // Bloquear cámara si ya se guardó 1 foto
+    if (hasReachedLimit) {
+      Alert.alert(
+        'Límite alcanzado',
+        'Ya tienes una foto guardada para este reporte. Reinicia si deseas tomar otra.',
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
     const hasPermissions = await requestPermissions();
     if (hasPermissions) setShowCamera(true);
   };
@@ -63,6 +78,7 @@ export default function HomeScreen() {
     try {
       await MediaLibrary.saveToLibraryAsync(currentPhoto);
       addSavedPhoto(currentPhoto);
+      setSwipeDirection(null);
       setShowFeedback('saved');
       setTimeout(() => { setShowFeedback(null); setCurrentPhoto(null); }, 500);
     } catch (error) {
@@ -72,6 +88,7 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = () => {
+    setSwipeDirection(null);
     setShowFeedback('discarded');
     setTimeout(() => { setShowFeedback(null); setCurrentPhoto(null); }, 500);
   };
@@ -80,6 +97,7 @@ export default function HomeScreen() {
     clearSavedPhotos();
     setCurrentPhoto(null);
     setShowFeedback(null);
+    setSwipeDirection(null);
     setShowCamera(false);
   };
 
@@ -122,6 +140,31 @@ export default function HomeScreen() {
         <Text style={styles.photoCount}>{savedPhotos.length} fotos guardadas</Text>
       </View>
 
+      {/* ── INSTRUCCIÓN DE SWIPE ────────────────────────────────────────────────
+          Texto siempre visible debajo del header cuando hay foto pendiente.
+          Cambia dinámicamente según hacia dónde arrastra el usuario.
+          Los badges animados (GUARDAR / DESCARTAR) viven dentro de SwipeCard.
+      ────────────────────────────────────────────────────────────────────── */}
+      {currentPhoto && !showFeedback && (
+        <View style={[
+          styles.instructionBar,
+          swipeDirection === 'left' && styles.instructionBarSave,
+          swipeDirection === 'right' && styles.instructionBarDiscard,
+        ]}>
+          <Text style={[
+            styles.instructionText,
+            swipeDirection === 'left' && styles.instructionTextSave,
+            swipeDirection === 'right' && styles.instructionTextDiscard,
+          ]}>
+            {swipeDirection === 'left'
+              ? '💚 ¡Suelta para guardar!'
+              : swipeDirection === 'right'
+              ? '❌ ¡Suelta para descartar!'
+              : '👆 Desliza la foto  ←guardar   descartar→'}
+          </Text>
+        </View>
+      )}
+
       {/* Tarjeta con foto o estado vacío */}
       <View style={styles.cardContainer}>
         {currentPhoto ? (
@@ -129,6 +172,7 @@ export default function HomeScreen() {
             photoUri={currentPhoto}
             onSwipeLeft={handleSwipeLeft}
             onSwipeRight={handleSwipeRight}
+            onSwipeDirectionChange={setSwipeDirection}
           />
         ) : (
           <View style={styles.emptyState}>
@@ -151,9 +195,15 @@ export default function HomeScreen() {
       {/* Botones inferiores */}
       <View style={styles.footer}>
         {!currentPhoto && (
-          <TouchableOpacity style={styles.cameraButton} onPress={handleOpenCamera}>
-            <Camera size={24} color="#FFFFFF" />
-            <Text style={styles.buttonText}>Tomar Foto</Text>
+          <TouchableOpacity
+            style={[styles.cameraButton, hasReachedLimit && styles.cameraButtonDisabled]}
+            onPress={handleOpenCamera}
+            disabled={hasReachedLimit}
+          >
+            <Camera size={24} color={hasReachedLimit ? 'rgba(255,255,255,0.4)' : '#FFFFFF'} />
+            <Text style={[styles.buttonText, hasReachedLimit && styles.buttonTextDisabled]}>
+              {hasReachedLimit ? 'Foto ya guardada' : 'Tomar Foto'}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -180,17 +230,71 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F0F9FF' },
   header: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 20,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(29, 205, 254, 0.15)',
     backgroundColor: '#FFFFFF',
   },
-  title: { 
-   fontSize: 38, 
-   fontWeight: '800', color: '#1DCDFE', letterSpacing: -1, marginBottom: 8 },
+  title: {
+    fontSize: 38,
+    fontWeight: '800', color: '#1DCDFE', letterSpacing: -1, marginBottom: 8
+  },
   subtitle: { fontSize: 14, color: '#2F455C', marginTop: 4, fontWeight: '500', textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
   photoCount: { fontSize: 13, color: '#2F455C', marginTop: 8, fontWeight: '600', backgroundColor: 'rgba(52, 245, 197, 0.1)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(33, 208, 178, 0.2)' },
+
+  // ── Barra de instrucción dinámica ────────────────────────────────────────────
+  instructionBar: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(29, 205, 254, 0.2)',
+    alignItems: 'center',
+    shadowColor: '#1DCDFE',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  instructionBarSave: {
+    backgroundColor: 'rgba(33, 208, 178, 0.12)',
+    borderColor: '#21D0B2',
+  },
+  instructionBarDiscard: {
+    backgroundColor: 'rgba(230, 57, 70, 0.1)',
+    borderColor: '#e63946',
+  },
+  instructionText: {
+    fontSize: 13,
+    color: '#2F455C',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  instructionTextSave: {
+    color: '#21D0B2',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  instructionTextDiscard: {
+    color: '#e63946',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+
+  // ── Botón cámara deshabilitado ───────────────────────────────────────────────
+  cameraButtonDisabled: {
+    backgroundColor: 'rgba(29, 205, 254, 0.3)',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonTextDisabled: { color: 'rgba(255,255,255,0.5)' },
+
+  // ── Resto de estilos originales ─────────────────────────────────────────────
   cardContainer: { flex: 1 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 50 },
   emptyText: { fontSize: 24, fontWeight: '700', color: '#2F455C', marginTop: 24, letterSpacing: -0.5 },

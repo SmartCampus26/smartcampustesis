@@ -1,5 +1,5 @@
 // Importa AsyncStorage para almacenamiento local persistente
-// Se utiliza para guardar la sesión del usuario en el dispositivo
+// Se utiliza para guardar la sesión del usuario en el dispositivo de forma local
 import AsyncStorage from '@react-native-async-storage/async-storage'
 // Importa el tipo Sesion definido en la base de datos
 import { Sesion } from '../types/Database'
@@ -24,18 +24,21 @@ export const guardarSesion = async (sesion: Sesion): Promise<void> => {
 }
 
 /**
- * Obtiene la sesión almacenada del usuario
- * Si no existe sesión, retorna null
+ * Obtiene la sesión almacenada del usuario directamente desde AsyncStorage.
+ *
+ * IMPORTANTE: No depende de supabase.auth.getSession() porque Supabase Auth
+ * tarda en restaurarse al reiniciar la app (Fast Refresh / Expo Go), lo que
+ * causaba que obtenerSesion() retornara null aunque la sesión estuviera guardada.
+ * Ahora lee directo de AsyncStorage para ser siempre confiable.
+ *
+ * Si no existe sesión retorna null.
  *
  * @returns Objeto Sesion o null si no hay sesión activa
  */
 export const obtenerSesion = async (): Promise<Sesion | null> => {
   try {
     const sesionString = await AsyncStorage.getItem(SESION_KEY)
-    if (!sesionString) {
-      return null
-    }
-    
+    if (!sesionString) return null
     const sesion = JSON.parse(sesionString) as Sesion
     return sesion
   } catch (error) {
@@ -91,14 +94,8 @@ import { esUsuario } from '../types/Database'
  */
 export const obtenerRolUsuario = async (): Promise<string | null> => {
   const sesion = await obtenerSesion()
-
-  // Verifica si la sesión corresponde a un usuario
   if (!sesion) return null
-
-  if (esUsuario(sesion)) {
-    return sesion.rol
-  }
-
+  if (esUsuario(sesion)) return sesion.rol
   // Si es empleado, no tiene rol de usuario
   return null
 }

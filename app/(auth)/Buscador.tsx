@@ -1,34 +1,22 @@
-// ===============================
-// IMPORTACIONES
-// ===============================
+// 👥 ListadoMaxAutoridad.tsx
+// Pantalla de gestión de personal para la máxima autoridad.
+// Permite visualizar, buscar, filtrar y eliminar usuarios y empleados.
 
-// Importa React y los hooks useEffect (ejecuta código al montar el componente)
-// y useState (manejo de estados)
 import * as React from 'react'
-import { useEffect, useState } from 'react'
-
-// Componentes visuales de React Native
+import { useEffect, useState, useRef, useCallback } from 'react'
 import {
-  ActivityIndicator,   // Spinner de carga
-  Alert,               // Ventanas emergentes de alerta
-  RefreshControl,      // Control para refrescar con gesto pull-to-refresh
-  ScrollView,          // Contenedor con scroll vertical
-  Text,                // Texto
-  TextInput,           // Campo de entrada
-  TouchableOpacity,    // Botón táctil
-  View,                // Contenedor base
+  ActivityIndicator,
+  Animated,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 
-// Tipos de datos definidos en tu proyecto
 import { Empleado, Usuario } from '../../src/types/Database'
-
-// Funciones del servicio Buscadorservice:
-// - Obtener usuarios
-// - Obtener empleados
-// - Eliminar usuario
-// - Eliminar empleado
-// - Filtrar usuarios
-// - Filtrar empleados
 import {
   fetchUsuarios,
   fetchEmpleados,
@@ -37,177 +25,182 @@ import {
   filtrarUsuarios,
   filtrarEmpleados,
 } from '../../src/services/Buscadorservice'
-
-// Importa los estilos personalizados
 import { styles } from '../../src/components/Buscadorstyles'
+import { useToast } from '../../src/components/ToastContext'
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
-// ===============================
-// TIPO DE FILTRO
-// ===============================
-
-// Define los posibles filtros disponibles
+/** Opciones del filtro principal de la lista */
 type TipoPersonal = 'todos' | 'usuarios' | 'empleados'
 
+/** Datos necesarios para mostrar el modal de confirmación */
+interface ConfirmData {
+  visible: boolean
+  nombre: string
+  onConfirm: () => void
+}
 
-// ===============================
-// COMPONENTE PRINCIPAL
-// ===============================
+// ─── Modal confirmación ───────────────────────────────────────────────────────
 
+/**
+ * Modal de confirmación antes de eliminar un registro.
+ * Muestra el nombre del elemento a eliminar y dos acciones: cancelar o confirmar.
+ */
+function ConfirmModal({
+  visible,
+  nombre,
+  onConfirm,
+  onCancel,
+}: ConfirmData & { onCancel: () => void }) {
+  return (
+    <Modal transparent animationType="fade" visible={visible}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalBox}>
+          <Text style={styles.modalTitle}>Confirmar eliminación</Text>
+          <Text style={styles.modalMessage}>
+            ¿Estás segura de eliminar a{' '}
+            <Text style={styles.modalBold}>{nombre}</Text>?
+          </Text>
+          <View style={styles.modalRow}>
+            <TouchableOpacity style={styles.modalBtnCancel} onPress={onCancel}>
+              <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalBtnDelete} onPress={onConfirm}>
+              <Text style={styles.modalBtnDeleteText}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Pantalla principal de gestión de personal.
+ * Carga usuarios y empleados desde Supabase, permite buscar por texto,
+ * filtrar por tipo y eliminar registros con confirmación.
+ */
 export default function ListadoMaxAutoridad() {
 
-  // ===============================
-  // ESTADOS
-  // ===============================
+  // ── Toast global ─────────────────────────────────────────────────────────────
+  const { showToast } = useToast()
 
-  // Lista completa de usuarios
+  // ── Estado de datos ──────────────────────────────────────────────────────────
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
-
-  // Lista completa de empleados
   const [empleados, setEmpleados] = useState<Empleado[]>([])
-
-  // Texto de búsqueda
   const [busqueda, setBusqueda] = useState('')
-
-  // Filtro activo actual
   const [filtroActivo, setFiltroActivo] = useState<TipoPersonal>('todos')
-
-  // Estado de carga inicial
   const [cargando, setCargando] = useState(true)
-
-  // Estado para refresh (pull-to-refresh)
   const [refrescando, setRefrescando] = useState(false)
 
+  // ── Estado del modal de confirmación ────────────────────────────────────────
+  const [confirm, setConfirm] = useState<ConfirmData>({
+    visible: false,
+    nombre: '',
+    onConfirm: () => {},
+  })
 
-  // ===============================
-  // useEffect → Se ejecuta al montar
-  // ===============================
+  // ── Helpers ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    cargarDatos()
-  }, [])
+  /** Abre el modal de confirmación con el nombre y la acción a ejecutar */
+  const openConfirm = (nombre: string, onConfirm: () => void) =>
+    setConfirm({ visible: true, nombre, onConfirm })
 
+  /** Cierra el modal de confirmación sin ejecutar ninguna acción */
+  const closeConfirm = () => setConfirm((p) => ({ ...p, visible: false }))
 
-  // ===============================
-  // FUNCIÓN PARA CARGAR DATOS
-  // ===============================
+  // ── Carga de datos ────────────────────────────────────────────────────────────
 
+  useEffect(() => { cargarDatos() }, [])
+
+  /**
+   * Carga usuarios y empleados desde Supabase.
+   * Maneja los estados de carga y refresco.
+   */
   const cargarDatos = async () => {
     try {
-      // Obtiene usuarios desde la base de datos
       setUsuarios(await fetchUsuarios())
-
-      // Obtiene empleados desde la base de datos
       setEmpleados(await fetchEmpleados())
     } catch {
-      // Si ocurre error muestra alerta
-      Alert.alert('Error', 'No se pudieron cargar los datos')
+      showToast('No se pudieron cargar los datos', 'error')
     } finally {
-      // Finaliza estados de carga
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+  /** Activa el estado de refresco y recarga los datos */
+  const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
-  // ===============================
-  // FUNCIÓN PARA REFRESCAR
-  // ===============================
+  // ── Eliminación ───────────────────────────────────────────────────────────────
 
-  const onRefresh = () => {
-    setRefrescando(true)
-    cargarDatos()
-  }
-
-
-  // ===============================
-  // CONFIRMAR ELIMINACIÓN
-  // ===============================
-
-  const confirmarEliminar = (nombre: string, onConfirm: () => void) => {
-    Alert.alert(
-      'Confirmar eliminación',
-      `¿Estás segura de eliminar a ${nombre}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: onConfirm },
-      ]
-    )
-  }
-
-
-  // ===============================
-  // ELIMINAR USUARIO
-  // ===============================
-
+  /**
+   * Solicita confirmación y elimina un usuario por su ID.
+   * Muestra toast de éxito o error según el resultado.
+   */
   const eliminarUsuario = (id: string, nombre: string) => {
-    confirmarEliminar(nombre, async () => {
+    openConfirm(nombre, async () => {
+      closeConfirm()
       try {
         await eliminarUsuarioDB(id)
-        Alert.alert('Éxito', 'Usuario eliminado correctamente')
+        showToast('Usuario eliminado correctamente', 'success')
         cargarDatos()
       } catch {
-        Alert.alert('Error', 'No se pudo eliminar el usuario')
+        showToast('No se pudo eliminar el usuario', 'error')
       }
     })
   }
 
-
-  // ===============================
-  // ELIMINAR EMPLEADO
-  // ===============================
-
+  /**
+   * Solicita confirmación y elimina un empleado por su ID.
+   * Muestra toast de éxito o error según el resultado.
+   */
   const eliminarEmpleado = (id: string, nombre: string) => {
-    confirmarEliminar(nombre, async () => {
+    openConfirm(nombre, async () => {
+      closeConfirm()
       try {
         await eliminarEmpleadoDB(id)
-        Alert.alert('Éxito', 'Empleado eliminado correctamente')
+        showToast('Empleado eliminado correctamente', 'success')
         cargarDatos()
       } catch {
-        Alert.alert('Error', 'No se pudo eliminar el empleado')
+        showToast('No se pudo eliminar el empleado', 'error')
       }
     })
   }
 
+  // ── Filtros ───────────────────────────────────────────────────────────────────
 
-  // ===============================
-  // FILTRADO DE DATOS
-  // ===============================
-
+  // Listas filtradas según el texto de búsqueda actual
   const usuariosFiltrados = filtrarUsuarios(usuarios, busqueda)
   const empleadosFiltrados = filtrarEmpleados(empleados, busqueda)
-
   const totalUsuarios = usuariosFiltrados.length
   const totalEmpleados = empleadosFiltrados.length
   const totalGeneral = totalUsuarios + totalEmpleados
 
+  // ── Renders de tarjetas ───────────────────────────────────────────────────────
 
-  // ===============================
-  // RENDER DE USUARIO
-  // ===============================
-
+  /**
+   * Renderiza la tarjeta de un usuario con sus datos y botón de eliminación.
+   * Muestra: nombre, rol, correo, teléfono, fecha de registro e ID.
+   */
   const renderUsuario = (usuario: Usuario) => (
     <View key={usuario.idUser} style={[styles.card, styles.usuarioCard]}>
-
-      {/* Encabezado */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.cardName}>
             {usuario.nomUser} {usuario.apeUser}
           </Text>
-
-          {/* Badge de rol */}
           <View style={[
             styles.badge,
-            usuario.rolUser === 'autoridad' ? styles.badgeAutoridad : styles.badgeDocente
+            usuario.rolUser === 'autoridad' ? styles.badgeAutoridad : styles.badgeDocente,
           ]}>
             <Text style={styles.badgeText}>
               {usuario.rolUser === 'autoridad' ? '👔 Coordinador' : '📚 Docente'}
             </Text>
           </View>
         </View>
-
-        {/* Botón eliminar */}
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => eliminarUsuario(usuario.idUser, `${usuario.nomUser} ${usuario.apeUser}`)}
@@ -215,26 +208,23 @@ export default function ListadoMaxAutoridad() {
           <Text style={styles.deleteButtonText}>🗑️</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Cuerpo de la tarjeta */}
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📧 Correo:</Text>
           <Text style={styles.infoValue}>{usuario.correoUser}</Text>
         </View>
-
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📱 Teléfono:</Text>
           <Text style={styles.infoValue}>{usuario.tlfUser || 'No registrado'}</Text>
         </View>
-
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📅 Registro:</Text>
           <Text style={styles.infoValue}>
-            {usuario.fec_reg_user ? new Date(usuario.fec_reg_user).toLocaleDateString() : 'N/A'}
+            {usuario.fec_reg_user
+              ? new Date(usuario.fec_reg_user).toLocaleDateString()
+              : 'N/A'}
           </Text>
         </View>
-
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>🆔 ID:</Text>
           <Text style={styles.infoValue}>{usuario.idUser}</Text>
@@ -243,30 +233,26 @@ export default function ListadoMaxAutoridad() {
     </View>
   )
 
-
-  // ===============================
-  // RENDER DE EMPLEADO
-  // ===============================
-
+  /**
+   * Renderiza la tarjeta de un empleado con sus datos y botón de eliminación.
+   * Muestra: nombre, departamento, cargo, correo, teléfono e ID.
+   */
   const renderEmpleado = (empleado: Empleado) => (
     <View key={empleado.idEmpl} style={[styles.card, styles.empleadoCard]}>
-
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <Text style={styles.cardName}>
             {empleado.nomEmpl} {empleado.apeEmpl}
           </Text>
-
           <View style={styles.badgeContainer}>
             <View style={[styles.badge, styles.badgeDepartamento]}>
               <Text style={styles.badgeText}>
                 {empleado.deptEmpl === 'mantenimiento' ? '🔧 Mantenimiento' : '💻 Sistemas'}
               </Text>
             </View>
-
             <View style={[
               styles.badge,
-              empleado.cargEmpl === 'jefe' ? styles.badgeJefe : styles.badgeEmpleado
+              empleado.cargEmpl === 'jefe' ? styles.badgeJefe : styles.badgeEmpleado,
             ]}>
               <Text style={styles.badgeText}>
                 {empleado.cargEmpl === 'jefe' ? '👨‍💼 Jefe' : '👷 Colaborador'}
@@ -274,7 +260,6 @@ export default function ListadoMaxAutoridad() {
             </View>
           </View>
         </View>
-
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => eliminarEmpleado(empleado.idEmpl, `${empleado.nomEmpl} ${empleado.apeEmpl}`)}
@@ -282,18 +267,15 @@ export default function ListadoMaxAutoridad() {
           <Text style={styles.deleteButtonText}>🗑️</Text>
         </TouchableOpacity>
       </View>
-
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📧 Correo:</Text>
           <Text style={styles.infoValue}>{empleado.correoEmpl}</Text>
         </View>
-
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>📱 Teléfono:</Text>
           <Text style={styles.infoValue}>{empleado.tlfEmpl || 'No registrado'}</Text>
         </View>
-
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>🆔 ID:</Text>
           <Text style={styles.infoValue}>{empleado.idEmpl}</Text>
@@ -302,10 +284,7 @@ export default function ListadoMaxAutoridad() {
     </View>
   )
 
-
-  // ===============================
-  // SI ESTÁ CARGANDO
-  // ===============================
+  // ── Loading ───────────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -316,20 +295,18 @@ export default function ListadoMaxAutoridad() {
     )
   }
 
-
-  // ===============================
-  // RENDER PRINCIPAL
-  // ===============================
+  // ── Render principal ──────────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+
+      {/* Encabezado con título y total */}
       <View style={styles.header}>
         <Text style={styles.title}>Listado de Personal</Text>
         <Text style={styles.subtitle}>Total: {totalGeneral} personas</Text>
       </View>
 
-      {/* Barra de búsqueda */}
+      {/* Campo de búsqueda por texto */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -340,7 +317,7 @@ export default function ListadoMaxAutoridad() {
         />
       </View>
 
-      {/* Filtros dinámicos */}
+      {/* Filtros: Todos / Usuarios / Colaboradores */}
       <View style={styles.filterContainer}>
         {(['todos', 'usuarios', 'empleados'] as TipoPersonal[]).map((f) => (
           <TouchableOpacity
@@ -348,7 +325,10 @@ export default function ListadoMaxAutoridad() {
             style={[styles.filterButton, filtroActivo === f && styles.filterButtonActive]}
             onPress={() => setFiltroActivo(f)}
           >
-            <Text style={[styles.filterButtonText, filtroActivo === f && styles.filterButtonTextActive]}>
+            <Text style={[
+              styles.filterButtonText,
+              filtroActivo === f && styles.filterButtonTextActive,
+            ]}>
               {f === 'todos'
                 ? `Todos (${totalGeneral})`
                 : f === 'usuarios'
@@ -359,13 +339,12 @@ export default function ListadoMaxAutoridad() {
         ))}
       </View>
 
-      {/* Lista con scroll y pull-to-refresh */}
+      {/* Lista principal con pull-to-refresh */}
       <ScrollView
         style={styles.listContainer}
         refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} />}
       >
-
-        {/* Usuarios */}
+        {/* Sección de usuarios */}
         {(filtroActivo === 'todos' || filtroActivo === 'usuarios') && (
           <>
             {usuariosFiltrados.length > 0 ? (
@@ -379,7 +358,7 @@ export default function ListadoMaxAutoridad() {
           </>
         )}
 
-        {/* Empleados */}
+        {/* Sección de colaboradores */}
         {(filtroActivo === 'todos' || filtroActivo === 'empleados') && (
           <>
             {empleadosFiltrados.length > 0 ? (
@@ -393,13 +372,22 @@ export default function ListadoMaxAutoridad() {
           </>
         )}
 
-        {/* Sin resultados generales */}
+        {/* Sin resultados globales */}
         {totalGeneral === 0 && busqueda !== '' && (
           <Text style={styles.noResults}>No se encontraron resultados</Text>
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Modal de confirmación de eliminación */}
+      <ConfirmModal
+        visible={confirm.visible}
+        nombre={confirm.nombre}
+        onConfirm={confirm.onConfirm}
+        onCancel={closeConfirm}
+      />
+
     </View>
   )
 }

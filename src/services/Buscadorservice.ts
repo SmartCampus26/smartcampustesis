@@ -1,8 +1,16 @@
+// 📦 Buscadorservice.ts
+// Servicios de acceso a datos para el listado de personal (usuarios y empleados).
+// Centraliza todas las operaciones con Supabase y la lógica de filtrado local.
+
 import { supabase } from '../lib/Supabase'
 import { Empleado, Usuario } from '../types/Database'
 
+// ─── Fetch ────────────────────────────────────────────────────────────────────
+
 /**
- * Obtiene todos los usuarios ordenados alfabéticamente
+ * Obtiene todos los usuarios ordenados alfabéticamente por nombre.
+ * @returns Lista de usuarios registrados en la tabla `usuario`
+ * @throws Error de Supabase si la consulta falla
  */
 export const fetchUsuarios = async (): Promise<Usuario[]> => {
   const { data, error } = await supabase
@@ -15,7 +23,9 @@ export const fetchUsuarios = async (): Promise<Usuario[]> => {
 }
 
 /**
- * Obtiene todos los empleados ordenados alfabéticamente
+ * Obtiene todos los empleados ordenados alfabéticamente por nombre.
+ * @returns Lista de empleados registrados en la tabla `empleado`
+ * @throws Error de Supabase si la consulta falla
  */
 export const fetchEmpleados = async (): Promise<Empleado[]> => {
   const { data, error } = await supabase
@@ -27,8 +37,12 @@ export const fetchEmpleados = async (): Promise<Empleado[]> => {
   return data || []
 }
 
+// ─── Eliminación ──────────────────────────────────────────────────────────────
+
 /**
- * Elimina un usuario por su ID
+ * Elimina un usuario de la base de datos por su ID.
+ * @param id - ID del usuario a eliminar (`idUser`)
+ * @throws Error de Supabase si la eliminación falla
  */
 export const eliminarUsuarioDB = async (id: string): Promise<void> => {
   const { error } = await supabase
@@ -40,7 +54,9 @@ export const eliminarUsuarioDB = async (id: string): Promise<void> => {
 }
 
 /**
- * Elimina un empleado por su ID
+ * Elimina un empleado de la base de datos por su ID.
+ * @param id - ID del empleado a eliminar (`idEmpl`)
+ * @throws Error de Supabase si la eliminación falla
  */
 export const eliminarEmpleadoDB = async (id: string): Promise<void> => {
   const { error } = await supabase
@@ -51,8 +67,14 @@ export const eliminarEmpleadoDB = async (id: string): Promise<void> => {
   if (error) throw error
 }
 
+// ─── Filtrado local ───────────────────────────────────────────────────────────
+
 /**
- * Filtra usuarios por término de búsqueda
+ * Filtra la lista de usuarios en memoria según un término de búsqueda.
+ * Busca coincidencias en: nombre, apellido, correo, rol e ID.
+ * @param usuarios - Lista completa de usuarios
+ * @param busqueda - Texto ingresado por el usuario en el buscador
+ * @returns Subconjunto de usuarios que coinciden con el término
  */
 export const filtrarUsuarios = (usuarios: Usuario[], busqueda: string): Usuario[] => {
   const t = busqueda.toLowerCase()
@@ -66,7 +88,11 @@ export const filtrarUsuarios = (usuarios: Usuario[], busqueda: string): Usuario[
 }
 
 /**
- * Filtra empleados por término de búsqueda
+ * Filtra la lista de empleados en memoria según un término de búsqueda.
+ * Busca coincidencias en: nombre, apellido, correo, departamento, cargo e ID.
+ * @param empleados - Lista completa de empleados
+ * @param busqueda - Texto ingresado por el usuario en el buscador
+ * @returns Subconjunto de empleados que coinciden con el término
  */
 export const filtrarEmpleados = (empleados: Empleado[], busqueda: string): Empleado[] => {
   const t = busqueda.toLowerCase()

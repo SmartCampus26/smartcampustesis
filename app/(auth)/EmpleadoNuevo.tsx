@@ -1,10 +1,14 @@
+// 👷 EmpleadoNuevo.tsx
+// Pantalla para registrar un nuevo colaborador (personal de mantenimiento o sistemas).
+// Permite ingresar datos personales, asignar departamento y cargo,
+// y crear la cuenta en Supabase Auth + tabla empleado.
+
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { Eye, EyeOff } from 'lucide-react-native'
 import * as React from 'react'
 import { useState } from 'react'
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,42 +23,67 @@ import {
   NuevoEmpleadoForm,
   validarEmpleado,
 } from '../../src/services/EmpleadoNuevoService'
+import { useToast } from '../../src/components/ToastContext'
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Pantalla de registro de nuevo colaborador.
+ * Al crear exitosamente, Supabase envía un correo de verificación
+ * y la app navega de vuelta automáticamente tras 4 segundos.
+ */
 export default function EmpleadoNuevo() {
+  const { showToast } = useToast()
+
+  // ── Estado del formulario ─────────────────────────────────────────────────
   const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({
-    nomEmpl: '',
-    apeEmpl: '',
+    nomEmpl:   '',
+    apeEmpl:   '',
     correoEmpl: '',
     contraEmpl: '',
-    tlfEmpl: '',
-    deptEmpl: 'mantenimiento',
-    cargEmpl: 'colaborador',
+    tlfEmpl:   '',
+    deptEmpl:  'mantenimiento',
+    cargEmpl:  'colaborador',
   })
-  const [cargando, setCargando] = useState(false)
-
+  const [cargando, setCargando]               = useState(false)
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
+  /**
+   * Actualiza un campo individual del formulario sin mutar el resto.
+   * @param campo - Clave del campo a actualizar
+   * @param valor - Nuevo valor del campo
+   */
   const set = (campo: keyof NuevoEmpleadoForm, valor: string) =>
     setNuevoEmpleado((prev) => ({ ...prev, [campo]: valor }))
 
+  // ── Crear colaborador ─────────────────────────────────────────────────────
+
+  /**
+   * Valida el formulario y crea el colaborador en Supabase.
+   * Si la validación falla, muestra un toast de error.
+   * Si la creación es exitosa, muestra un toast de éxito
+   * y vuelve atrás automáticamente tras 4 segundos.
+   */
   const handleCrear = async () => {
     const error = validarEmpleado(nuevoEmpleado)
-    if (error) { Alert.alert('Campos Incompletos', error); return }
+    if (error) {
+      showToast(error, 'error')
+      return
+    }
 
     setCargando(true)
     try {
       await crearEmpleadoDB(nuevoEmpleado)
-      Alert.alert(
-        '✅ Colaborador creado',
-        'Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl,
-        [{ text: 'OK', onPress: () => router.back() }]
-      )
+      showToast('Colaborador creado. Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl, 'success', 4000)
+      setTimeout(() => router.back(), 4000)
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo crear el colaborador')
+      showToast(err.message || 'No se pudo crear el colaborador', 'error')
     } finally {
       setCargando(false)
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <KeyboardAvoidingView
@@ -74,7 +103,7 @@ export default function EmpleadoNuevo() {
 
         <View style={styles.form}>
 
-          {/* Nombre */}
+          {/* ── Nombre ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nombre *</Text>
             <View style={styles.inputContainer}>
@@ -88,7 +117,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Apellido */}
+          {/* ── Apellido ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Apellido *</Text>
             <View style={styles.inputContainer}>
@@ -102,7 +131,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Correo */}
+          {/* ── Correo electrónico ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Correo Electrónico *</Text>
             <View style={styles.inputContainer}>
@@ -118,7 +147,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Contraseña */}
+          {/* ── Contraseña con toggle de visibilidad ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Contraseña *</Text>
             <View style={styles.inputContainer}>
@@ -130,6 +159,7 @@ export default function EmpleadoNuevo() {
                 value={nuevoEmpleado.contraEmpl}
                 onChangeText={(t) => set('contraEmpl', t)}
               />
+              {/* Botón para alternar visibilidad de contraseña */}
               <TouchableOpacity onPress={() => setMostrarContrasena(prev => !prev)}>
                 {mostrarContrasena
                   ? <EyeOff size={20} color="#6B7280" />
@@ -139,7 +169,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Teléfono */}
+          {/* ── Teléfono (opcional) ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Teléfono (Opcional)</Text>
             <View style={styles.inputContainer}>
@@ -155,7 +185,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Departamento */}
+          {/* ── Selector de departamento ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Departamento *</Text>
             <View style={styles.roleContainer}>
@@ -178,36 +208,22 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Cargo */}
+          {/* ── Selector de cargo ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Cargo *</Text>
             <View style={styles.roleContainer}>
               {(['colaborador', 'jefe'] as const).map((cargo) => (
                 <TouchableOpacity
                   key={cargo}
-                  style={[
-                    styles.roleButton,
-                    nuevoEmpleado.cargEmpl === cargo && styles.roleButtonActive,
-                  ]}
+                  style={[styles.roleButton, nuevoEmpleado.cargEmpl === cargo && styles.roleButtonActive]}
                   onPress={() => set('cargEmpl', cargo)}
                 >
                   <Ionicons
                     name={cargo === 'jefe' ? 'shield-checkmark' : 'person'}
                     size={24}
-                    color={
-                      nuevoEmpleado.cargEmpl === cargo
-                        ? '#FFF'
-                        : cargo === 'jefe'
-                        ? '#21D0B2'
-                        : '#2F455C'
-                    }
+                    color={nuevoEmpleado.cargEmpl === cargo ? '#FFF' : cargo === 'jefe' ? '#21D0B2' : '#2F455C'}
                   />
-                  <Text
-                    style={[
-                      styles.roleButtonText,
-                      nuevoEmpleado.cargEmpl === cargo && styles.roleButtonTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.roleButtonText, nuevoEmpleado.cargEmpl === cargo && styles.roleButtonTextActive]}>
                     {cargo === 'jefe' ? 'Jefe' : 'Colaborador'}
                   </Text>
                 </TouchableOpacity>
@@ -215,7 +231,7 @@ export default function EmpleadoNuevo() {
             </View>
           </View>
 
-          {/* Info */}
+          {/* ── Nota informativa ── */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1DCDFE" />
             <Text style={styles.infoText}>
@@ -223,7 +239,7 @@ export default function EmpleadoNuevo() {
             </Text>
           </View>
 
-          {/* Botones */}
+          {/* ── Botones de acción ── */}
           <TouchableOpacity
             style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
             onPress={handleCrear}

@@ -1,61 +1,123 @@
-// app/(auth)/HomeEmpleado.tsx
+// 🔧 HomeEmpleado.tsx
+// Pantalla principal para colaboradores (personal de mantenimiento y sistemas).
+// Muestra las tareas asignadas, botones de PDF personal y (para jefes) PDF general,
+// y un modal de detalle para cada reporte.
+
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, RefreshControl,
   ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { Reporte } from '../../src/types/Database'
-import { generarPDF } from '../../src/components/PdfService'
 import { cargarDatosEmpleado, getStatusColor, getPriorityColor } from '../../src/services/Homeempleadoservice'
 import { homeEmpleadoStyles as styles } from '../../src/components/homeEmpleadoStyles'
-// ── NUEVO ──
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-
+// ── PDF General: solo visible para jefes de área ──
+import { puedeGenerarPdfGeneral } from '../../src/services/PdfDepartamentalService'
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Panel de inicio para colaboradores (empleados).
+ * Determina si el empleado es jefe para mostrar u ocultar el botón de PDF general.
+ * Soporta pull-to-refresh y modal de detalle por reporte.
+ */
 export default function HomeEmpleados() {
-  const [empleado, setEmpleado]         = useState<any>(null)
-  const [reportes, setReportes]         = useState<Reporte[]>([])
-  const [cargando, setCargando]         = useState(true)
-  const [refrescando, setRefrescando]   = useState(false)
-  // ── NUEVO ──
+  const { showToast } = useToast()
+
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [empleado, setEmpleado]       = useState<any>(null)
+  const [reportes, setReportes]       = useState<Reporte[]>([])
+  const [cargando, setCargando]       = useState(true)
+  const [refrescando, setRefrescando] = useState(false)
+
+  // ── Acceso al PDF General ────────────────────────────────────────────────
+  // Solo visible para empleados con cargEmpl === 'jefe' en sistemas o mantenimiento.
+  // verificandoAcceso evita que el botón aparezca brevemente antes de confirmar el rol.
+  const [mostrarBtnGeneral, setMostrarBtnGeneral] = useState(false)
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true)
+
+  // ── Estado del modal de detalle ──────────────────────────────────────────
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   const [modalVisible, setModalVisible]               = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
-  const cargarDatos = async () => {
+  /**
+   * Carga el empleado autenticado, sus reportes asignados
+   * y verifica si tiene acceso al PDF general (solo jefes).
+   *
+   * Incluye reintentos silenciosos cuando el error es de sesión.
+   * Ocurre al volver de PdfPreview mientras AsyncStorage todavía
+   * está restaurando la sesión. Se reintenta hasta 3 veces con 400ms.
+   *
+   * @param intento - Número de intento actual (default 1)
+   */
+  const cargarDatos = async (intento = 1) => {
     try {
       const datos = await cargarDatosEmpleado()
       setEmpleado(datos.empleado)
       setReportes(datos.reportes)
+
+      const acceso = await puedeGenerarPdfGeneral()
+      setMostrarBtnGeneral(acceso)
+      setVerificandoAcceso(false)
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      const msg: string = error?.message ?? ''
+      const esSesion = msg.includes('válida') || msg.includes('sesión') || msg.includes('Sesión')
+
+      // Reintentar silenciosamente si es error de sesión y quedan intentos
+      if (esSesion && intento < 4) {
+        await new Promise(r => setTimeout(r, 400))
+        return cargarDatos(intento + 1)
+      }
+
+      // Solo mostrar toast si es un error real (no de sesión)
+      if (!esSesion) {
+        showToast(msg || 'Error al cargar datos', 'error')
+      }
     } finally {
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+  /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
-  const imprimirPDF = async () => {
-    try {
-      await generarPDF(reportes, {
-        titulo: 'Mis Tareas Asignadas',
-        incluirEmpleado: false,
-        incluirUsuario: true,
-      })
-    } catch (error: any) {
-      Alert.alert('Error', error?.message ?? 'No se pudo generar el PDF')
+  /**
+   * Navega a la pantalla de previsualización del PDF personal.
+   * Solo navega si el empleado tiene reportes asignados.
+   * Si no tiene, muestra un toast informativo.
+   */
+  const abrirPdfPersonal = () => {
+    if (reportes.length === 0) {
+      showToast('No tienes tareas asignadas para generar el PDF', 'info')
+      return
     }
+    router.push('/PdfPersonalPreview')
   }
 
-  // ── NUEVO ──
+  /**
+   * Navega a la pantalla de previsualización del PDF General.
+   * Solo disponible para jefes de área (mostrarBtnGeneral === true).
+   */
+  const abrirPdfGeneral = () => router.push('/PdfPreview')
+
+  /**
+   * Abre el modal de detalle para el reporte seleccionado.
+   * @param reporte - Reporte a visualizar
+   */
   const abrirDetalle = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -64,6 +126,8 @@ export default function HomeEmpleados() {
       </View>
     )
   }
+
+  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <View style={{ flex: 1 }}>
@@ -79,12 +143,33 @@ export default function HomeEmpleados() {
           <Text style={styles.role}>Tareas Asignadas</Text>
         </View>
 
-        {/* Botón PDF */}
-        <TouchableOpacity style={styles.pdfButton} onPress={imprimirPDF}>
-          <Text style={styles.pdfButtonText}>Imprimir PDF</Text>
-        </TouchableOpacity>
+        {/* ── BOTONES DE PDF ──────────────────────────────────────────────────
+            Layout en fila si hay 2 botones, columna si solo hay 1. ── */}
+        <View style={pdfRowStyle(mostrarBtnGeneral)}>
 
-        {/* LISTA DE REPORTES */}
+          {/* PDF Individual — siempre visible para todos los colaboradores */}
+          <TouchableOpacity
+            style={[styles.pdfButton, mostrarBtnGeneral && { flex: 1 }]}
+            onPress={abrirPdfPersonal}
+          >
+            <Ionicons name="document-text-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+            <Text style={styles.pdfButtonText}>Mi PDF</Text>
+          </TouchableOpacity>
+
+          {/* PDF General — solo visible para jefes una vez confirmado el rol */}
+          {!verificandoAcceso && mostrarBtnGeneral && (
+            <TouchableOpacity
+              style={[styles.pdfButton, { flex: 1, backgroundColor: '#1e40af' }]}
+              onPress={abrirPdfGeneral}
+            >
+              <Ionicons name="people-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text style={styles.pdfButtonText}>PDF General</Text>
+            </TouchableOpacity>
+          )}
+
+        </View>
+
+        {/* ── LISTA DE TAREAS ASIGNADAS ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mis Tareas</Text>
           {reportes.length === 0 ? (
@@ -94,7 +179,6 @@ export default function HomeEmpleados() {
             </View>
           ) : (
             reportes.map((reporte) => (
-              // ── CAMBIO: View → TouchableOpacity ──
               <TouchableOpacity
                 key={reporte.idReporte}
                 style={styles.reportCard}
@@ -121,6 +205,7 @@ export default function HomeEmpleados() {
                   </Text>
                 </View>
 
+                {/* Usuario que solicitó el reporte */}
                 {reporte.usuario && (
                   <View style={styles.requesterInfo}>
                     <Text style={styles.requesterLabel}>
@@ -134,7 +219,7 @@ export default function HomeEmpleados() {
         </View>
       </ScrollView>
 
-      {/* ── NUEVO: Modal de detalle ── */}
+      {/* Modal de detalle de reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}
@@ -142,4 +227,21 @@ export default function HomeEmpleados() {
       />
     </View>
   )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Retorna el estilo del contenedor de botones PDF.
+ * Con dos botones usa fila con gap; con uno usa columna.
+ *
+ * @param mostrarGeneral - true si se debe mostrar el botón de PDF General
+ */
+function pdfRowStyle(mostrarGeneral: boolean) {
+  return {
+    flexDirection: mostrarGeneral ? ('row' as const) : ('column' as const),
+    gap: mostrarGeneral ? 10 : 0,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  }
 }

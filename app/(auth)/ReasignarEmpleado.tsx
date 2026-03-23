@@ -1,4 +1,8 @@
-// app/(auth)/ReasignarEmpleado.tsx
+// 🔄 ReasignarEmpleado.tsx
+// Pantalla para que la autoridad reasigne reportes activos a colaboradores.
+// Muestra la lista de reportes con filtros, un modal de selección de colaborador
+// y un modal de detalle completo del reporte.
+
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator, Alert, Modal,
@@ -15,30 +19,53 @@ import {
   filtrarEmpleados,
   getEmpleadoNombre,
 } from '../../src/services/Reasignarempleadoservice'
-// ── NUEVO ──
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
+import { useToast } from '../../src/components/ToastContext'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Acorta un ID largo para mostrarlo en la tarjeta del reporte.
+ * Si el ID tiene más de 12 caracteres, muestra los primeros 8 y los últimos 4.
+ * @param id - ID a formatear
+ */
 const formatId = (id: string): string => {
   if (!id) return ''
   if (id.length <= 12) return id
   return `${id.slice(0, 8)}…${id.slice(-4)}`
 }
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Pantalla de reasignación de reportes.
+ * Carga empleados y reportes al montar.
+ * Permite filtrar colaboradores por departamento y cargo en el modal de asignación.
+ * La confirmación de reasignación usa Alert nativo (2 botones).
+ * Los errores se reportan vía toast global.
+ */
 export default function ReasignarEmpleado() {
+  const { showToast } = useToast()
 
-  const [empleados, setEmpleados]               = useState<Empleado[]>([])
-  const [reportes, setReportes]                 = useState<Reporte[]>([])
-  const [cargando, setCargando]                 = useState(true)
-  const [modalVisible, setModalVisible]         = useState(false)
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [empleados, setEmpleados]                     = useState<Empleado[]>([])
+  const [reportes, setReportes]                       = useState<Reporte[]>([])
+  const [cargando, setCargando]                       = useState(true)
+  const [nombreAutoridad, setNombreAutoridad]         = useState<string>('Sistema')
+
+  // ── Estado del modal de reasignación ────────────────────────────────────
+  const [modalVisible, setModalVisible]               = useState(false)
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
-  const [nombreAutoridad, setNombreAutoridad]   = useState<string>('Sistema')
-  const [filtroDepto, setFiltroDepto]           = useState<string>('todos')
-  const [filtroCargo, setFiltroCargo]           = useState<string>('todos')
 
-  // ── NUEVO: estado del modal de detalle ──
-  const [detalleVisible, setDetalleVisible]     = useState(false)
-  const [reporteDetalle, setReporteDetalle]     = useState<Reporte | null>(null)
+  // ── Filtros del modal de reasignación ───────────────────────────────────
+  const [filtroDepto, setFiltroDepto] = useState<string>('todos')
+  const [filtroCargo, setFiltroCargo] = useState<string>('todos')
 
+  // ── Estado del modal de detalle completo ────────────────────────────────
+  const [detalleVisible, setDetalleVisible] = useState(false)
+  const [reporteDetalle, setReporteDetalle] = useState<Reporte | null>(null)
+
+  // Inicializa la pantalla en paralelo: carga datos y sesión
   useEffect(() => {
     const inicializarPantalla = async () => {
       setCargando(true)
@@ -48,45 +75,68 @@ export default function ReasignarEmpleado() {
     inicializarPantalla()
   }, [])
 
+  /**
+   * Carga el nombre del usuario autoridad desde la sesión activa.
+   * Se usa para registrar quién realizó la reasignación en el historial.
+   */
   const cargarSesion = async () => {
     const nombre = await cargarNombreAutoridad()
     setNombreAutoridad(nombre)
   }
 
+  /**
+   * Carga la lista de empleados y reportes activos desde Supabase.
+   */
   const cargarDatos = async () => {
     try {
       const { empleados: empData, reportes: repData } = await cargarEmpleadosYReportes()
       setEmpleados(empData)
       setReportes(repData)
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      showToast(error.message || 'Error al cargar datos', 'error')
     }
   }
 
+  /**
+   * Abre el modal de selección de colaborador para el reporte dado.
+   * @param reporte - Reporte a reasignar
+   */
   const abrirModalReasignacion = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
 
-  // ── NUEVO ──
+  /**
+   * Abre el modal de detalle completo del reporte.
+   * @param reporte - Reporte a visualizar
+   */
   const abrirDetalle = (reporte: Reporte) => {
     setReporteDetalle(reporte)
     setDetalleVisible(true)
   }
 
+  /**
+   * Ejecuta la reasignación del reporte al empleado seleccionado.
+   * Muestra toast de éxito o error según el resultado.
+   * La confirmación previa se maneja en el onPress del empleado (Alert nativo).
+   * @param empleadoId - ID del empleado al que se reasigna
+   */
   const reasignarReporte = async (empleadoId: string) => {
     if (!reporteSeleccionado) return
     try {
       await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad)
-      Alert.alert('¡Éxito!', 'Reporte reasignado correctamente')
+      showToast('Reporte reasignado correctamente', 'success')
       setModalVisible(false)
       cargarDatos()
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      showToast(error.message || 'Error al reasignar', 'error')
     }
   }
 
+  // Lista de empleados filtrada por departamento y cargo
   const empleadosFiltrados = filtrarEmpleados(empleados, filtroDepto, filtroCargo)
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -97,10 +147,13 @@ export default function ReasignarEmpleado() {
     )
   }
 
+  // ── Render principal ──────────────────────────────────────────────────────
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={styles.container}>
-        {/* Header estadísticas */}
+
+        {/* ── HEADER: tarjetas de estadísticas rápidas ── */}
         <View style={styles.header}>
           <View style={styles.statCard}>
             <Ionicons name="people" size={30} color="#1DCDFE" />
@@ -114,7 +167,7 @@ export default function ReasignarEmpleado() {
           </View>
         </View>
 
-        {/* Reportes */}
+        {/* ── LISTA DE REPORTES ACTIVOS ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Reportes Activos</Text>
           <Text style={styles.sectionSubtitle}>Selecciona un reporte para reasignar</Text>
@@ -127,9 +180,10 @@ export default function ReasignarEmpleado() {
           ) : (
             reportes.map((reporte) => (
               <View key={reporte.idReporte} style={styles.reportCard}>
+
+                {/* Cabecera de la tarjeta */}
                 <View style={styles.reportHeader}>
                   <View style={styles.reportBadge}>
-                    {/* ID corto */}
                     <Text style={styles.reportBadgeText}>#{formatId(String(reporte.idReporte))}</Text>
                   </View>
                   <Ionicons name="document-text-outline" size={24} color="#2F455C" />
@@ -139,6 +193,7 @@ export default function ReasignarEmpleado() {
                   {reporte.descriReporte || 'Sin descripción'}
                 </Text>
 
+                {/* Badges de estado y prioridad */}
                 <View style={styles.statusBadges}>
                   <View style={[styles.badge, styles.badgeEstado]}>
                     <Text style={styles.badgeText}>{reporte.estReporte}</Text>
@@ -148,6 +203,7 @@ export default function ReasignarEmpleado() {
                   </View>
                 </View>
 
+                {/* Colaborador actualmente asignado */}
                 <View style={styles.assignedContainer}>
                   <Ionicons name="person-outline" size={16} color="#6B7280" />
                   <Text style={styles.assignedText}>
@@ -155,7 +211,7 @@ export default function ReasignarEmpleado() {
                   </Text>
                 </View>
 
-                {/* ── NUEVO: botón Ver Detalle ── */}
+                {/* Botón para abrir el modal de detalle completo */}
                 <TouchableOpacity
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -169,6 +225,7 @@ export default function ReasignarEmpleado() {
                   </Text>
                 </TouchableOpacity>
 
+                {/* Botón para abrir el modal de reasignación */}
                 <TouchableOpacity
                   style={styles.reassignButton}
                   onPress={() => abrirModalReasignacion(reporte)}
@@ -181,7 +238,7 @@ export default function ReasignarEmpleado() {
           )}
         </View>
 
-        {/* Modal reasignación (ya existía) */}
+        {/* ── MODAL DE SELECCIÓN DE COLABORADOR ── */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -197,7 +254,7 @@ export default function ReasignarEmpleado() {
                 </TouchableOpacity>
               </View>
 
-              {/* Filtros */}
+              {/* Filtros del modal: por departamento y cargo */}
               <View style={styles.filtersContainer}>
                 <Text style={styles.filterLabel}>Filtrar por:</Text>
                 <View style={styles.filterRow}>
@@ -240,6 +297,7 @@ export default function ReasignarEmpleado() {
                 </View>
               </View>
 
+              {/* Lista de colaboradores filtrados */}
               <ScrollView style={styles.empleadosList}>
                 {empleadosFiltrados.length === 0 ? (
                   <View style={styles.emptyState}>
@@ -252,6 +310,7 @@ export default function ReasignarEmpleado() {
                       key={empleado.idEmpl}
                       style={styles.empleadoCard}
                       onPress={() => {
+                        // ⚠️ Alert se mantiene — confirmación con 2 botones (Cancelar / Confirmar)
                         Alert.alert(
                           'Confirmar Reasignación',
                           `¿Reasignar reporte a ${empleado.nomEmpl} ${empleado.apeEmpl}?`,
@@ -300,7 +359,7 @@ export default function ReasignarEmpleado() {
         </Modal>
       </ScrollView>
 
-      {/* ── NUEVO: Modal detalle completo ── */}
+      {/* Modal de detalle completo del reporte */}
       <ReporteDetalleModal
         visible={detalleVisible}
         reporte={reporteDetalle}

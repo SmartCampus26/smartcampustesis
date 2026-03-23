@@ -1,8 +1,12 @@
+// 👤 UsuarioNuevo.tsx
+// Pantalla para registrar un nuevo usuario del sistema (docente o coordinador).
+// Permite ingresar datos personales, seleccionar rol, y crear la cuenta
+// en Supabase Auth + tabla usuario.
+
 // React y hook para manejar estado del formulario
 import { useState } from 'react'
-// Componentes nativos para la interfaz del usuario y control del teclado
+// Componentes nativos para la interfaz y control del teclado
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,64 +21,92 @@ import { Ionicons } from '@expo/vector-icons'
 import { Eye, EyeOff } from 'lucide-react-native'
 // Router de Expo para navegación entre pantallas
 import { router } from 'expo-router'
-// Lógica de creación de usuario y validaciones
+// Lógica de creación de usuario, tipo del formulario, valor inicial y validaciones
 import {
   crearUsuario,
-  NuevoUsuarioData, USUARIO_INICIAL,
-  validarUsuario
+  NuevoUsuarioData,
+  USUARIO_INICIAL,
+  validarUsuario,
 } from '../../src/services/UsuarioServices'
 // Estilos
 import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoStyles'
-
+// Toast global para notificaciones
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
 
-//COMPONENTE
+// ─── Componente principal ─────────────────────────────────────────────────────
+
 /**
- * Pantalla para registrar un nuevo usuario (docente o autoridad)
- * Permite ingresar datos personales y guardarlos en la base de datos
+ * Pantalla de registro de nuevo usuario (docente o coordinador).
+ * Al crear exitosamente, Supabase envía un enlace de verificación al correo
+ * y la app navega de vuelta automáticamente tras 4 segundos.
  */
 export default function UsuarioNuevo() {
-  // Estado que almacena los datos del nuevo usuario
+  const { showToast } = useToast()
+
+  // ── Estado del formulario ─────────────────────────────────────────────────
+  // Se inicializa con USUARIO_INICIAL para garantizar valores por defecto limpios
   const [nuevoUsuario, setNuevoUsuario] = useState<NuevoUsuarioData>(USUARIO_INICIAL)
-  // Estado para controlar el indicador de carga
+  // Controla el indicador de carga mientras se procesa la solicitud
   const [cargando, setCargando] = useState(false)
-  // Estado para controlar la visibilidad de la contraseña
+  // Controla la visibilidad del campo de contraseña
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
 
+  /**
+   * Retorna una función que actualiza un campo específico del formulario.
+   * Usa currying para mantener el handler limpio en los TextInput.
+   * @param campo - Nombre del campo a actualizar
+   */
   const set = (campo: keyof NuevoUsuarioData) => (valor: string) =>
     setNuevoUsuario(prev => ({ ...prev, [campo]: valor }))
 
-  // Función que valida los datos y registra el usuario en Supabase
+  // ── Crear usuario ─────────────────────────────────────────────────────────
+
+  /**
+   * Valida el formulario y crea el usuario en Supabase.
+   * Flujo:
+   *   1. Valida campos → muestra error si falla
+   *   2. Llama al servicio de creación
+   *   3. Muestra toast de éxito y vuelve atrás tras 4 segundos
+   *   4. En caso de error, muestra toast con el mensaje recibido
+   */
   const handleCrear = async () => {
     const error = validarUsuario(nuevoUsuario)
-    if (error) return Alert.alert('Campos incompletos', error)
+    if (error) {
+      showToast(error, 'error')
+      return
+    }
 
     setCargando(true)
     try {
       await crearUsuario(nuevoUsuario)
-      Alert.alert(
-        '¡Listo!',
-        'Usuario registrado. Se ha enviado un enlace de verificación a ' + nuevoUsuario.correoUser,
-        [{ text: 'Entendido', onPress: () => router.back() }]
+      showToast(
+        'Usuario registrado. Se envió un enlace de verificación a ' + nuevoUsuario.correoUser,
+        'success',
+        4000
       )
+      setTimeout(() => router.back(), 4000)
     } catch (error) {
       if (error instanceof Error) {
-        Alert.alert('Error', error.message)
+        showToast(error.message, 'error')
       } else {
-        Alert.alert('Error', 'Ocurrió un error inesperado')
+        showToast('Ocurrió un error inesperado', 'error')
       }
     } finally {
       setCargando(false)
     }
   }
 
-  //RENDER PRINCIPAL
+  // ── Render principal ──────────────────────────────────────────────────────
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* HEADER */}
         <View style={styles.header}>
           <Ionicons name="person-add" size={50} color="#1DCDFE" />
           <Text style={styles.title}>Nuevo Usuario</Text>
@@ -85,20 +117,20 @@ export default function UsuarioNuevo() {
 
         <View style={styles.form}>
 
-          {/* Nombre */}
+          {/* ── Nombre ── */}
           <Campo label="Nombre *" icon="person-outline" placeholder="Ej: Juan Carlos"
             value={nuevoUsuario.nomUser} onChangeText={set('nomUser')} />
 
-          {/* Apellido */}
+          {/* ── Apellido ── */}
           <Campo label="Apellido *" icon="person-outline" placeholder="Ej: Pérez García"
             value={nuevoUsuario.apeUser} onChangeText={set('apeUser')} />
 
-          {/* Correo */}
+          {/* ── Correo electrónico ── */}
           <Campo label="Correo Electrónico *" icon="mail-outline" placeholder="correo@ejemplo.com"
             value={nuevoUsuario.correoUser} onChangeText={set('correoUser')}
             keyboardType="email-address" autoCapitalize="none" />
 
-          {/* Contraseña con toggle de visibilidad */}
+          {/* ── Contraseña con toggle de visibilidad ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Contraseña *</Text>
             <View style={styles.inputContainer}>
@@ -110,7 +142,7 @@ export default function UsuarioNuevo() {
                 value={nuevoUsuario.contraUser}
                 onChangeText={set('contraUser')}
               />
-              {/* Botón para mostrar/ocultar contraseña */}
+              {/* Botón para mostrar u ocultar la contraseña */}
               <TouchableOpacity onPress={() => setMostrarContrasena(prev => !prev)}>
                 {mostrarContrasena
                   ? <EyeOff size={20} color="#6B7280" />
@@ -120,12 +152,12 @@ export default function UsuarioNuevo() {
             </View>
           </View>
 
-          {/* Teléfono */}
+          {/* ── Teléfono (opcional) ── */}
           <Campo label="Teléfono (Opcional)" icon="call-outline" placeholder="Ej: 0987654321"
             value={nuevoUsuario.tlfUser} onChangeText={set('tlfUser')}
             keyboardType="phone-pad" maxLength={10} />
 
-          {/* Rol */}
+          {/* ── Selector de rol ── */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Rol del Usuario *</Text>
             <View style={styles.roleContainer}>
@@ -151,7 +183,7 @@ export default function UsuarioNuevo() {
             </View>
           </View>
 
-          {/* Botones */}
+          {/* ── Botones de acción ── */}
           <TouchableOpacity
             style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
             onPress={handleCrear}
@@ -174,6 +206,13 @@ export default function UsuarioNuevo() {
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
+/**
+ * Campo de texto reutilizable con ícono y label.
+ * Acepta todas las props de TextInput además de `label` e `icon`.
+ *
+ * @param label - Texto del label superior
+ * @param icon  - Nombre del ícono de Ionicons a mostrar a la izquierda
+ */
 function Campo({ label, icon, ...props }: {
   label: string
   icon: React.ComponentProps<typeof Ionicons>['name']

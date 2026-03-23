@@ -1,7 +1,11 @@
-// app/(auth)/HomeDocente.tsx
+// 📚 HomeDocente.tsx
+// Pantalla principal para usuarios con rol de docente.
+// Muestra estadísticas de reportes propios, lista de reportes recientes
+// con modal de detalle, y botón para crear nuevos reportes.
+
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, RefreshControl,
   ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
@@ -10,25 +14,38 @@ import { Reporte } from '../../src/types/Database'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
 import { homeDocenteStyles as styles } from '../../src/components/homeDocenteStyles'
-// ── NUEVO ──
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Panel de inicio para docentes.
+ * Carga el usuario autenticado y sus reportes al montar.
+ * Soporta pull-to-refresh y modal de detalle por reporte.
+ */
 export default function HomeUsuario() {
-  const [usuario, setUsuario]       = useState<any>(null)
-  const [reportes, setReportes]     = useState<Reporte[]>([])
-  const [cargando, setCargando]     = useState(true)
+  const { showToast } = useToast()
+
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [usuario, setUsuario]         = useState<any>(null)
+  const [reportes, setReportes]       = useState<Reporte[]>([])
+  const [cargando, setCargando]       = useState(true)
   const [refrescando, setRefrescando] = useState(false)
   const [stats, setStats] = useState<HomeDocenteStats>({
     total: 0, pendientes: 0, enProceso: 0, resueltos: 0,
   })
-  // ── NUEVO: estado del modal ──
+
+  // ── Estado del modal de detalle ──────────────────────────────────────────
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
+  /**
+   * Carga el usuario autenticado, sus reportes y estadísticas desde Supabase.
+   */
   const cargarDatos = async () => {
     try {
       const datos = await cargarDatosDocente()
@@ -36,18 +53,22 @@ export default function HomeUsuario() {
       setReportes(datos.reportes)
       setStats(datos.stats)
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      showToast(error.message || 'Error al cargar datos', 'error')
     } finally {
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+  /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
+  /**
+   * Navega a CrearReporte pasando el ID y nombre del usuario autenticado.
+   */
   const handleCrearReporte = () => {
     if (!usuario?.idUser) {
-      Alert.alert('Error', 'No se pudo identificar al usuario')
+      showToast('No se pudo identificar al usuario', 'error')
       return
     }
     router.push({
@@ -56,11 +77,16 @@ export default function HomeUsuario() {
     })
   }
 
-  // ── NUEVO ──
+  /**
+   * Abre el modal de detalle para el reporte seleccionado.
+   * @param reporte - Reporte a visualizar
+   */
   const abrirDetalle = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -69,6 +95,8 @@ export default function HomeUsuario() {
       </SafeAreaView>
     )
   }
+
+  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -86,7 +114,8 @@ export default function HomeUsuario() {
           </View>
         </View>
 
-        {/* ===== ESTADÍSTICAS ===== */}
+        {/* ===== ESTADÍSTICAS =====
+            Cada tarjeta filtra el ListadoReportes al presionar. ===== */}
         <View style={styles.statsContainer}>
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#13947F' }]}
@@ -125,8 +154,8 @@ export default function HomeUsuario() {
           </TouchableOpacity>
         </View>
 
-        {/* ===== REPORTES RECIENTES ===== */}
-        {/* Si el HomeDocente muestra reportes, renderizarlos como cards tocables */}
+        {/* ===== REPORTES RECIENTES =====
+            Muestra hasta 3 reportes recientes como cards tocables. ===== */}
         {reportes.length > 0 && (
           <View style={styles.createSection}>
             {reportes.slice(0, 3).map((reporte) => (
@@ -172,7 +201,7 @@ export default function HomeUsuario() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* ── NUEVO: Modal de detalle ── */}
+      {/* Modal de detalle de reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}

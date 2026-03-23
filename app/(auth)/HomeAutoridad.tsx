@@ -1,32 +1,53 @@
-// app/(auth)/HomeAutoridad.tsx
+// 🏛️ HomeAutoridad.tsx
+// Pantalla principal para usuarios con rol de autoridad (coordinadores).
+// Muestra estadísticas de reportes, acceso al informe resumido PDF,
+// botón para crear reportes y lista de reportes recientes con modal de detalle.
+
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { Reporte } from '../../src/types/Database'
 import { cargarDatosAutoridad, getStatusColor, getPriorityColor, HomeAutoridadStats } from '../../src/services/HomeAutoridadService'
 import { homeAutoridadStyles as styles } from '../../src/components/homeAutoridadStyles'
-// ── NUEVO ──
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
+import { useToast } from '../../src/components/ToastContext'
+// ── PDF General: la autoridad siempre tiene acceso ──
+// No necesita verificar puedeGenerarPdfGeneral() porque su rol garantiza acceso.
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Panel de inicio para coordinadores/autoridades.
+ * Carga los datos del usuario y sus reportes al montar,
+ * y soporta pull-to-refresh para actualizar.
+ */
 export default function HomeAutoridad() {
-  const [usuario, setUsuario] = useState<any>(null)
+  const { showToast } = useToast()
+
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [usuario, setUsuario]   = useState<any>(null)
   const [reportes, setReportes] = useState<Reporte[]>([])
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
   const [stats, setStats] = useState<HomeAutoridadStats>({
     total: 0, pendientes: 0, enProceso: 0, resueltos: 0,
   })
-  // ── NUEVO: estado del modal ──
+
+  // ── Estado del modal de detalle ──────────────────────────────────────────
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
+  /**
+   * Carga el usuario autenticado, sus reportes y estadísticas desde Supabase.
+   * Maneja estados de carga inicial y refresco por pull-to-refresh.
+   */
   const cargarDatos = async () => {
     try {
       const datos = await cargarDatosAutoridad()
@@ -35,18 +56,23 @@ export default function HomeAutoridad() {
       setReportes(datos.reportes)
       setStats(datos.stats)
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      showToast(error.message || 'Error al cargar datos', 'error')
     } finally {
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+  /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); cargarDatos() }
 
+  /**
+   * Navega a la pantalla de creación de reporte.
+   * Pasa el ID y nombre del usuario como parámetros de ruta.
+   */
   const handleCrearReporte = () => {
     if (!usuario?.idUser) {
-      Alert.alert('Error', 'No se pudo identificar al usuario')
+      showToast('No se pudo identificar al usuario', 'error')
       return
     }
     router.push({
@@ -55,11 +81,24 @@ export default function HomeAutoridad() {
     })
   }
 
-  // ── NUEVO: abrir modal con el reporte seleccionado ──
+  /**
+   * Abre el modal de detalle para el reporte seleccionado.
+   * @param reporte - Reporte a visualizar en el modal
+   */
   const abrirDetalle = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
+
+  /**
+   * Navega a la pantalla de previsualización del PDF Resumido.
+   * La autoridad ve el informe de todos los departamentos con filtro.
+   */
+  const abrirPdfGeneral = () => {
+    router.push('/PdfResumidoPreview')
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -68,6 +107,8 @@ export default function HomeAutoridad() {
       </View>
     )
   }
+
+  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
@@ -85,7 +126,8 @@ export default function HomeAutoridad() {
           </View>
         </View>
 
-        {/* ===== ESTADÍSTICAS ===== */}
+        {/* ===== ESTADÍSTICAS =====
+            Cada tarjeta navega al listado filtrado por estado al presionar. ===== */}
         <View style={styles.statsContainer}>
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#13947F' }]}
@@ -124,6 +166,20 @@ export default function HomeAutoridad() {
           </TouchableOpacity>
         </View>
 
+        {/* ===== BOTÓN INFORME RESUMIDO =====
+            La autoridad descarga el informe resumido con filtro por departamento. ===== */}
+        <View style={styles.pdfButtonContainer}>
+          <TouchableOpacity
+            style={styles.pdfButton}
+            onPress={abrirPdfGeneral}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bar-chart-outline" size={20} color="#ffffff" />
+            <Text style={styles.pdfButtonText}>Informe Resumido por Departamento</Text>
+            <Ionicons name="chevron-forward" size={18} color="#93c5fd" />
+          </TouchableOpacity>
+        </View>
+
         {/* ===== BOTÓN CREAR REPORTE ===== */}
         <View style={styles.createSection}>
           <TouchableOpacity style={styles.createButton} onPress={handleCrearReporte}>
@@ -140,7 +196,8 @@ export default function HomeAutoridad() {
           </TouchableOpacity>
         </View>
 
-        {/* ===== REPORTES RECIENTES ===== */}
+        {/* ===== REPORTES RECIENTES =====
+            Muestra los 3 reportes más recientes. Cada uno abre el modal de detalle. ===== */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Reportes Recientes</Text>
@@ -160,7 +217,6 @@ export default function HomeAutoridad() {
             </View>
           ) : (
             reportes.slice(0, 3).map((reporte) => (
-              // ── CAMBIO: onPress ahora abre el modal ──
               <TouchableOpacity
                 key={reporte.idReporte}
                 style={styles.reportCard}
@@ -200,7 +256,7 @@ export default function HomeAutoridad() {
           )}
         </View>
 
-        {/* ===== CONSEJOS ===== */}
+        {/* ===== CONSEJO DEL DÍA ===== */}
         <View style={styles.tipsCard}>
           <View style={styles.tipsHeader}>
             <Ionicons name="bulb" size={24} color="#FFA726" />
@@ -214,7 +270,7 @@ export default function HomeAutoridad() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* ── NUEVO: Modal de detalle ── */}
+      {/* Modal de detalle de reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}

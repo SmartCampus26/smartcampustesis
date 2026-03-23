@@ -40,7 +40,7 @@ export const homeAutoridadStyles = StyleSheet.create({
   },
   reportHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',  // ← FIX: igual que homeEmpleado
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -48,14 +48,14 @@ export const homeAutoridadStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2F455C',
-    flexShrink: 1,        // ← FIX
-    marginRight: 8,       // ← FIX
+    flexShrink: 1,
+    marginRight: 8,
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    flexShrink: 0,        // ← FIX
+    flexShrink: 0,
   },
   statusText: {
     color: '#FFFFFF',
@@ -120,5 +120,32 @@ export const homeAutoridadStyles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+
+  // ── Botón de informe PDF resumido ──────────────────────────────────────────
+  // Aparece entre las estadísticas y el botón de crear reporte en HomeAutoridad.
+  // Permite a la autoridad acceder al informe resumido con filtro por departamento.
+  pdfButtonContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  pdfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#1e40af',
+    borderRadius: 12,
+    paddingVertical: 14,
+    shadowColor: '#1e40af',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  pdfButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 })

@@ -1,7 +1,12 @@
-// app/(auth)/ListadoReportes.tsx
+// 📄 ListadoReportes.tsx
+// Pantalla de listado de reportes del usuario autenticado.
+// Permite filtrar por estado (todos, pendiente, en proceso, resuelto),
+// buscar por texto, refrescar con pull-to-refresh y ver el detalle
+// de cada reporte en un modal.
+
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, RefreshControl, ScrollView,
+  ActivityIndicator, RefreshControl, ScrollView,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
@@ -15,24 +20,35 @@ import {
   getStatusColor,
   getPriorityColor,
 } from '../../src/services/ListadoReportesService'
-// ── NUEVO ──
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Lista de reportes del usuario autenticado con filtros y búsqueda.
+ * Acepta el param `filtro` por ruta para pre-seleccionar el filtro de estado.
+ */
 export default function MisReportes() {
   const { filtro } = useLocalSearchParams<{ filtro?: string }>()
+  const { showToast } = useToast()
 
-  const [reportes, setReportes]                 = useState<Reporte[]>([])
+  // ── Estado de datos ──────────────────────────────────────────────────────
+  const [reportes, setReportes]                   = useState<Reporte[]>([])
   const [reportesFiltrados, setReportesFiltrados] = useState<Reporte[]>([])
-  const [cargando, setCargando]                 = useState(true)
-  const [refrescando, setRefrescando]           = useState(false)
-  const [filtroEstado, setFiltroEstado]         = useState<FiltroEstado>('todos')
-  const [busqueda, setBusqueda]                 = useState('')
-  // ── NUEVO ──
+  const [cargando, setCargando]                   = useState(true)
+  const [refrescando, setRefrescando]             = useState(false)
+
+  // ── Estado de filtros y búsqueda ─────────────────────────────────────────
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
+  const [busqueda, setBusqueda]         = useState('')
+
+  // ── Estado del modal de detalle ──────────────────────────────────────────
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
   const [modalVisible, setModalVisible]               = useState(false)
 
+  // Pre-selecciona el filtro si viene como param de navegación
   useEffect(() => {
     if (filtro && ['todos', 'pendiente', 'en proceso', 'resuelto'].includes(filtro)) {
       setFiltroEstado(filtro as FiltroEstado)
@@ -40,32 +56,48 @@ export default function MisReportes() {
   }, [filtro])
 
   useEffect(() => { fetchReportes() }, [])
+
+  // Recalcula la lista filtrada cada vez que cambian reportes, filtro o búsqueda
   useEffect(() => {
     setReportesFiltrados(aplicarFiltrosReportes(reportes, filtroEstado, busqueda))
   }, [reportes, filtroEstado, busqueda])
 
+  /**
+   * Carga los reportes del usuario autenticado desde Supabase.
+   */
   const fetchReportes = async () => {
     try {
       const data = await cargarMisReportes()
       setReportes(data)
     } catch (err: any) {
-      Alert.alert('Error', err.message)
+      showToast(err.message || 'Error al cargar reportes', 'error')
     } finally {
       setCargando(false)
       setRefrescando(false)
     }
   }
 
+  /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); fetchReportes() }
 
-  // ── CAMBIO: reemplaza el Alert anterior ──
+  /**
+   * Abre el modal de detalle para el reporte seleccionado.
+   * @param reporte - Reporte a visualizar
+   */
   const handleVerDetalle = (reporte: Reporte) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
 
+  /**
+   * Cuenta cuántos reportes tienen un estado específico.
+   * Se usa para mostrar el conteo en cada chip de filtro.
+   * @param estado - Estado a contar ('pendiente' | 'en proceso' | 'resuelto')
+   */
   const contarPor = (estado: string) =>
     reportes.filter((r) => r.estReporte === estado).length
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (cargando) {
     return (
@@ -74,6 +106,8 @@ export default function MisReportes() {
       </View>
     )
   }
+
+  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
@@ -86,7 +120,7 @@ export default function MisReportes() {
         </Text>
       </View>
 
-      {/* BÚSQUEDA */}
+      {/* ── BARRA DE BÚSQUEDA ── */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#8B9BA8" style={styles.searchIcon} />
         <TextInput
@@ -103,7 +137,7 @@ export default function MisReportes() {
         )}
       </View>
 
-      {/* FILTROS */}
+      {/* ── CHIPS DE FILTRO POR ESTADO ── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -111,10 +145,10 @@ export default function MisReportes() {
         contentContainerStyle={styles.filtersContent}
       >
         {([
-          { key: 'todos',      label: `Todos (${reportes.length})`,            color: null },
-          { key: 'pendiente',  label: `Pendientes (${contarPor('pendiente')})`, color: '#FFA726' },
+          { key: 'todos',      label: `Todos (${reportes.length})`,              color: null },
+          { key: 'pendiente',  label: `Pendientes (${contarPor('pendiente')})`,  color: '#FFA726' },
           { key: 'en proceso', label: `En Proceso (${contarPor('en proceso')})`, color: '#42A5F5' },
-          { key: 'resuelto',   label: `Resueltos (${contarPor('resuelto')})`,   color: '#66BB6A' },
+          { key: 'resuelto',   label: `Resueltos (${contarPor('resuelto')})`,    color: '#66BB6A' },
         ] as { key: FiltroEstado; label: string; color: string | null }[]).map(({ key, label, color }) => (
           <TouchableOpacity
             key={key}
@@ -129,7 +163,7 @@ export default function MisReportes() {
         ))}
       </ScrollView>
 
-      {/* LISTA */}
+      {/* ── LISTA DE REPORTES ── */}
       <ScrollView
         style={styles.listContainer}
         refreshControl={
@@ -137,6 +171,7 @@ export default function MisReportes() {
         }
       >
         {reportesFiltrados.length === 0 ? (
+          // Estado vacío — cambia el mensaje según el contexto
           <View style={styles.emptyState}>
             <Ionicons
               name={busqueda ? 'search' : 'document-text-outline'}
@@ -161,7 +196,7 @@ export default function MisReportes() {
             <TouchableOpacity
               key={reporte.idReporte}
               style={styles.reportCard}
-              onPress={() => handleVerDetalle(reporte)}   // ← abre el modal
+              onPress={() => handleVerDetalle(reporte)}
               activeOpacity={0.7}
             >
               <View style={styles.reportHeader}>
@@ -178,6 +213,7 @@ export default function MisReportes() {
                 {reporte.descriReporte}
               </Text>
 
+              {/* Metadata: fecha y prioridad */}
               <View style={styles.reportMeta}>
                 <View style={styles.metaItem}>
                   <Ionicons name="calendar-outline" size={14} color="#8B9BA8" />
@@ -197,6 +233,7 @@ export default function MisReportes() {
                 )}
               </View>
 
+              {/* Colaborador asignado (si existe) */}
               {reporte.empleado && (
                 <View style={styles.assignedSection}>
                   <Ionicons name="person" size={16} color="#21D0B2" />
@@ -211,7 +248,7 @@ export default function MisReportes() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* ── NUEVO: Modal de detalle ── */}
+      {/* Modal de detalle de reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}

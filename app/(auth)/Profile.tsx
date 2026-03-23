@@ -1,58 +1,69 @@
+// 👤 Profile.tsx
+// Pantalla de perfil del usuario autenticado (usuario o empleado).
+// Muestra datos personales, estadísticas de reportes, soporte y opción de cerrar sesión.
+
 // Iconos de Expo para interfaz visual
 import { Ionicons } from '@expo/vector-icons'
-
 // Router para navegación entre pantallas
 import { useRouter } from 'expo-router'
-
 // Hooks principales de React
 import { useEffect, useState } from 'react'
-
-// Componentes base de React Native
+// Alert se mantiene SOLO para la confirmación de cerrar sesión (requiere 2 botones)
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native'
-
 // Estilos del perfil
 import { profileStyles as s } from '../../src/components/Profilestyles'
-
 // Servicios para cargar perfil y cerrar sesión
 import { cargarPerfil, cerrarSesion, ProfileData } from '../../src/services/Profileservice'
-
-// Contexto para limpiar fotos guardadas (solo usuarios)
-import { useSaved } from '../Camera/context/SavedContext' 
-
-import { Linking } from 'react-native' 
-
+// Contexto para limpiar fotos guardadas al cerrar sesión (solo usuarios, no empleados)
+import { useSaved } from '../Camera/context/SavedContext'
+import { Linking } from 'react-native'
+// Toast global para notificaciones de error e info
+import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react';
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+/**
+ * Pantalla de perfil.
+ * Carga los datos del usuario/empleado autenticado al montar.
+ * Maneja el cierre de sesión con confirmación nativa (Alert de 2 botones).
+ */
 export default function ProfileScreen() {
   const router = useRouter()
   const { clearSavedPhotos } = useSaved()
+  const { showToast } = useToast()
 
   // Estado que almacena los datos del perfil
   const [perfil, setPerfil] = useState<ProfileData | null>(null)
+  // Estado que controla el indicador de carga
+  const [cargando, setCargando] = useState(true)
 
+  /**
+   * Abre WhatsApp con un mensaje predefinido para contactar soporte.
+   * Si WhatsApp no está instalado, abre el enlace en el navegador.
+   */
   const abrirWhatsApp = () => {
     const mensaje = encodeURIComponent('Hola, tengo una consulta sobre SmartCampus 👋')
     Linking.openURL(`whatsapp://send?phone=593984672753&text=${mensaje}`)
       .catch(() => {
-        // Si no tiene WhatsApp instalado, abre el navegador
         Linking.openURL(`https://wa.me/593984672753?text=${mensaje}`)
       })
   }
-
-  // Estado que controla el indicador de carga
-  const [cargando, setCargando] = useState(true)
 
   // Se ejecuta una sola vez al montar el componente
   // Carga los datos del perfil desde el servicio
   useEffect(() => {
     cargarPerfil()
       .then(setPerfil)
-      .catch(() => Alert.alert('Error', 'No se pudo cargar el perfil'))
+      .catch(() => showToast('No se pudo cargar el perfil', 'error'))
       .finally(() => setCargando(false))
   }, [])
 
-  // Maneja el proceso de cierre de sesión
-  // Muestra una alerta de confirmación antes de proceder
+  /**
+   * Maneja el proceso de cierre de sesión.
+   * Usa Alert nativo para la confirmación porque requiere 2 botones (Cancelar / Cerrar Sesión).
+   * Los errores de cierre se reportan vía toast global.
+   */
   const handleCerrarSesion = () => {
     Alert.alert(
       'Cerrar Sesión',
@@ -63,15 +74,13 @@ export default function ProfileScreen() {
           text: 'Cerrar Sesión',
           style: 'destructive',
           onPress: async () => {
-            // Cierra sesión en el servicio
-            // Si el usuario no es empleado, limpia fotos guardadas
-            // Redirige al login
             try {
               await cerrarSesion()
+              // Si el usuario no es empleado, limpiar fotos guardadas de la cámara
               if (!perfil?.esEmpleado) clearSavedPhotos()
               router.replace('/')
             } catch {
-              Alert.alert('Error', 'No se pudo cerrar la sesión')
+              showToast('No se pudo cerrar la sesión', 'error')
             }
           },
         },
@@ -79,8 +88,8 @@ export default function ProfileScreen() {
     )
   }
 
-  // Si está cargando o aún no hay perfil,
-  // muestra un indicador de carga
+  // ── Loading ───────────────────────────────────────────────────────────────
+
   if (cargando || !perfil) {
     return (
       <View style={s.centeredContainer}>
@@ -92,10 +101,12 @@ export default function ProfileScreen() {
   // Extrae los datos principales del perfil
   const { nombre, email, rol, depto, badge, stats } = perfil
 
+  // ── Render principal ──────────────────────────────────────────────────────
+
   return (
     <ScrollView style={s.container}>
 
-      {/* ── Header ── */}
+      {/* ── HEADER con avatar, nombre, email y badge de rol ── */}
       <View style={s.header}>
         <View style={s.avatarContainer}>
           <View style={s.avatar}>
@@ -110,7 +121,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* ── Estadísticas ── */}
+      {/* ── TARJETA DE ESTADÍSTICAS ── */}
       <View style={s.statsCard}>
         <Text style={s.statsTitle}>Mis Estadísticas</Text>
         <View style={s.statsGrid}>
@@ -136,7 +147,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* ── Información Personal ── */}
+      {/* ── INFORMACIÓN PERSONAL ── */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Información Personal</Text>
         <View style={s.infoCard}>
@@ -163,7 +174,8 @@ export default function ProfileScreen() {
               <Text style={s.infoValue}>{rol}</Text>
             </View>
           </View>
-          {depto && ( // Solo muestra el departamento si existe
+          {/* El departamento solo existe para empleados */}
+          {depto && (
             <>
               <View style={s.divider} />
               <View style={s.infoRow}>
@@ -178,22 +190,23 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* ── Soporte ── */}
+      {/* ── SECCIÓN DE SOPORTE ── */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Soporte</Text>
-        <TouchableOpacity 
-          style={s.menuItem} 
-          onPress={abrirWhatsApp}  // ← reemplaza el Alert.alert anterior
-          >
-        <View style={s.menuItemLeft}>
-      <View style={[s.menuIcon, { backgroundColor: '#E0F7FA' }]}>
-      <Ionicons name="help-circle-outline" size={20} color="#00ACC1" />
-      </View>
-      <Text style={s.menuItemText}>Ayuda y Soporte</Text>
-    </View>
-      <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
-    </TouchableOpacity>
-        <TouchableOpacity style={s.menuItem} onPress={() => Alert.alert('Acerca de la App', 'Sistema de Gestión de Reportes v1.0\n\nDesarrollado para la gestión eficiente de reportes municipales.', [{ text: 'OK' }])}>
+
+        {/* Abre WhatsApp de soporte */}
+        <TouchableOpacity style={s.menuItem} onPress={abrirWhatsApp}>
+          <View style={s.menuItemLeft}>
+            <View style={[s.menuIcon, { backgroundColor: '#E0F7FA' }]}>
+              <Ionicons name="help-circle-outline" size={20} color="#00ACC1" />
+            </View>
+            <Text style={s.menuItemText}>Ayuda y Soporte</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
+        </TouchableOpacity>
+
+        {/* Muestra info de versión vía toast */}
+        <TouchableOpacity style={s.menuItem} onPress={() => showToast('Sistema de Gestión de Reportes v1.0', 'info')}>
           <View style={s.menuItemLeft}>
             <View style={[s.menuIcon, { backgroundColor: '#F3E5F5' }]}>
               <Ionicons name="information-circle-outline" size={20} color="#AB47BC" />
@@ -204,14 +217,14 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Cerrar Sesión ── */}
+      {/* ── BOTÓN DE CERRAR SESIÓN ── */}
       <View style={s.section}>
         <TouchableOpacity style={s.logoutButton} onPress={handleCerrarSesion}>
           <Ionicons name="log-out-outline" size={20} color="#FF5252" />
           <Text style={s.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
       </View>
- 
+
       <View style={s.versionContainer}>
         <Text style={s.versionText}>Versión 1.0.0</Text>
       </View>
@@ -219,5 +232,4 @@ export default function ProfileScreen() {
 
     </ScrollView>
   )
-  
 }

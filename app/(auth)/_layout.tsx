@@ -158,8 +158,26 @@ export default function UnifiedLayout() {
 
       {/* ── OCULTAS — navegables con router.push() ── */}
       <Tabs.Screen name="UsuarioNuevo"   options={{ href: null, headerTitle: 'Nuevo Usuario' }} />
-      <Tabs.Screen name="EmpleadoNuevo"  options={{ href: null, headerTitle: 'Nuevo Colaborador' }} /> 
+      <Tabs.Screen name="EmpleadoNuevo"  options={{ href: null, headerTitle: 'Nuevo Colaborador' }} />
       <Tabs.Screen name="CrearReporte"   options={{ href: null, headerTitle: 'Crear Reporte' }} />
+
+      {/* ── NUEVA: Previsualización y descarga del PDF General ──
+          Accesible por: jefes de área (sistemas/mantenimiento) y autoridad.
+          Se navega con router.push('/PdfPreview') desde HomeEmpleado y HomeAutoridad.
+      ── */}
+      <Tabs.Screen name="PdfPreview" options={{ href: null, headerTitle: 'Informe General PDF' }} />
+
+      {/* ── PDF Resumido — solo autoridad ──
+          Tabla resumen de empleados con filtro por departamento.
+          Se navega con router.push('/PdfResumidoPreview') desde HomeAutoridad.
+      ── */}
+      <Tabs.Screen name="PdfResumidoPreview" options={{ href: null, headerTitle: 'Informe Resumido PDF' }} />
+
+      {/* ── PDF Personal — todos los empleados ──
+          Previsualización del PDF personal con estadísticas y gráficos.
+          Se navega con router.push('/PdfPersonalPreview') desde HomeEmpleado.
+      ── */}
+      <Tabs.Screen name="PdfPersonalPreview" options={{ href: null, headerTitle: 'Mi Informe PDF' }} />
 
     </Tabs>
   )
