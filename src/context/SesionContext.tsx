@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { obtenerSesion, guardarSesion, eliminarSesion } from '../../../src/util/Session'
-import { Sesion } from '../../../src/types/Database'
+import { supabase } from '../lib/Supabase'
+import { Sesion } from '../types/Database'
+import { eliminarSesion, guardarSesion, obtenerSesion } from '../util/Session'
+
 
 interface SesionContextType {
   sesion: Sesion | null
@@ -22,7 +24,23 @@ export function SesionProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    refrescarSesion().finally(() => setCargando(false))
+    const cargar = async () => {
+      // Verifica si Supabase tiene sesión activa
+      const { data } = await supabase.auth.getSession()
+      
+      if (!data.session) {
+        // Supabase no tiene sesión → limpiar AsyncStorage también
+        await eliminarSesion()
+        setSesion(null)
+      } else {
+        // Supabase sí tiene sesión → cargar del AsyncStorage
+        await refrescarSesion()
+      }
+      
+      setCargando(false)
+    }
+    
+    cargar()
   }, [])
 
   const iniciarSesion = async (s: Sesion) => {
@@ -31,7 +49,8 @@ export function SesionProvider({ children }: { children: React.ReactNode }) {
   }
 
   const cerrarSesion = async () => {
-    await eliminarSesion()
+    await supabase.auth.signOut() // ← limpia la sesión de Supabase también
+    await eliminarSesion()        // ← limpia tu AsyncStorage
     setSesion(null)
   }
 

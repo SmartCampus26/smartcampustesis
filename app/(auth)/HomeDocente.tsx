@@ -3,20 +3,21 @@
 // Muestra estadísticas de reportes propios, lista de reportes recientes
 // con modal de detalle, y botón para crear nuevos reportes.
 
-import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator, RefreshControl,
-  ScrollView, Text, TouchableOpacity, View,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Reporte } from '../../src/types/Database'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import {
+    ActivityIndicator, RefreshControl,
+    ScrollView, Text, TouchableOpacity, View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
 import { homeDocenteStyles as styles } from '../../src/components/homeDocenteStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
-import * as React from 'react'
+import { useSesion } from '../../src/context/SesionContext'
+import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
+import { Reporte } from '../../src/types/Database'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ import * as React from 'react'
  */
 export default function HomeUsuario() {
   const { showToast } = useToast()
+  const { sesion } = useSesion()
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [usuario, setUsuario]         = useState<any>(null)
@@ -48,7 +50,8 @@ export default function HomeUsuario() {
    */
   const cargarDatos = async () => {
     try {
-      const datos = await cargarDatosDocente()
+      if (!sesion) return              
+      const datos = await cargarDatosDocente(sesion)
       setUsuario(datos.usuario)
       setReportes(datos.reportes)
       setStats(datos.stats)
@@ -59,6 +62,9 @@ export default function HomeUsuario() {
       setRefrescando(false)
     }
   }
+    useEffect(() => {
+      if (sesion) cargarDatos()  // ← solo carga si hay sesión
+    }, [sesion])  // ← depende de sesion, no solo al montar
 
   /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); cargarDatos() }

@@ -24,6 +24,7 @@ import {
 import { generarYDescargarPdfResumido } from '../../src/services/PdfResumidoService'
 import { pdfResumidoPreviewStyles as styles } from '../../src/components/pdfResumidoPreviewStyles'
 import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 
 // ─── Opciones del selector de filtro ─────────────────────────────────────────
 
@@ -35,6 +36,7 @@ const OPCIONES_FILTRO: { valor: FiltroDepartamento; label: string; icono: string
 
 export default function PdfResumidoPreview() {
   const { showToast } = useToast()
+  const { sesion } = useSesion() 
   const [filtro, setFiltro]               = useState<FiltroDepartamento>('todos')
   const [datos, setDatos]                 = useState<DatosPdfResumido | null>(null)
   const [cargando, setCargando]           = useState(true)
@@ -42,13 +44,15 @@ export default function PdfResumidoPreview() {
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [error, setError]                 = useState<string | null>(null)
 
-  useEffect(() => { cargarDatos(filtro) }, [filtro])
+  useEffect(() => { 
+    if (sesion) cargarDatos(filtro) }, [sesion,filtro])
 
   const cargarDatos = useCallback(async (f: FiltroDepartamento) => {
     try {
       setCargando(true)
       setError(null)
-      const resultado = await cargarDatosPdfResumido(f)
+      if (!sesion) return
+      const resultado = await cargarDatosPdfResumido(f,sesion)
       setDatos(resultado)
     } catch (err: any) {
       const msg = err?.message || 'No se pudieron cargar los datos'
@@ -61,7 +65,7 @@ export default function PdfResumidoPreview() {
     } finally {
       setCargando(false)
     }
-  }, [])
+  }, [sesion, cargarDatosPdfResumido])
 
   const handleDescargar = async () => {
     if (!datos) return

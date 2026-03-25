@@ -1,14 +1,13 @@
+import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SavedProvider } from "./Camera/context/SavedContext";
 import * as React from 'react';
 import { useEffect } from 'react';
-import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
-import { supabase } from '../src/lib/Supabase';
-import { NetworkProvider } from "./Camera/context/Networkcontext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ToastProvider } from "../src/components/ToastContext";
-import { SesionProvider, useSesion } from './Camera/context/SesionContext' 
+import { NetworkProvider } from "../src/context/Networkcontext";
+import { SavedProvider } from "../src/context/SavedContext";
+import { SesionProvider, useSesion } from '../src/context/SesionContext';
+import { supabase } from '../src/lib/Supabase';
 
 function RouteGuard() {
   const { sesion, cargando } = useSesion();
@@ -19,15 +18,15 @@ function RouteGuard() {
     if (cargando) return;
 
     const enAuth = segments[0] === '(auth)';
-
+    const esRutaCamara = segments[0] === 'Camera'; 
+    
     if (!sesion && enAuth) {
       // Sin sesión dentro de auth → al login
       router.replace('/');
       return;
     }
 
-    if (sesion && !enAuth) {
-      // Con sesión fuera de auth → redirigir según rol
+    if (sesion && !enAuth && !esRutaCamara) {
       const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol;
 
       switch (rol) {

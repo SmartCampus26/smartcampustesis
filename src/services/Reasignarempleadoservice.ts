@@ -1,11 +1,11 @@
 // src/services/Reasignarempleadoservice.ts
 import { supabase } from '../lib/Supabase'
-import { Empleado, Reporte } from '../types/Database'
+import { Empleado, Reporte, Sesion } from '../types/Database'
 import { obtenerSesion } from '../util/Session'
+import { useSesion } from '../context/SesionContext'
 
-export const cargarNombreAutoridad = async (): Promise<string> => {
+export const obtenerNombreDesdeSesion = (sesion: Sesion | null): string => {
   try {
-    const sesion = await obtenerSesion()
     if (sesion) {
       if (sesion.tipo === 'usuario')  return `${sesion.data.nomUser} ${sesion.data.apeUser}`
       if (sesion.tipo === 'empleado') return `${sesion.data.nomEmpl} ${sesion.data.apeEmpl}`

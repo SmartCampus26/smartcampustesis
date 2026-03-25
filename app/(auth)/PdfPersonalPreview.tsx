@@ -10,20 +10,26 @@
  * Ubicación: app/(auth)/ (capa de vista)
  */
 
-import * as React from 'react'
-import { useState, useEffect, useCallback } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import Svg, { Path, Circle, Rect, Text as SvgText } from 'react-native-svg'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+    ActivityIndicator,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native'
+import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg'
+import { pdfPersonalPreviewStyles as styles } from '../../src/components/pdfPersonalPreviewStyles'
+import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'; // ← agrega
 import { cargarDatosEmpleado } from '../../src/services/Homeempleadoservice'
 import { generarPDF } from '../../src/services/PdfService'
 import { Reporte } from '../../src/types/Database'
-import { pdfPersonalPreviewStyles as styles } from '../../src/components/pdfPersonalPreviewStyles'
-import { useToast } from '../../src/components/ToastContext'
+
+
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 
@@ -130,18 +136,22 @@ function GraficoBarras({ reportes }: { reportes: Reporte[] }) {
 
 export default function PdfPersonalPreview() {
   const { showToast } = useToast()
+   const { sesion } = useSesion() 
   const [cargando, setCargando]           = useState(true)
   const [generando, setGenerando]         = useState(false)
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [empleado, setEmpleado]           = useState<any>(null)
   const [reportes, setReportes]           = useState<Reporte[]>([])
 
-  useEffect(() => { cargarDatos() }, [])
+  useEffect(() => {
+    if (sesion) cargarDatos()  // ← solo si hay sesión
+  }, [sesion])  // ← depende de sesion 
 
   const cargarDatos = useCallback(async () => {
     try {
       setCargando(true)
-      const datos = await cargarDatosEmpleado()
+     if (!sesion) return  // ← guarda por si acaso
+      const datos = await cargarDatosEmpleado(sesion)  // ← pasa sesion
       setEmpleado(datos.empleado)
       setReportes(datos.reportes)
     } catch (err: any) {
@@ -149,7 +159,7 @@ export default function PdfPersonalPreview() {
     } finally {
       setCargando(false)
     }
-  }, [])
+   }, [sesion])
 
   const handleDescargar = async () => {
     try {

@@ -1,4 +1,4 @@
-import { obtenerSesion } from '../util/Session'
+import { Sesion } from '../types/Database'
 import { obtenerReportes } from './ReporteService'
 import { Reporte } from '../types/Database'
 
@@ -25,8 +25,7 @@ export interface HomeDocenteData {
  *
  * @returns Datos del usuario, reportes y estadísticas
  */
-export async function cargarDatosDocente(): Promise<HomeDocenteData> {
-  const sesion = await obtenerSesion()
+export async function cargarDatosDocente(sesion: Sesion): Promise<HomeDocenteData> {
 
   // Verificar que la sesión sea de tipo usuario
   if (!sesion || sesion.tipo !== 'usuario') {

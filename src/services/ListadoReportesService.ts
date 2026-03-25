@@ -1,26 +1,23 @@
 import { obtenerReportes } from './ReporteService'
-import { obtenerSesion } from '../util/Session'
-import { Reporte } from '../types/Database'
+import { Reporte, Sesion } from '../types/Database'  
+
 
 export type FiltroEstado = 'todos' | 'pendiente' | 'en proceso' | 'resuelto'
 
 /**
  * Carga los reportes del usuario autenticado, ordenados por fecha descendente.
  */
-export const cargarMisReportes = async (): Promise<Reporte[]> => {
-  const sesion = await obtenerSesion()
-  const { data, error } = await obtenerReportes()
 
+export const cargarMisReportes = async (sesion: Sesion): Promise<Reporte[]> => {
+  const { data, error } = await obtenerReportes()
   if (error) throw error
 
   const misReportes = (data || []).filter(
     (r: Reporte) => r.idUser === sesion?.id
   )
-
   misReportes.sort(
     (a, b) => new Date(b.fecReporte).getTime() - new Date(a.fecReporte).getTime()
   )
-
   return misReportes
 }
 

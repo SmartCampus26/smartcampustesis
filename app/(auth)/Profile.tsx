@@ -9,18 +9,18 @@ import { useRouter } from 'expo-router'
 // Hooks principales de React
 import { useEffect, useState } from 'react'
 // Alert se mantiene SOLO para la confirmación de cerrar sesión (requiere 2 botones)
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 // Estilos del perfil
 import { profileStyles as s } from '../../src/components/Profilestyles'
 // Servicios para cargar perfil y cerrar sesión
-import { cargarPerfil, cerrarSesion, ProfileData } from '../../src/services/Profileservice'
+import { cargarPerfil, ProfileData } from '../../src/services/Profileservice'
 // Contexto para limpiar fotos guardadas al cerrar sesión (solo usuarios, no empleados)
-import { useSaved } from '../Camera/context/SavedContext'
 import { Linking } from 'react-native'
+import { useSaved } from '../../src/context/SavedContext'
 // Toast global para notificaciones de error e info
+import * as React from 'react'
 import { useToast } from '../../src/components/ToastContext'
-import * as React from 'react';
-import { useSesion } from '../Camera/context/SesionContext'
+import { useSesion } from '../../src/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 

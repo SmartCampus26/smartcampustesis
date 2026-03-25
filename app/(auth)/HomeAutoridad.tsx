@@ -3,19 +3,24 @@
 // Muestra estadísticas de reportes, acceso al informe resumido PDF,
 // botón para crear reportes y lista de reportes recientes con modal de detalle.
 
-import * as React from 'react'
-import { useState, useEffect } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Reporte } from '../../src/types/Database'
-import { cargarDatosAutoridad, getStatusColor, getPriorityColor, HomeAutoridadStats } from '../../src/services/HomeAutoridadService'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import {
+    ActivityIndicator, RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native'
 import { homeAutoridadStyles as styles } from '../../src/components/homeAutoridadStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
+import { cargarDatosAutoridad, getPriorityColor, getStatusColor, HomeAutoridadStats } from '../../src/services/HomeAutoridadService'
+import { Reporte } from '../../src/types/Database'
+
 // ── PDF General: la autoridad siempre tiene acceso ──
 // No necesita verificar puedeGenerarPdfGeneral() porque su rol garantiza acceso.
 
@@ -28,6 +33,7 @@ import { useToast } from '../../src/components/ToastContext'
  */
 export default function HomeAutoridad() {
   const { showToast } = useToast()
+  const { sesion } = useSesion()
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [usuario, setUsuario]   = useState<any>(null)
@@ -50,7 +56,8 @@ export default function HomeAutoridad() {
    */
   const cargarDatos = async () => {
     try {
-      const datos = await cargarDatosAutoridad()
+      if (!sesion) return  
+      const datos = await cargarDatosAutoridad(sesion)
       console.log('REPORTE[0] completo:', JSON.stringify(datos.reportes[0], null, 2))
       setUsuario(datos.usuario)
       setReportes(datos.reportes)
@@ -62,6 +69,10 @@ export default function HomeAutoridad() {
       setRefrescando(false)
     }
   }
+
+  useEffect(() => {
+    if (sesion) cargarDatos()  // ← solo carga si hay sesión
+  }, [sesion])  // ← depende de sesion, no solo al montar
 
   /** Activa el refresco por pull-to-refresh y recarga los datos */
   const onRefresh = () => { setRefrescando(true); cargarDatos() }

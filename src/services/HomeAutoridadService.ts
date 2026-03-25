@@ -1,4 +1,4 @@
-import { obtenerSesion } from '../util/Session'
+import { Sesion } from '../types/Database'
 import { obtenerReportes } from './ReporteService'
 import { Reporte } from '../types/Database'
 
@@ -25,24 +25,20 @@ export interface HomeAutoridadData {
  *
  * @returns Datos del usuario, reportes y estadísticas
  */
-export async function cargarDatosAutoridad(): Promise<HomeAutoridadData> {
-  const sesion = await obtenerSesion()
 
-  // Verificar que la sesión sea de tipo usuario
+export async function cargarDatosAutoridad(sesion: Sesion): Promise<HomeAutoridadData> {
+  // Ya no llama obtenerSesion() — recibe la sesión del contexto
   if (!sesion || sesion.tipo !== 'usuario') {
     throw new Error('Sesión no válida para este módulo')
   }
 
-  // Obtener todos los reportes
   const { data: reportesData, error: reportesError } = await obtenerReportes()
   if (reportesError) throw reportesError
 
-  // Filtrar solo los reportes creados por este usuario
   const reportes = (reportesData || []).filter(
     (r: Reporte) => r.idUser === sesion.id
   )
 
-  // Calcular estadísticas derivadas
   const stats: HomeAutoridadStats = {
     total:      reportes.length,
     pendientes: reportes.filter((r: Reporte) => r.estReporte.toLowerCase() === 'pendiente').length,

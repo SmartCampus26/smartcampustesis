@@ -1,6 +1,6 @@
 import { obtenerSesion } from '../util/Session'
 import { obtenerReportes } from './ReporteService'
-import { Reporte } from '../types/Database'
+import { Reporte, Sesion } from '../types/Database'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -21,33 +21,17 @@ export interface HomeEmpleadoData {
  *
  * @returns Datos del empleado y su lista de reportes asignados
  */
-export async function cargarDatosEmpleado(): Promise<HomeEmpleadoData> {
-  // Intentar obtener la sesión con hasta 3 reintentos de 300ms
-  // Esto resuelve el caso donde AsyncStorage tarda en devolver
-  // la sesión al volver de una pantalla secundaria
-  let sesion = await obtenerSesion()
-
-  if (!sesion) {
-    for (let intento = 1; intento <= 3; intento++) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      sesion = await obtenerSesion()
-      if (sesion) break
-    }
-  }
-
-  // Verificar que la sesión sea de tipo empleado
-  // Si es usuario (docente/autoridad), no debe llegar aquí
+export async function cargarDatosEmpleado(sesion: Sesion): Promise<HomeEmpleadoData> {
+  // Ya no necesita reintentos ni leer AsyncStorage — recibe la sesión del contexto
   if (!sesion || sesion.tipo !== 'empleado') {
     throw new Error('Sesión no válida para este módulo')
   }
 
-  // Obtiene todos los reportes
   const { data: reportesData, error: reportesError } = await obtenerReportes()
   if (reportesError) throw reportesError
 
-  // Filtra solo los reportes asignados al empleado
   const reportes = (reportesData || []).filter(
-    (r: Reporte) => r.idEmpl === sesion!.id
+    (r: Reporte) => r.idEmpl === sesion.id
   )
 
   return { empleado: sesion.data, reportes }

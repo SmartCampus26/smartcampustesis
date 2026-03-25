@@ -23,27 +23,33 @@ import {
 import { generarYDescargarPdfGeneral } from '../../src/services/PdfGeneralService'
 import { pdfPreviewStyles as styles } from '../../src/components/pdfPreviewStyles'
 import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 
 export default function PdfPreview() {
   const { showToast } = useToast()
+  const { sesion } = useSesion()  
+
   const [cargando, setCargando]           = useState(true)
   const [generando, setGenerando]         = useState(false)
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const [datos, setDatos]                 = useState<DatosPdfGeneral | null>(null)
   const [error, setError]                 = useState<string | null>(null)
 
-  useEffect(() => { cargarDatos() }, [])
+  useEffect(() => {
+    if (sesion) cargarDatos()  // ← solo si hay sesión
+  }, [sesion])  // ← depende de sesion
 
   const cargarDatos = useCallback(async () => {
     try {
       setCargando(true)
       setError(null)
-      const resultado = await cargarDatosPdfGeneral()
+      if (!sesion) return 
+      const resultado = await cargarDatosPdfGeneral(sesion) 
       setDatos(resultado)
     } catch (err: any) {
       const msg = err?.message || 'No se pudieron cargar los datos del informe'
       console.error('[PdfPreview] Error al cargar datos:', msg)
-      // Si el error es de permisos/sesión, volver atrás automáticamente sin Alert
+  
       if (
         msg.includes('permisos') ||
         msg.includes('jefe') ||
@@ -58,7 +64,8 @@ export default function PdfPreview() {
     } finally {
       setCargando(false)
     }
-  }, [])
+  
+  }, [sesion])  
 
   const handleDescargar = async () => {
     if (!datos) return

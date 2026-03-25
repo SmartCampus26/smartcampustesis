@@ -8,16 +8,16 @@
 import { useState } from 'react'
 // Componentes nativos de React Native para construir la interfaz
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 // Navegación y redirección entre pantallas
 import { router } from 'expo-router'
@@ -28,9 +28,9 @@ import { Sesion } from '../src/types/Database'
 // Librería de íconos
 import { Ionicons } from '@expo/vector-icons'
 // Toast global para notificaciones (reemplaza Alert)
+import * as React from 'react'
 import { useToast } from '../src/components/ToastContext'
-import * as React from 'react';
-import { useSesion } from './Camera/context/SesionContext'
+import { useSesion } from '../src/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 

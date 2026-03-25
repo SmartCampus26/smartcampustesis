@@ -13,7 +13,7 @@ import { Empleado, Reporte } from '../../src/types/Database'
 import { styles } from '../../src/components/Reasignarempleadostyles'
 import * as React from 'react'
 import {
-  cargarNombreAutoridad,
+  obtenerNombreDesdeSesion,
   cargarEmpleadosYReportes,
   reasignarReporteDB,
   filtrarEmpleados,
@@ -21,6 +21,7 @@ import {
 } from '../../src/services/Reasignarempleadoservice'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,12 +47,13 @@ const formatId = (id: string): string => {
  */
 export default function ReasignarEmpleado() {
   const { showToast } = useToast()
+  const { sesion } = useSesion();
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [empleados, setEmpleados]                     = useState<Empleado[]>([])
   const [reportes, setReportes]                       = useState<Reporte[]>([])
   const [cargando, setCargando]                       = useState(true)
-  const [nombreAutoridad, setNombreAutoridad]         = useState<string>('Sistema')
+  const [nombreAutoridad, setNombreAutoridad]         = useState<string>('Sistema');
 
   // ── Estado del modal de reasignación ────────────────────────────────────
   const [modalVisible, setModalVisible]               = useState(false)
@@ -65,22 +67,27 @@ export default function ReasignarEmpleado() {
   const [detalleVisible, setDetalleVisible] = useState(false)
   const [reporteDetalle, setReporteDetalle] = useState<Reporte | null>(null)
 
+  
+
   // Inicializa la pantalla en paralelo: carga datos y sesión
   useEffect(() => {
     const inicializarPantalla = async () => {
       setCargando(true)
-      await Promise.all([cargarDatos(), cargarSesion()])
-      setCargando(false)
+      const nombre = obtenerNombreDesdeSesion(sesion);
+      setNombreAutoridad(nombre);
+
+      await cargarDatos();
+      setCargando(false);
     }
     inicializarPantalla()
-  }, [])
+  }, [sesion])
 
   /**
    * Carga el nombre del usuario autoridad desde la sesión activa.
    * Se usa para registrar quién realizó la reasignación en el historial.
    */
   const cargarSesion = async () => {
-    const nombre = await cargarNombreAutoridad()
+    const nombre = await obtenerNombreDesdeSesion(sesion)
     setNombreAutoridad(nombre)
   }
 
@@ -124,7 +131,9 @@ export default function ReasignarEmpleado() {
   const reasignarReporte = async (empleadoId: string) => {
     if (!reporteSeleccionado) return
     try {
-      await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad)
+      // Usamos el nombreAutoridad que ya seteamos desde la sesión
+      await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad);
+
       showToast('Reporte reasignado correctamente', 'success')
       setModalVisible(false)
       cargarDatos()

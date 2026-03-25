@@ -7,13 +7,13 @@
 import { useState } from 'react'
 // Componentes nativos para la interfaz y control del teclado
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 // Íconos de Ionicons usados en inputs y botones
 import { Ionicons } from '@expo/vector-icons'
@@ -23,17 +23,17 @@ import { Eye, EyeOff } from 'lucide-react-native'
 import { router } from 'expo-router'
 // Lógica de creación de usuario, tipo del formulario, valor inicial y validaciones
 import {
-  crearUsuario,
-  NuevoUsuarioData,
-  USUARIO_INICIAL,
-  validarUsuario,
+    crearUsuario,
+    NuevoUsuarioData,
+    USUARIO_INICIAL,
+    validarUsuario,
 } from '../../src/services/UsuarioServices'
 // Estilos
 import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoStyles'
 // Toast global para notificaciones
-import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
-import { useSesion } from '../Camera/context/SesionContext'
+import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 

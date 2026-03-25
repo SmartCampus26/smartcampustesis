@@ -1,9 +1,8 @@
-import { Ionicons } from '@expo/vector-icons'
-import { Redirect, Tabs } from 'expo-router'
-import { ActivityIndicator, View } from 'react-native'
-import { Platform } from 'react-native'
+import { Ionicons } from '@expo/vector-icons';
+import { Redirect, Tabs } from 'expo-router';
 import * as React from 'react';
-import { useSesion } from '../Camera/context/SesionContext' 
+import { ActivityIndicator, Platform, View } from 'react-native';
+import { useSesion } from '../../src/context/SesionContext';
 
 const COLORS = {
   autoridad:     { active: '#1DCDFE', header: '#2F455C' },

@@ -2,11 +2,11 @@
 // CONTEXTO PARA GUARDAR FOTOS DE LA CÁMARA
 
 // Importa React y herramientas para crear contexto y manejar estado
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 // Herramienta para comprimir y modificar imágenes
 import * as ImageManipulator from 'expo-image-manipulator';
 // Conexión a Supabase
-import { supabase } from '../../../src/lib/Supabase';
+import { supabase } from '../lib/Supabase';
 // Utilidad para convertir base64 a binario
 import { decode } from 'base64-arraybuffer';
 
@@ -223,4 +223,5 @@ export function useSaved() {
   return context;
 }
 // Exportar tipos
-export type { SavedPhoto, SavedContextType };
+export type { SavedContextType, SavedPhoto };
+

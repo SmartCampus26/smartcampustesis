@@ -9,22 +9,22 @@ import { Eye, EyeOff } from 'lucide-react-native'
 import * as React from 'react'
 import { useState } from 'react'
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { styles } from '../../src/components/empleadoNuevoStyles'
-import {
-  crearEmpleadoDB,
-  NuevoEmpleadoForm,
-  validarEmpleado,
-} from '../../src/services/EmpleadoNuevoService'
 import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../Camera/context/SesionContext'
+import { useSesion } from '../../src/context/SesionContext'
+import {
+    crearEmpleadoDB,
+    NuevoEmpleadoForm,
+    validarEmpleado,
+} from '../../src/services/EmpleadoNuevoService'
 
 
 // ─── Componente principal ─────────────────────────────────────────────────────

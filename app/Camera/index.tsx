@@ -1,14 +1,14 @@
 // 🏠 index: Pantalla principal con cámara y gestos de swipe
 
-import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
-import SwipeCard from '../../Components/SwipeCard';
-import { RotateCcw, Camera, FlipHorizontal, ArrowLeft } from 'lucide-react-native';
-import { useSaved } from '../Camera/context/SavedContext';
 import { router } from 'expo-router';
+import { ArrowLeft, Camera, FlipHorizontal, RotateCcw } from 'lucide-react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import SwipeCard from '../../Components/SwipeCard';
+import { useSaved } from '../../src/context/SavedContext';
 
 export default function HomeScreen() {
 

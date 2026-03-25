@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../lib/Supabase'
 import { Empleado, Lugar, Objeto, Reporte, Sesion, Usuario } from '../types/Database'
 
@@ -58,18 +57,10 @@ const enriquecerReportes = async (data: any[]): Promise<ReporteCompleto[]> => {
 /**
  * Obtiene la sesión completa del empleado con cargo, departamento y nombre.
  */
-export const obtenerSesionEmpleado = async (): Promise<{
-  id: string
-  cargo: string
-  depto: string
-  nombre: string
-}> => {
-  const sesionGuardada = await AsyncStorage.getItem('sesion')
-  if (!sesionGuardada) throw new Error('No hay sesión activa')
-
-  const sesion: Sesion = JSON.parse(sesionGuardada)
+export const obtenerSesionEmpleado = (sesion: Sesion): {
+  id: string; cargo: string; depto: string; nombre: string
+} => {
   if (sesion.tipo !== 'empleado') throw new Error('Solo empleados pueden ver esta sección')
-
   return {
     id: sesion.id,
     cargo: sesion.data.cargEmpl,

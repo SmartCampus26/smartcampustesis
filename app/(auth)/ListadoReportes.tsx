@@ -4,25 +4,27 @@
 // buscar por texto, refrescar con pull-to-refresh y ver el detalle
 // de cada reporte en un modal.
 
-import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator, RefreshControl, ScrollView,
-  Text, TextInput, TouchableOpacity, View,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
-import { Reporte } from '../../src/types/Database'
-import { styles } from '../../src/components/listadoReportesStyles'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import {
-  FiltroEstado,
-  cargarMisReportes,
-  aplicarFiltrosReportes,
-  getStatusColor,
-  getPriorityColor,
-} from '../../src/services/ListadoReportesService'
+    ActivityIndicator, RefreshControl, ScrollView,
+    Text, TextInput, TouchableOpacity, View,
+} from 'react-native'
+import { styles } from '../../src/components/listadoReportesStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
-import * as React from 'react'
+import { useSesion } from '../../src/context/SesionContext'
+import {
+    FiltroEstado,
+    aplicarFiltrosReportes,
+    cargarMisReportes,
+    getPriorityColor,
+    getStatusColor,
+} from '../../src/services/ListadoReportesService'
+import { Reporte } from '../../src/types/Database'
+
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ import * as React from 'react'
 export default function MisReportes() {
   const { filtro } = useLocalSearchParams<{ filtro?: string }>()
   const { showToast } = useToast()
+  const { sesion } = useSesion() 
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [reportes, setReportes]                   = useState<Reporte[]>([])
@@ -55,7 +58,9 @@ export default function MisReportes() {
     }
   }, [filtro])
 
-  useEffect(() => { fetchReportes() }, [])
+ useEffect(() => {
+    if (sesion) fetchReportes()
+  }, [sesion])
 
   // Recalcula la lista filtrada cada vez que cambian reportes, filtro o búsqueda
   useEffect(() => {
@@ -67,7 +72,8 @@ export default function MisReportes() {
    */
   const fetchReportes = async () => {
     try {
-      const data = await cargarMisReportes()
+       if (!sesion) return  // ← agrega
+      const data = await cargarMisReportes(sesion) 
       setReportes(data)
     } catch (err: any) {
       showToast(err.message || 'Error al cargar reportes', 'error')

@@ -6,30 +6,31 @@
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { styles } from '../../src/components/crearReporteStyles'
-import {
-  CATEGORIAS_OBJETOS,
-  insertarObjeto,
-  insertarReporte,
-  LUGARES_PREDEFINIDOS,
-  TIPOS_AULA,
-  notificarJefeNuevoReporte,
-  obtenerOCrearLugar,
-  validarFormularioReporte,
-  vincularReporteUsuario,
-} from '../../src/services/CrearReporteServices'
-import { useSaved } from '../Camera/context/SavedContext'
 import { useToast } from '../../src/components/ToastContext'
+import { useSaved } from '../../src/context/SavedContext'
+import { useSesion } from '../../src/context/SesionContext'
+import {
+    CATEGORIAS_OBJETOS,
+    insertarObjeto,
+    insertarReporte,
+    LUGARES_PREDEFINIDOS,
+    notificarJefeNuevoReporte,
+    obtenerOCrearLugar,
+    TIPOS_AULA,
+    validarFormularioReporte,
+    vincularReporteUsuario,
+} from '../../src/services/CrearReporteServices'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,26 @@ export default function CrearReporte({ }: CrearReporteProps) {
 
   const { savedPhotos, uploadPhotosToSupabase, clearSavedPhotos } = useSaved()
   const { showToast } = useToast()
+  const { sesion } = useSesion()  
+
+  const handleCancelar = () => {
+    setTitulo('')
+    setDescripcion('')
+    setDepartamento('mantenimiento')
+    setLugarSeleccionado('')
+    setPisoLugar('')
+    setNombreObjeto('')
+    setCategoriaObjeto('')
+    setAulaLugar('')
+    setNumAula('')
+    clearSavedPhotos()
+    
+    if (!sesion) { router.replace('/'); return }
+    const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol
+    if (rol === 'autoridad') router.replace('/(auth)/HomeAutoridad')
+    else if (rol === 'docente') router.replace('/(auth)/HomeDocente')
+  } 
+
 
   // ── Estado del formulario ─────────────────────────────────────────────────
   const [aulaLugar, setAulaLugar]           = useState('')
@@ -150,7 +171,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
         setCategoriaObjeto('')
         setAulaLugar('')
         setNumAula('')
-        router.back()
+        handleCancelar()
       }, 3000)
 
     } catch (err: any) {
@@ -169,7 +190,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
 
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleCancelar}>
             <Ionicons name="arrow-back" size={24} color="#2F455C" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -417,7 +438,7 @@ export default function CrearReporte({ }: CrearReporteProps) {
 
           {/* ── BOTONES DE ACCIÓN ── */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.cancelButton} onPress={handleCancelar}>
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.submitButton} onPress={crearReporte} disabled={cargando}>

@@ -23,10 +23,9 @@
  * Ubicación: src/services/ (capa de modelo/servicio)
  */
 
-import { obtenerSesion } from '../util/Session'
 import { obtenerReportes } from './ReporteService'
 import { supabase } from '../lib/Supabase'
-import { Reporte, Empleado, esEmpleado, esUsuario } from '../types/Database'
+import { Reporte, Empleado, esEmpleado, esUsuario, Sesion } from '../types/Database'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -214,8 +213,7 @@ function filtrarPorDept(reportes: Reporte[], filtro: FiltroDepartamento): Report
  * @returns DatosPdfGeneral listos para PdfGeneralService
  * @throws Error si no tiene permisos o la sesión es inválida
  */
-export async function cargarDatosPdfGeneral(): Promise<DatosPdfGeneral> {
-  const sesion = await obtenerSesion()
+export async function cargarDatosPdfGeneral(sesion: Sesion): Promise<DatosPdfGeneral> {
   if (!sesion) throw new Error('No hay sesión activa')
 
   if (!esEmpleado(sesion)) {
@@ -320,9 +318,9 @@ export async function cargarDatosPdfGeneral(): Promise<DatosPdfGeneral> {
  * @throws Error si no tiene permisos o la sesión es inválida
  */
 export async function cargarDatosPdfResumido(
-  filtro: FiltroDepartamento = 'todos'
+  filtro: FiltroDepartamento = 'todos',
+  sesion: Sesion  
 ): Promise<DatosPdfResumido> {
-  const sesion = await obtenerSesion()
   if (!sesion) throw new Error('No hay sesión activa')
 
   if (!esUsuario(sesion)) {
@@ -408,15 +406,12 @@ export async function cargarDatosPdfResumido(
  *
  * @returns true si puede generar el PDF General
  */
-export async function puedeGenerarPdfGeneral(): Promise<boolean> {
+export function puedeGenerarPdfGeneral(sesion: Sesion): boolean {
   try {
-    const sesion = await obtenerSesion()
     if (!sesion || !esEmpleado(sesion)) return false
-
     const e     = sesion.data as Empleado
     const cargo = e.cargEmpl?.toLowerCase() || ''
     const dept  = e.deptEmpl?.toLowerCase() || ''
-
     return cargo === CARGO_JEFE &&
       (dept === DEPARTAMENTOS.SISTEMAS || dept === DEPARTAMENTOS.MANTENIMIENTO)
   } catch {
@@ -431,11 +426,9 @@ export async function puedeGenerarPdfGeneral(): Promise<boolean> {
  *
  * @returns true si puede generar el PDF Resumido
  */
-export async function puedeGenerarPdfResumido(): Promise<boolean> {
+export function puedeGenerarPdfResumido(sesion: Sesion): boolean {
   try {
-    const sesion = await obtenerSesion()
     if (!sesion || !esUsuario(sesion)) return false
-
     const rol = sesion.data.rolUser?.toLowerCase() || ''
     return rol === 'autoridad' || rol === 'admin'
   } catch {

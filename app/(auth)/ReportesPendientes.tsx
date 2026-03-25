@@ -10,6 +10,7 @@
 //   - ImagenZoomModal: modal con zoom + pan para ver las fotos del reporte
 //   - FormularioEdicion: formulario inline para editar estado, prioridad y comentario
 
+import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -25,7 +26,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
 import {
   GestureHandlerRootView,
   PanGestureHandler,
@@ -37,7 +37,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { styles, colors } from '../../src/components/reportesPendientesStyles'
+import { colors, styles } from '../../src/components/reportesPendientesStyles'
+import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 import {
   ESTADOS_VALIDOS,
   PRIORIDADES_VALIDAS,
@@ -47,14 +49,13 @@ import {
   cargarReportesAsignadosDepto,
   cargarReportesEmpleado,
   cargarReportesSinAsignar,
+  eliminarReporte,
   getColorEstado,
   getColorPrioridad,
   guardarCambiosReporte,
   obtenerSesionEmpleado,
-  eliminarReporte,
 } from '../../src/services/ReportesPendientesService'
 import { Empleado } from '../../src/types/Database'
-import { useToast } from '../../src/components/ToastContext'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -313,6 +314,7 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
  */
 const ReportesPendientes: React.FC = () => {
   const { showToast } = useToast()
+    const { sesion } = useSesion()
 
   // ── Datos de sesión ───────────────────────────────────────────────────────
   const [esJefe, setEsJefe]             = useState(false)
@@ -342,7 +344,10 @@ const ReportesPendientes: React.FC = () => {
   const [reporteSeleccionado, setReporteSeleccionado] = useState<ReporteCompleto | null>(null)
   const [imagenZoom, setImagenZoom]               = useState<string | null>(null)
 
-  useEffect(() => { iniciar() }, [])
+ useEffect(() => {
+  if (sesion) iniciar()
+}, [sesion])  // ← depende de sesion
+
 
   // ── Inicialización ────────────────────────────────────────────────────────
 
@@ -353,32 +358,33 @@ const ReportesPendientes: React.FC = () => {
    */
   const iniciar = async () => {
     try {
-      const sesion = await obtenerSesionEmpleado()
-      const jefe = sesion.cargo === 'jefe'
-      setEsJefe(jefe)
-      setEmpleadoActual(sesion.id)
-      setNombreJefe(sesion.nombre)
-      setDepto(sesion.depto)
+       if (!sesion) return  // ← agrega
+    const sesionData = obtenerSesionEmpleado(sesion)
+ const jefe = sesionData.cargo === 'jefe'
+    setEsJefe(jefe)
+    setEmpleadoActual(sesionData.id)
+    setNombreJefe(sesionData.nombre)
+    setDepto(sesionData.depto)
 
-      if (jefe) {
-        const [colab, sinAsignar, asignados] = await Promise.all([
-          cargarColaboradoresDepto(sesion.depto),
-          cargarReportesSinAsignar(),
-          cargarReportesAsignadosDepto(sesion.depto),
-        ])
-        setColaboradores(colab)
-        setReportes(sinAsignar)
-        setReportesAsignados(asignados)
-      } else {
-        const data = await cargarReportesEmpleado(sesion.id)
-        setReportes(data)
-      }
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    if (jefe) {
+      const [colab, sinAsignar, asignados] = await Promise.all([
+        cargarColaboradoresDepto(sesionData.depto),
+        cargarReportesSinAsignar(),
+        cargarReportesAsignadosDepto(sesionData.depto),
+      ])
+      setColaboradores(colab)
+      setReportes(sinAsignar)
+      setReportesAsignados(asignados)
+    } else {
+      const data = await cargarReportesEmpleado(sesionData.id)
+      setReportes(data)
     }
+  } catch (err: any) {
+    setError(err.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   /**
    * Recarga los reportes según el rol activo.

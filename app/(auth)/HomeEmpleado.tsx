@@ -3,21 +3,23 @@
 // Muestra las tareas asignadas, botones de PDF personal y (para jefes) PDF general,
 // y un modal de detalle para cada reporte.
 
-import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator, RefreshControl,
-  ScrollView, Text, TouchableOpacity, View,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Reporte } from '../../src/types/Database'
-import { cargarDatosEmpleado, getStatusColor, getPriorityColor } from '../../src/services/Homeempleadoservice'
+import { useEffect, useState } from 'react'
+import {
+    ActivityIndicator, RefreshControl,
+    ScrollView, Text, TouchableOpacity, View,
+} from 'react-native'
 import { homeEmpleadoStyles as styles } from '../../src/components/homeEmpleadoStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
+import { cargarDatosEmpleado, getPriorityColor, getStatusColor } from '../../src/services/Homeempleadoservice'
+import { Reporte } from '../../src/types/Database'
 // ── PDF General: solo visible para jefes de área ──
-import { puedeGenerarPdfGeneral } from '../../src/services/PdfDepartamentalService'
-import { useToast } from '../../src/components/ToastContext'
 import * as React from 'react'
+import { useToast } from '../../src/components/ToastContext'
+import { puedeGenerarPdfGeneral } from '../../src/services/PdfDepartamentalService'
+
+import { useSesion } from '../../src/context/SesionContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -28,6 +30,7 @@ import * as React from 'react'
  */
 export default function HomeEmpleados() {
   const { showToast } = useToast()
+  const { sesion } = useSesion() 
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [empleado, setEmpleado]       = useState<any>(null)
@@ -51,19 +54,20 @@ export default function HomeEmpleados() {
    * Carga el empleado autenticado, sus reportes asignados
    * y verifica si tiene acceso al PDF general (solo jefes).
    *
-   * Incluye reintentos silenciosos cuando el error es de sesión.
-   * Ocurre al volver de PdfPreview mientras AsyncStorage todavía
-   * está restaurando la sesión. Se reintenta hasta 3 veces con 400ms.
+   * Incluye reintentos silenciosossssssssssasss cuando el error es de sesión.
+   * Ocurre al volver ede PdfPreview miennnnntras AseeeeeeeeeyncStorage todavía
+   * está restaurando la sesión. Se reintentaaaaa hastaaaaaaaaaaaa 3 veces con 400ms.
    *
    * @param intento - Número de intento actual (default 1)
    */
   const cargarDatos = async (intento = 1) => {
     try {
-      const datos = await cargarDatosEmpleado()
+     if (!sesion) return
+      const datos = await cargarDatosEmpleado(sesion) 
       setEmpleado(datos.empleado)
       setReportes(datos.reportes)
 
-      const acceso = await puedeGenerarPdfGeneral()
+      const acceso = await puedeGenerarPdfGeneral(sesion)
       setMostrarBtnGeneral(acceso)
       setVerificandoAcceso(false)
     } catch (error: any) {
