@@ -13,7 +13,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'rea
 // Estilos del perfil
 import { profileStyles as s } from '../../src/components/Profilestyles'
 // Servicios para cargar perfil y cerrar sesión
-import { cargarPerfil, ProfileData } from '../../src/services/Profileservice'
+import { cargarPerfil, ProfileData } from '../../src/services/usuario/Profileservice'
 // Contexto para limpiar fotos guardadas al cerrar sesión (solo usuarios, no empleados)
 import { Linking } from 'react-native'
 import { useSaved } from '../../src/context/SavedContext'

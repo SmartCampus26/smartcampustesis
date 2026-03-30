@@ -9,22 +9,22 @@ import { Eye, EyeOff } from 'lucide-react-native'
 import * as React from 'react'
 import { useState } from 'react'
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { styles } from '../../src/components/empleadoNuevoStyles'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
 import {
-    crearEmpleadoDB,
-    NuevoEmpleadoForm,
-    validarEmpleado,
-} from '../../src/services/EmpleadoNuevoService'
+  crearEmpleadoDB,
+  NuevoEmpleadoForm,
+  validarEmpleado,
+} from '../../src/services/empleado/EmpleadoNuevoService'
 
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ export default function EmpleadoNuevo() {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1DCDFE" />
             <Text style={styles.infoText}>
-              El colaborador será asignado automáticamente a reportes según su departamento
+              El reporte será asignado directamente al jefe de cada departamento.
             </Text>
           </View>
 

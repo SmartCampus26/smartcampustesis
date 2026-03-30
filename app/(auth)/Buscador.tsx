@@ -3,30 +3,29 @@
 // Permite visualizar, buscar, filtrar y eliminar usuarios y empleados.
 
 import * as React from 'react'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  Animated,
   Modal,
   RefreshControl,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native'
 
-import { Empleado, Usuario } from '../../src/types/Database'
-import {
-  fetchUsuarios,
-  fetchEmpleados,
-  eliminarUsuarioDB,
-  eliminarEmpleadoDB,
-  filtrarUsuarios,
-  filtrarEmpleados,
-} from '../../src/services/Buscadorservice'
 import { styles } from '../../src/components/Buscadorstyles'
 import { useToast } from '../../src/components/ToastContext'
+import {
+  eliminarEmpleadoDB,
+  eliminarUsuarioDB,
+  fetchEmpleados,
+  fetchUsuarios,
+  filtrarEmpleados,
+  filtrarUsuarios,
+} from '../../src/services/admin/Buscadorservice'
+import { Empleado, Usuario } from '../../src/types/Database'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

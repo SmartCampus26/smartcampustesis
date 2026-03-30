@@ -8,29 +8,29 @@ import { router, useLocalSearchParams } from 'expo-router'
 import * as React from 'react'
 import { useState } from 'react'
 import {
-    ActivityIndicator,
-    Image,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { styles } from '../../src/components/crearReporteStyles'
 import { useToast } from '../../src/components/ToastContext'
 import { useSaved } from '../../src/context/SavedContext'
 import { useSesion } from '../../src/context/SesionContext'
 import {
-    CATEGORIAS_OBJETOS,
-    insertarObjeto,
-    insertarReporte,
-    LUGARES_PREDEFINIDOS,
-    notificarJefeNuevoReporte,
-    obtenerOCrearLugar,
-    TIPOS_AULA,
-    validarFormularioReporte,
-    vincularReporteUsuario,
-} from '../../src/services/CrearReporteServices'
+  CATEGORIAS_OBJETOS,
+  insertarObjeto,
+  insertarReporte,
+  LUGARES_PREDEFINIDOS,
+  notificarJefeNuevoReporte,
+  obtenerOCrearLugar,
+  TIPOS_AULA,
+  validarFormularioReporte,
+  vincularReporteUsuario,
+} from '../../src/services/reportes/CrearReporteServices'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

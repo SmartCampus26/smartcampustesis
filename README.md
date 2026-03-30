@@ -1,53 +1,35 @@
-> Edited for use in IDX on 07/09/12
+# 🏫 SmartCampus 
+> **Plataforma integral para la gestión y optimización de servicios académicos, diseñada para modernizar la experiencia estudiantil mediante tecnología móvil y web.**
 
-# Welcome to your Expo app 👋
+---
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+### 🌟 ¿En qué consiste en si SmartCampus?
 
-## Get started
+**SmartCampus** Es un sistema integral que permite registrar, gestionar y reportar daños en la infraestructura y equipamiento escolar mediante una aplicación móvil, incorporando una base de datos, notificaciones y la generación automática de informes y gráficos
 
-#### Android
+#### 🐣 ¿Cómo lo logramos?:
+* Desarrollar una aplicación móvil que permita a los usuarios reportar incidencias con descripción, categoría, evidencia y ubicación.
+* Diseñar una base de datos relacional que organice la información de usuarios, áreas del colegio e incidencias registradas
+* Implementar una herramienta que permita generar informes y gráficos estadísticos automáticos en formato con los datos de los reportes filtrados por fecha, departamento y tipo. 
+* Crear un sistema de seguimiento y notificaciones que informe a los usuarios sobre el estado y la resolución de cada incidente. 
 
-Android previews are defined as a `workspace.onStart` hook and started as a vscode task when the workspace is opened/started.
+#### ⚙️ Herramientas Utilizadas: 
 
-Note, if you can't find the task, either:
-- Rebuild the environment (using command palette: `IDX: Rebuild Environment`), or
-- Run `npm run android -- --tunnel` command manually run android and see the output in your terminal. The device should pick up this new command and switch to start displaying the output from it.
+* **Supabase:**  Utilizamos Supabase para gestionar todos los datos de nuestra aplicación de forma segura, escalable y eficiente. Su interfaz intuitiva nos permite administrar tablas, relaciones y consultas de manera sencilla.  
 
-In the output of this command/task, you'll find options to open the app in a
+* **Firebase:**  Firebase de Google es nuestra plataforma de desarrollo de aplicaciones que nos permite compilar, desplegar y monitorear nuestra aplicación en tiempo real. 
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+* **Expo Go + React Native:**  React Native es el framework principal que utilizamos para desarrollar nuestra aplicación móvil multiplataforma, permitiéndonos escribir código una sola vez y ejecutarlo en iOS y Android. Expo Go complementa este desarrollo al proporcionar un conjunto de herramientas y servicios que aceleran el proceso de desarrollo, facilitando el testing en dispositivos reales sin necesidad de compilar código nativo. 
 
-You'll also find options to open the app's developer menu, reload the app, and more.
+#### 📱 Funcionalidades de la App: 
 
-#### Web
+* **Sistema de Autenticación**  El sistema cuenta con un inicio de sesión seguro que identifica el rol del usuario mediante su correo electrónico registrado. Dependiendo del rol asignado (Coordinador, Docente o Colaborador), el usuario es redirigido automáticamente a su interfaz correspondiente con los permisos y funcionalidades específicas de su rol   
 
-Web previews will be started and managred automatically. Use the toolbar to manually refresh.
+* **Funcionalidades Compartidas:**  Todos los usuarios, independientemente de su rol, tienen acceso a la pantalla principal (Home) donde pueden visualizar información general y estadísticas relevantes, así como a su perfil personal donde pueden visualizar su información. 
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+* **Gestión de Usuarios:**  Solo los Coordinadores y los Colaboradores tienen acceso a la gestión completa de usuarios. Pueden visualizar un listado de todos los usuarios registrados en el sistema,aunque solo los de Sistemas con los Coordinadores puedes crear nuevos usuarios y colaboradores con sus respectivos roles y permisos. Esta funcionalidad permite mantener un control centralizado del personal del sistema.  
 
-## Get a fresh project
+#### Logros del proyecto: 
 
-When you're ready, run:
+A lo largo del desarrollo de este proyecto, logramos crear una aplicación completamente funcional que cumple con todos los objetivos establecidos. El mayor logro fue implementar un sistema robusto de gestión de reportes con un sistema de notificaciones por correo electrónico que mantiene a todos los usuarios informados en tiempo real sobre el estado y las actualizaciones de sus reportes. 
 
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

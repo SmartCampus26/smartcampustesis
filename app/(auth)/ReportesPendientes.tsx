@@ -4,18 +4,22 @@
 // Comportamiento según rol:
 //   - Colaborador: ve sus reportes asignados y puede editar estado/prioridad/comentario.
 //   - Jefe: ve reportes sin asignar y asignados (tabs), puede asignar/reasignar
-//           colaboradores y eliminar reportes.
+//           colaboradores. La eliminación de reportes es exclusiva de autoridades
+//           y se gestiona desde la pantalla TodosReportes.
 //
 // Subcomponentes:
 //   - ImagenZoomModal: modal con zoom + pan para ver las fotos del reporte
 //   - FormularioEdicion: formulario inline para editar estado, prioridad y comentario
+//   - ConfirmModal: modal de confirmación con la misma estética del ToastContext
+//     (fondo oscuro #0f1623, borde de color, punto indicador, texto claro).
+//     Reemplaza Alert.alert para confirmaciones de asignación/reasignación,
+//     manteniendo consistencia visual con el sistema de notificaciones de la app.
 
 import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -49,12 +53,11 @@ import {
   cargarReportesAsignadosDepto,
   cargarReportesEmpleado,
   cargarReportesSinAsignar,
-  eliminarReporte,
   getColorEstado,
   getColorPrioridad,
   guardarCambiosReporte,
   obtenerSesionEmpleado,
-} from '../../src/services/ReportesPendientesService'
+} from '../../src/services/empleado/ReportesPendientesService'
 import { Empleado } from '../../src/types/Database'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -64,24 +67,154 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 /** Tabs disponibles para el jefe: reportes sin asignar o ya asignados */
 type TabJefe = 'sinAsignar' | 'asignados'
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+/** Datos necesarios para mostrar el modal de confirmación */
+interface ConfirmData {
+  visible: boolean
+  titulo: string
+  mensaje: string
+  labelConfirmar?: string
+  /** Color del borde, punto indicador y botón — espeja la paleta del ToastContext */
+  accentColor?: string
+  onConfirm: () => void
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subcomponente: ConfirmModal
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Modal de confirmación con la misma estética del ToastContext:
+ *   - Fondo oscuro: #0f1623  (igual que toastInfo)
+ *   - Borde de color dinámico según acción (accentColor)
+ *   - Punto indicador de color: igual que el dot del toast
+ *   - Texto principal: #f1f1f1  |  Texto secundario: #a0aec0
+ *   - Botón Cancelar con borde sutil (#2d3748)
+ *   - Botón Confirmar con fondo del accentColor y texto oscuro
+ *
+ * Props:
+ *  - visible       : controla si el modal está abierto
+ *  - titulo        : título principal (junto al punto indicador)
+ *  - mensaje       : descripción de la acción a confirmar
+ *  - labelConfirmar: texto del botón de acción (por defecto "Confirmar")
+ *  - accentColor   : color del borde, punto y botón (por defecto colors.accent)
+ *  - onConfirm     : callback ejecutado al confirmar
+ *  - onCancel      : callback ejecutado al cancelar o tocar fuera
+ */
+function ConfirmModal({
+  visible,
+  titulo,
+  mensaje,
+  labelConfirmar = 'Confirmar',
+  accentColor,
+  onConfirm,
+  onCancel,
+}: ConfirmData & { onCancel: () => void }) {
+  const accent = accentColor ?? colors.accent
+
+  return (
+    <Modal transparent animationType="fade" visible={visible}>
+      <View style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.65)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+      }}>
+        <View style={{
+          backgroundColor: '#0f1623',
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: accent,
+          padding: 24,
+          width: '100%',
+          maxWidth: 360,
+          shadowColor: accent,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+          elevation: 12,
+        }}>
+          {/* Encabezado: punto indicador + título — mismo patrón que ToastBanner */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <View style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: accent,
+              flexShrink: 0,
+            }} />
+            <Text style={{
+              fontSize: 15,
+              fontWeight: '700',
+              color: '#f1f1f1',
+              flexShrink: 1,
+            }}>
+              {titulo}
+            </Text>
+          </View>
+
+          {/* Mensaje */}
+          <Text style={{
+            fontSize: 14,
+            color: '#a0aec0',
+            lineHeight: 20,
+            marginBottom: 22,
+            paddingLeft: 18,
+          }}>
+            {mensaje}
+          </Text>
+
+          {/* Acciones */}
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#2d3748',
+              }}
+            >
+              <Text style={{ color: '#a0aec0', fontWeight: '600', fontSize: 14 }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onConfirm}
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 10,
+                backgroundColor: accent,
+              }}
+            >
+              <Text style={{ color: '#0f1623', fontWeight: '700', fontSize: 14 }}>
+                {labelConfirmar}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Subcomponente: ImagenZoomModal
-// Modal de pantalla completa con zoom (pinch) y desplazamiento (pan)
-// para ver las fotos adjuntas a un reporte en detalle.
 // ─────────────────────────────────────────────────────────────────────────────
-const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = ({ uri, onClose }) => {
-  // ── Valores animados de zoom ──────────────────────────────────────────────
-  const scale     = useSharedValue(1)
-  const lastScale = useSharedValue(1)
 
-  // ── Valores animados de posición ─────────────────────────────────────────
+const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = ({ uri, onClose }) => {
+  const scale          = useSharedValue(1)
+  const lastScale      = useSharedValue(1)
   const translateX     = useSharedValue(0)
   const translateY     = useSharedValue(0)
   const lastTranslateX = useSharedValue(0)
   const lastTranslateY = useSharedValue(0)
-
-  const pinchRef = useRef(null)
-  const panRef   = useRef(null)
+  const pinchRef       = useRef(null)
+  const panRef         = useRef(null)
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -91,7 +224,6 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
     ],
   }))
 
-  // ── Pinch: zoom desde donde están los dedos ──
   const onPinchEvent = (event: any) => {
     scale.value = Math.max(1, Math.min(lastScale.value * event.nativeEvent.scale, 5))
   }
@@ -99,17 +231,15 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
   const onPinchStateChange = (event: any) => {
     if (event.nativeEvent.state === State.END) {
       lastScale.value = scale.value
-      // Si vuelve a escala 1, resetea la posición al centro
       if (scale.value <= 1) {
-        translateX.value = withTiming(0)
-        translateY.value = withTiming(0)
+        translateX.value     = withTiming(0)
+        translateY.value     = withTiming(0)
         lastTranslateX.value = 0
         lastTranslateY.value = 0
       }
     }
   }
 
-  // ── Pan: mover la imagen cuando está con zoom activo ──
   const onPanEvent = (event: any) => {
     if (scale.value > 1) {
       translateX.value = lastTranslateX.value + event.nativeEvent.translationX
@@ -124,9 +254,6 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
     }
   }
 
-  /**
-   * Cierra el modal y resetea todos los valores de zoom y posición.
-   */
   const handleClose = () => {
     scale.value          = withTiming(1)
     lastScale.value      = 1
@@ -138,66 +265,25 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
   }
 
   return (
-    <Modal
-      visible={!!uri}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={!!uri} transparent animationType="fade" onRequestClose={handleClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.96)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          {/* Botón cerrar */}
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', justifyContent: 'center', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={handleClose}
-            style={{
-              position: 'absolute', top: 48, right: 20,
-              zIndex: 10, backgroundColor: 'rgba(255,255,255,0.15)',
-              borderRadius: 20, padding: 8,
-            }}
+            style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: 8 }}
           >
             <Ionicons name="close" size={28} color="#FFF" />
           </TouchableOpacity>
-
-          {/* PanGestureHandler + PinchGestureHandler combinados para zoom y movimiento */}
-          <PanGestureHandler
-            ref={panRef}
-            simultaneousHandlers={pinchRef}
-            onGestureEvent={onPanEvent}
-            onHandlerStateChange={onPanStateChange}
-            minPointers={1}
-            maxPointers={2}
-          >
+          <PanGestureHandler ref={panRef} simultaneousHandlers={pinchRef} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} minPointers={1} maxPointers={2}>
             <Animated.View style={{ width: SCREEN_W, height: SCREEN_H * 0.8, justifyContent: 'center', alignItems: 'center' }}>
-              <PinchGestureHandler
-                ref={pinchRef}
-                simultaneousHandlers={panRef}
-                onGestureEvent={onPinchEvent}
-                onHandlerStateChange={onPinchStateChange}
-              >
+              <PinchGestureHandler ref={pinchRef} simultaneousHandlers={panRef} onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange}>
                 <Animated.View style={[animatedStyle, { width: SCREEN_W, height: SCREEN_H * 0.8 }]}>
-                  {uri && (
-                    <Image
-                      source={{ uri }}
-                      style={{ width: SCREEN_W, height: SCREEN_H * 0.8 }}
-                      resizeMode="contain"
-                    />
-                  )}
+                  {uri && <Image source={{ uri }} style={{ width: SCREEN_W, height: SCREEN_H * 0.8 }} resizeMode="contain" />}
                 </Animated.View>
               </PinchGestureHandler>
             </Animated.View>
           </PanGestureHandler>
-
-          <Text style={{
-            color: 'rgba(255,255,255,0.4)',
-            fontSize: 12,
-            position: 'absolute',
-            bottom: 24,
-          }}>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, position: 'absolute', bottom: 24 }}>
             Pellizca para zoom · Arrastra para moverte
           </Text>
         </View>
@@ -208,11 +294,8 @@ const ImagenZoomModal: React.FC<{ uri: string | null; onClose: () => void }> = (
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Subcomponente: FormularioEdicion
-// Formulario inline para que el colaborador/jefe edite estado,
-// prioridad y comentario de un reporte sin salir de la pantalla.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Props del formulario de edición de reporte */
 interface FormularioEdicionProps {
   nuevoEstado: string
   nuevaPrioridad: string
@@ -225,19 +308,12 @@ interface FormularioEdicionProps {
 }
 
 const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
-  nuevoEstado,
-  nuevaPrioridad,
-  nuevoComentario,
-  onEstadoChange,
-  onPrioridadChange,
-  onComentarioChange,
-  onGuardar,
-  onCancelar,
+  nuevoEstado, nuevaPrioridad, nuevoComentario,
+  onEstadoChange, onPrioridadChange, onComentarioChange,
+  onGuardar, onCancelar,
 }) => (
   <View style={styles.editFormContainer}>
     <View style={styles.editForm}>
-
-      {/* Selector de estado */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Estado</Text>
         <View style={styles.pickerContainer}>
@@ -254,8 +330,6 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
           ))}
         </View>
       </View>
-
-      {/* Selector de prioridad */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Prioridad</Text>
         <View style={styles.pickerContainer}>
@@ -272,8 +346,6 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
           ))}
         </View>
       </View>
-
-      {/* Campo de comentario libre */}
       <View style={styles.formGroup}>
         <Text style={styles.formLabel}>Comentario</Text>
         <TextInput
@@ -287,8 +359,6 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
           textAlignVertical="top"
         />
       </View>
-
-      {/* Botones de acción del formulario */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.saveButton} onPress={onGuardar}>
           <Ionicons name="checkmark-circle-outline" size={18} color={colors.bg} />
@@ -307,89 +377,107 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
 // Componente principal: ReportesPendientes
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Pantalla de reportes pendientes para empleados y jefes.
- * Al montar, detecta el rol del empleado autenticado y carga
- * los reportes correspondientes (propios o del departamento).
- */
 const ReportesPendientes: React.FC = () => {
   const { showToast } = useToast()
-    const { sesion } = useSesion()
+  const { sesion }    = useSesion()
 
   // ── Datos de sesión ───────────────────────────────────────────────────────
-  const [esJefe, setEsJefe]             = useState(false)
-  const [empleadoActual, setEmpleadoActual] = useState<string | null>(null)
-  const [nombreJefe, setNombreJefe]     = useState('')
-  const [depto, setDepto]               = useState('')
+  const [esJefe, setEsJefe]                           = useState(false)
+  const [empleadoActual, setEmpleadoActual]           = useState<string | null>(null)
+  const [nombreJefe, setNombreJefe]                   = useState('')
+  const [depto, setDepto]                             = useState('')
 
   // ── Datos de reportes ─────────────────────────────────────────────────────
-  const [reportes, setReportes]                   = useState<ReporteCompleto[]>([])
-  const [reportesAsignados, setReportesAsignados] = useState<ReporteCompleto[]>([])
-  const [colaboradores, setColaboradores]         = useState<Empleado[]>([])
+  const [reportes, setReportes]                       = useState<ReporteCompleto[]>([])
+  const [reportesAsignados, setReportesAsignados]     = useState<ReporteCompleto[]>([])
+  const [colaboradores, setColaboradores]             = useState<Empleado[]>([])
 
   // ── Estado de UI ──────────────────────────────────────────────────────────
-  const [loading, setLoading]     = useState(true)
+  const [loading, setLoading]       = useState(true)
   const [recargando, setRecargando] = useState(false)
-  const [error, setError]         = useState<string | null>(null)
-  const [tabActivo, setTabActivo] = useState<TabJefe>('sinAsignar')
+  const [error, setError]           = useState<string | null>(null)
+  const [tabActivo, setTabActivo]   = useState<TabJefe>('sinAsignar')
 
   // ── Estado de edición inline ──────────────────────────────────────────────
-  const [editando, setEditando]           = useState<string | null>(null)
+  const [editando, setEditando]               = useState<string | null>(null)
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [nuevaPrioridad, setNuevaPrioridad]   = useState('')
   const [nuevoEstado, setNuevoEstado]         = useState('')
 
-  // ── Estado del modal de asignación y zoom de imagen ───────────────────────
-  const [modalVisible, setModalVisible]           = useState(false)
+  // ── Estado del modal de detalle/asignación ────────────────────────────────
+  const [modalVisible, setModalVisible]               = useState(false)
   const [reporteSeleccionado, setReporteSeleccionado] = useState<ReporteCompleto | null>(null)
-  const [imagenZoom, setImagenZoom]               = useState<string | null>(null)
+  const [imagenZoom, setImagenZoom]                   = useState<string | null>(null)
 
- useEffect(() => {
-  if (sesion) iniciar()
-}, [sesion])  // ← depende de sesion
+  // ── Estado del ConfirmModal (reemplaza Alert.alert) ───────────────────────
+  const [confirm, setConfirm] = useState<ConfirmData>({
+    visible: false,
+    titulo: '',
+    mensaje: '',
+    labelConfirmar: 'Confirmar',
+    accentColor: undefined,
+    onConfirm: () => {},
+  })
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Abre el ConfirmModal con estética de toast.
+   * @param titulo         - Título del modal (junto al punto indicador)
+   * @param mensaje        - Descripción de la acción
+   * @param onConfirm      - Acción al confirmar
+   * @param labelConfirmar - Texto del botón (por defecto "Confirmar")
+   * @param accentColor    - Color del borde, punto y botón. Mapea las mismas
+   *                         claves del ToastContext: success=#2dc653,
+   *                         error=#e63946, info=#4895ef
+   */
+  const openConfirm = (
+    titulo: string,
+    mensaje: string,
+    onConfirm: () => void,
+    labelConfirmar = 'Confirmar',
+    accentColor?: string,
+  ) => setConfirm({ visible: true, titulo, mensaje, labelConfirmar, accentColor, onConfirm })
+
+  /** Cierra el ConfirmModal sin ejecutar ninguna acción */
+  const closeConfirm = () => setConfirm((p) => ({ ...p, visible: false }))
+
+  useEffect(() => {
+    if (sesion) iniciar()
+  }, [sesion])
 
   // ── Inicialización ────────────────────────────────────────────────────────
 
-  /**
-   * Carga la sesión del empleado y los reportes correspondientes a su rol.
-   * Para jefes: carga colaboradores, reportes sin asignar y asignados en paralelo.
-   * Para colaboradores: carga solo los reportes propios.
-   */
   const iniciar = async () => {
     try {
-       if (!sesion) return  // ← agrega
-    const sesionData = obtenerSesionEmpleado(sesion)
- const jefe = sesionData.cargo === 'jefe'
-    setEsJefe(jefe)
-    setEmpleadoActual(sesionData.id)
-    setNombreJefe(sesionData.nombre)
-    setDepto(sesionData.depto)
+      if (!sesion) return
+      const sesionData = obtenerSesionEmpleado(sesion)
+      const jefe       = sesionData.cargo === 'jefe'
+      setEsJefe(jefe)
+      setEmpleadoActual(sesionData.id)
+      setNombreJefe(sesionData.nombre)
+      setDepto(sesionData.depto)
 
-    if (jefe) {
-      const [colab, sinAsignar, asignados] = await Promise.all([
-        cargarColaboradoresDepto(sesionData.depto),
-        cargarReportesSinAsignar(),
-        cargarReportesAsignadosDepto(sesionData.depto),
-      ])
-      setColaboradores(colab)
-      setReportes(sinAsignar)
-      setReportesAsignados(asignados)
-    } else {
-      const data = await cargarReportesEmpleado(sesionData.id)
-      setReportes(data)
+      if (jefe) {
+        const [colab, sinAsignar, asignados] = await Promise.all([
+          cargarColaboradoresDepto(sesionData.depto),
+          cargarReportesSinAsignar(),
+          cargarReportesAsignadosDepto(sesionData.depto),
+        ])
+        setColaboradores(colab)
+        setReportes(sinAsignar)
+        setReportesAsignados(asignados)
+      } else {
+        const data = await cargarReportesEmpleado(sesionData.id)
+        setReportes(data)
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
-  } catch (err: any) {
-    setError(err.message)
-  } finally {
-    setLoading(false)
   }
-}
 
-  /**
-   * Recarga los reportes según el rol activo.
-   * Se activa por pull-to-refresh o después de mutaciones.
-   */
   const recargar = async () => {
     setRecargando(true)
     try {
@@ -405,64 +493,47 @@ const ReportesPendientes: React.FC = () => {
         setReportes(data)
       }
     } catch (err: any) {
-      // Error de recarga — toast en lugar de Alert
       showToast(err.message || 'Error al recargar', 'error')
     } finally {
       setRecargando(false)
     }
   }
 
-  /**
-   * Abre el modal de selección de colaborador para el reporte dado.
-   * @param reporte - Reporte al que se asignará un colaborador
-   */
   const abrirModal = (reporte: ReporteCompleto) => {
     setReporteSeleccionado(reporte)
     setModalVisible(true)
   }
 
   /**
-   * Solicita confirmación y asigna (o reasigna) un colaborador al reporte.
-   * La confirmación usa Alert nativo porque requiere 2 botones (Cancelar / Confirmar).
-   * Los errores del resultado se reportan vía toast.
-   * @param colaborador - Empleado al que se asigna el reporte
+   * Muestra el ConfirmModal con colores del sistema toast:
+   *   - Asignación nueva → azul info (#4895ef), igual que showToast('...','info')
+   *   - Reasignación     → accent de la app, igual que showToast('...','success')
+   * Reemplaza Alert.alert manteniendo coherencia visual total con ToastContext.
    */
   const confirmarAsignacion = (colaborador: Empleado) => {
-    const yaAsignado = !!reporteSeleccionado?.idEmpl
-    // ⚠️ Alert se mantiene — confirmación destructiva con 2 botones
-    Alert.alert(
-      yaAsignado ? 'Confirmar reasignación' : 'Confirmar asignación',
-      `¿${yaAsignado ? 'Reasignar' : 'Asignar'} este reporte a ${colaborador.nomEmpl} ${colaborador.apeEmpl}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            try {
-              await asignarColaboradorAReporte(
-                reporteSeleccionado!.idReporte,
-                colaborador.idEmpl,
-                nombreJefe
-              )
-              // Éxito → toast global
-              showToast(`Reporte ${yaAsignado ? 'reasignado' : 'asignado'} correctamente`, 'success')
-              setModalVisible(false)
-              recargar()
-            } catch (err: any) {
-              // Error → toast global
-              showToast(err.message || 'Error al asignar', 'error')
-            }
-          },
-        },
-      ]
-    )
+    const yaAsignado  = !!reporteSeleccionado?.idEmpl
+    const titulo      = yaAsignado ? 'Confirmar reasignación' : 'Confirmar asignación'
+    const mensaje     = `¿${yaAsignado ? 'Reasignar' : 'Asignar'} este reporte a ${colaborador.nomEmpl} ${colaborador.apeEmpl}?`
+    // Azul info para asignación nueva · accent (verde) para reasignación
+    const accentColor = yaAsignado ? colors.accent : '#4895ef'
+
+    openConfirm(titulo, mensaje, async () => {
+      closeConfirm()
+      try {
+        await asignarColaboradorAReporte(
+          reporteSeleccionado!.idReporte,
+          colaborador.idEmpl,
+          nombreJefe,
+        )
+        showToast(`Reporte ${yaAsignado ? 'reasignado' : 'asignado'} correctamente`, 'success')
+        setModalVisible(false)
+        recargar()
+      } catch (err: any) {
+        showToast(err.message || 'Error al asignar', 'error')
+      }
+    }, yaAsignado ? 'Reasignar' : 'Asignar', accentColor)
   }
 
-  /**
-   * Activa el modo de edición inline para el reporte dado.
-   * Pre-carga los valores actuales de estado, prioridad y comentario.
-   * @param reporte - Reporte a editar
-   */
   const iniciarEdicion = (reporte: ReporteCompleto) => {
     setEditando(reporte.idReporte)
     setNuevoComentario(reporte.comentReporte || '')
@@ -470,7 +541,6 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado(reporte.estReporte)
   }
 
-  /** Cancela la edición inline y limpia el estado del formulario */
   const cancelarEdicion = () => {
     setEditando(null)
     setNuevoComentario('')
@@ -478,11 +548,6 @@ const ReportesPendientes: React.FC = () => {
     setNuevoEstado('')
   }
 
-  /**
-   * Guarda los cambios del formulario de edición en Supabase.
-   * Muestra toast de error si la operación falla.
-   * @param idReporte - ID del reporte a actualizar
-   */
   const guardarCambios = async (idReporte: string) => {
     try {
       const reporteActual =
@@ -493,59 +558,17 @@ const ReportesPendientes: React.FC = () => {
       await recargar()
       cancelarEdicion()
     } catch (err: any) {
-      // Error al guardar → toast global
       showToast(err.message || 'Error al guardar', 'error')
     }
   }
 
-  /**
-   * Solicita confirmación y elimina el reporte de la BD.
-   * La confirmación usa Alert nativo porque es una acción destructiva con 2 botones.
-   * Los errores del resultado se reportan vía toast.
-   * @param idReporte - ID del reporte a eliminar
-   */
-  const confirmarEliminacion = (idReporte: string) => {
-    // ⚠️ Alert se mantiene — confirmación destructiva con 2 botones (Cancelar / Eliminar)
-    Alert.alert(
-      'Eliminar reporte',
-      '¿Estás seguro? Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await eliminarReporte(idReporte)
-              await recargar()
-            } catch (err: any) {
-              // Error al eliminar → toast global
-              showToast(err.message || 'Error al eliminar', 'error')
-            }
-          },
-        },
-      ]
-    )
-  }
-
-  /**
-   * Genera las iniciales de nombre y apellido para los avatares.
-   * @param nombre   - Primer nombre del empleado/usuario
-   * @param apellido - Primer apellido del empleado/usuario
-   */
   const getIniciales = (nombre?: string, apellido?: string) =>
     `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`.toUpperCase()
 
-  // ── Render de tarjeta de reporte ──────────────────────────────────────────
+  // ── Render de tarjeta ─────────────────────────────────────────────────────
+  // La eliminación de reportes ha sido removida de esta pantalla.
+  // Es una acción exclusiva de autoridades disponible en TodosReportes.
 
-  /**
-   * Renderiza la tarjeta completa de un reporte.
-   * Incluye: foto (con zoom al tocar), datos del usuario, objeto, ubicación,
-   * badges de estado/prioridad, colaborador asignado, comentario y acciones.
-   *
-   * @param reporte           - Reporte completo con relaciones cargadas
-   * @param permitirReasignar - true si el botón de asignación debe decir "Reasignar"
-   */
   const renderTarjeta = (reporte: ReporteCompleto, permitirReasignar = false) => {
     const enEdicion      = editando === reporte.idReporte
     const colorEstado    = getColorEstado(reporte.estReporte)
@@ -553,26 +576,12 @@ const ReportesPendientes: React.FC = () => {
 
     return (
       <View key={reporte.idReporte} style={styles.card}>
-        {/* Barra de acento de color según estado */}
         <View style={[styles.cardAccentBar, { backgroundColor: colorEstado }]} />
 
-        {/* Foto del reporte — abre ImagenZoomModal al tocar */}
         {reporte.imgReporte?.length > 0 && (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setImagenZoom(reporte.imgReporte[0])}
-          >
-            <Image
-              source={{ uri: reporte.imgReporte[0] }}
-              style={styles.cardImage}
-              resizeMode="cover"
-            />
-            <View style={{
-              position: 'absolute', bottom: 8, right: 8,
-              backgroundColor: 'rgba(0,0,0,0.45)',
-              borderRadius: 6, padding: 4,
-              flexDirection: 'row', alignItems: 'center', gap: 4,
-            }}>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => setImagenZoom(reporte.imgReporte[0])}>
+            <Image source={{ uri: reporte.imgReporte[0] }} style={styles.cardImage} resizeMode="cover" />
+            <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 6, padding: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="expand-outline" size={14} color="#FFF" />
               <Text style={{ color: '#FFF', fontSize: 11 }}>Ver foto</Text>
             </View>
@@ -580,8 +589,6 @@ const ReportesPendientes: React.FC = () => {
         )}
 
         <View style={styles.cardContent}>
-
-          {/* Sección del usuario que reportó */}
           <View style={styles.userSection}>
             <View style={styles.userAvatar}>
               <Text style={styles.userAvatarText}>
@@ -590,14 +597,11 @@ const ReportesPendientes: React.FC = () => {
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.sectionLabel}>Reportado por</Text>
-              <Text style={styles.userName}>
-                {reporte.usuario?.nomUser} {reporte.usuario?.apeUser}
-              </Text>
+              <Text style={styles.userName}>{reporte.usuario?.nomUser} {reporte.usuario?.apeUser}</Text>
               <Text style={styles.userEmail}>{reporte.usuario?.correoUser}</Text>
             </View>
           </View>
 
-          {/* Título del objeto y fecha */}
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{reporte.objeto?.nomObj || 'Sin título'}</Text>
             <Text style={styles.cardDate}>
@@ -609,7 +613,6 @@ const ReportesPendientes: React.FC = () => {
 
           <Text style={styles.cardDescription}>{reporte.descriReporte}</Text>
 
-          {/* Chips de ubicación y objeto */}
           <View style={styles.infoGrid}>
             {reporte.lugar && (
               <View style={styles.infoChip}>
@@ -633,15 +636,13 @@ const ReportesPendientes: React.FC = () => {
                 <View style={styles.infoChipContent}>
                   <Text style={styles.infoChipLabel}>Objeto</Text>
                   <Text style={styles.infoChipText}>
-                    {reporte.objeto.nomObj}
-                    {reporte.objeto.ctgobj ? ` · ${reporte.objeto.ctgobj}` : ''}
+                    {reporte.objeto.nomObj}{reporte.objeto.ctgobj ? ` · ${reporte.objeto.ctgobj}` : ''}
                   </Text>
                 </View>
               </View>
             )}
           </View>
 
-          {/* Badges de estado y prioridad */}
           <View style={styles.badgeRow}>
             <View style={[styles.badgeWrap, { borderColor: colorEstado, backgroundColor: `${colorEstado}18` }]}>
               <View style={[styles.badgeDot, { backgroundColor: colorEstado }]} />
@@ -653,7 +654,6 @@ const ReportesPendientes: React.FC = () => {
             </View>
           </View>
 
-          {/* Colaborador asignado (si existe) */}
           {reporte.empleado && (
             <View style={styles.assigneeContainer}>
               <Ionicons name="person-circle-outline" size={18} color={colors.textSecondary} />
@@ -666,7 +666,6 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
-          {/* Comentario del colaborador (solo si no está en modo edición) */}
           {!enEdicion && reporte.comentReporte && (
             <View style={styles.commentContainer}>
               <View style={styles.commentHeader}>
@@ -677,7 +676,6 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
-          {/* Formulario de edición inline o botones de acción */}
           {enEdicion ? (
             <FormularioEdicion
               nuevoEstado={nuevoEstado}
@@ -691,24 +689,12 @@ const ReportesPendientes: React.FC = () => {
             />
           ) : (
             <View style={styles.actionRow}>
-              {/* Editar estado/prioridad/comentario */}
               <TouchableOpacity style={styles.editButton} onPress={() => iniciarEdicion(reporte)}>
                 <Ionicons name="create-outline" size={17} color={colors.accent} />
                 <Text style={styles.editButtonText}>Editar</Text>
               </TouchableOpacity>
 
-              {/* Eliminar reporte — solo jefes */}
-              {esJefe && (
-                <TouchableOpacity
-                  style={[styles.cancelButton, { borderColor: '#DC143C' }]}
-                  onPress={() => confirmarEliminacion(reporte.idReporte)}
-                >
-                  <Ionicons name="trash-outline" size={17} color="#DC143C" />
-                  <Text style={[styles.cancelButtonText, { color: '#DC143C' }]}>Eliminar</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Asignar / Reasignar colaborador — solo jefes */}
+              {/* Asignar / Reasignar — solo jefes */}
               {esJefe && (
                 <TouchableOpacity style={styles.assignButton} onPress={() => abrirModal(reporte)}>
                   <Ionicons name="person-add-outline" size={17} color={colors.bg} />
@@ -724,7 +710,7 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+  // ── Loading / Error ───────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -734,8 +720,6 @@ const ReportesPendientes: React.FC = () => {
       </View>
     )
   }
-
-  // ── Error de inicialización ───────────────────────────────────────────────
 
   if (error) {
     return (
@@ -750,7 +734,6 @@ const ReportesPendientes: React.FC = () => {
     )
   }
 
-  // Lista de reportes según tab activo (jefe) o todos (colaborador)
   const reportesMostrados = esJefe
     ? (tabActivo === 'sinAsignar' ? reportes : reportesAsignados)
     : reportes
@@ -771,13 +754,8 @@ const ReportesPendientes: React.FC = () => {
         }
       >
         <View style={styles.contentWrapper}>
-          <Text style={styles.title}>
-            {esJefe ? 'Gestión de Reportes' : 'Mis Reportes'}
-          </Text>
+          <Text style={styles.title}>{esJefe ? 'Gestión de Reportes' : 'Mis Reportes'}</Text>
 
-          {/* ── TABS (solo para jefes) ──────────────────────────────────────
-              Sin asignar: reportes que aún no tienen colaborador.
-              Asignados: reportes ya en progreso del departamento. ── */}
           {esJefe && (
             <View style={styles.tabsContainer}>
               <TouchableOpacity
@@ -799,7 +777,6 @@ const ReportesPendientes: React.FC = () => {
             </View>
           )}
 
-          {/* ── LISTA DE REPORTES o estado vacío ── */}
           {reportesMostrados.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="folder-open-outline" size={72} color={colors.textMuted} />
@@ -821,20 +798,10 @@ const ReportesPendientes: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* Modal de zoom para imágenes del reporte */}
-      <ImagenZoomModal
-        uri={imagenZoom}
-        onClose={() => setImagenZoom(null)}
-      />
+      <ImagenZoomModal uri={imagenZoom} onClose={() => setImagenZoom(null)} />
 
-      {/* ── MODAL DE SELECCIÓN DE COLABORADOR ──────────────────────────────
-          Permite al jefe elegir a quién asignar o reasignar el reporte. ── */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
+      {/* Modal de selección de colaborador — solo jefes */}
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHandle} />
@@ -846,29 +813,19 @@ const ReportesPendientes: React.FC = () => {
                 <Ionicons name="close-circle" size={28} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
-
-            {/* Lista de colaboradores disponibles en el departamento */}
             <ScrollView showsVerticalScrollIndicator={false}>
               {colaboradores.length === 0 ? (
-                <Text style={styles.modalEmptyText}>
-                  No hay colaboradores disponibles en este departamento
-                </Text>
+                <Text style={styles.modalEmptyText}>No hay colaboradores disponibles en este departamento</Text>
               ) : (
                 colaboradores.map((colab) => (
-                  <TouchableOpacity
-                    key={colab.idEmpl}
-                    onPress={() => confirmarAsignacion(colab)}
-                    style={styles.colaboradorItem}
-                  >
+                  <TouchableOpacity key={colab.idEmpl} onPress={() => confirmarAsignacion(colab)} style={styles.colaboradorItem}>
                     <View style={styles.colaboradorAvatar}>
                       <Text style={styles.colaboradorAvatarText}>
                         {getIniciales(colab.nomEmpl, colab.apeEmpl)}
                       </Text>
                     </View>
                     <View style={styles.colaboradorInfo}>
-                      <Text style={styles.colaboradorNombre}>
-                        {colab.nomEmpl} {colab.apeEmpl}
-                      </Text>
+                      <Text style={styles.colaboradorNombre}>{colab.nomEmpl} {colab.apeEmpl}</Text>
                       <Text style={styles.colaboradorCorreo}>{colab.correoEmpl}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -879,6 +836,17 @@ const ReportesPendientes: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* ConfirmModal con estética de toast — fondo oscuro, borde de color, punto indicador */}
+      <ConfirmModal
+        visible={confirm.visible}
+        titulo={confirm.titulo}
+        mensaje={confirm.mensaje}
+        labelConfirmar={confirm.labelConfirmar}
+        accentColor={confirm.accentColor}
+        onConfirm={confirm.onConfirm}
+        onCancel={closeConfirm}
+      />
     </View>
   )
 }

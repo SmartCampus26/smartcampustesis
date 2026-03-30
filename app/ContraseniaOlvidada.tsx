@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { COLORS, recuperarStyles as styles } from '../src/components/recuperarContraseniaStyles'
 import { supabase } from '../src/lib/Supabase'
 import {
   actualizarContrasenia,
@@ -19,8 +20,7 @@ import {
   validarContrasenia,
   validarCorreo,
   verificarCorreoExiste,
-} from '../src/services/RecuperarContraseniaService'
-import { COLORS, recuperarStyles as styles } from '../src/components/recuperarContraseniaStyles'
+} from '../src/services/auth/RecuperarContraseniaService'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos internos

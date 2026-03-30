@@ -8,22 +8,25 @@
  * Ubicación: app/(auth)/ (capa de vista)
  */
 
-import * as React from 'react'
-import { useState, useEffect, useCallback } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  cargarDatosPdfGeneral,
-  DatosPdfGeneral,
-} from '../../src/services/PdfDepartamentalService'
-import { generarYDescargarPdfGeneral } from '../../src/services/PdfGeneralService'
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { pdfPreviewStyles as styles } from '../../src/components/pdfPreviewStyles'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
+import {
+  cargarDatosPdfGeneral,
+  DatosPdfGeneral,
+} from '../../src/services/pdf/PdfDepartamentalService'
+import { generarYDescargarPdfGeneral } from '../../src/services/pdf/PdfGeneralService'
 
 export default function PdfPreview() {
   const { showToast } = useToast()

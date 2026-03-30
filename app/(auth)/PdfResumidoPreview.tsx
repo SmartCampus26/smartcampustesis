@@ -8,23 +8,26 @@
  * Ubicación: app/(auth)/ (capa de vista)
  */
 
-import * as React from 'react'
-import { useState, useEffect, useCallback } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert,
-} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  ActivityIndicator, Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { pdfResumidoPreviewStyles as styles } from '../../src/components/pdfResumidoPreviewStyles'
+import { useToast } from '../../src/components/ToastContext'
+import { useSesion } from '../../src/context/SesionContext'
 import {
   cargarDatosPdfResumido,
   DatosPdfResumido,
   FiltroDepartamento,
-} from '../../src/services/PdfDepartamentalService'
-import { generarYDescargarPdfResumido } from '../../src/services/PdfResumidoService'
-import { pdfResumidoPreviewStyles as styles } from '../../src/components/pdfResumidoPreviewStyles'
-import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../../src/context/SesionContext'
+} from '../../src/services/pdf/PdfDepartamentalService'
+import { generarYDescargarPdfResumido } from '../../src/services/pdf/PdfResumidoService'
 
 // ─── Opciones del selector de filtro ─────────────────────────────────────────
 
@@ -265,7 +268,7 @@ export default function PdfResumidoPreview() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnVolver} onPress={() => router.replace('/HomeEmpleado')}>
+        <TouchableOpacity style={styles.btnVolver} onPress={() => router.replace('/HomeAutoridad')}>
           <Ionicons name="arrow-back-outline" size={18} color="#6b7280" />
           <Text style={styles.btnVolverText}>Volver</Text>
         </TouchableOpacity>

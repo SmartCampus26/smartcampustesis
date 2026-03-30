@@ -8,15 +8,15 @@ import { router } from 'expo-router'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import {
-    ActivityIndicator, RefreshControl,
-    ScrollView, Text, TouchableOpacity, View,
+  ActivityIndicator, RefreshControl,
+  ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { homeDocenteStyles as styles } from '../../src/components/homeDocenteStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
-import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/HomeDocenteService'
+import { cargarDatosDocente, HomeDocenteStats } from '../../src/services/usuario/HomeDocenteService'
 import { Reporte } from '../../src/types/Database'
 
 // ─── Componente principal ─────────────────────────────────────────────────────

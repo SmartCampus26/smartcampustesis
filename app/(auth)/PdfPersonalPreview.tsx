@@ -15,18 +15,18 @@ import { router } from 'expo-router'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg'
 import { pdfPersonalPreviewStyles as styles } from '../../src/components/pdfPersonalPreviewStyles'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'; // ← agrega
-import { cargarDatosEmpleado } from '../../src/services/Homeempleadoservice'
-import { generarPDF } from '../../src/services/PdfService'
+import { cargarDatosEmpleado } from '../../src/services/empleado/Homeempleadoservice'
+import { generarPDF } from '../../src/services/pdf/PdfService'
 import { Reporte } from '../../src/types/Database'
 
 

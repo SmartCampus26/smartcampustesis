@@ -9,20 +9,20 @@ import { useLocalSearchParams } from 'expo-router'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import {
-    ActivityIndicator, RefreshControl, ScrollView,
-    Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, RefreshControl, ScrollView,
+  Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { styles } from '../../src/components/listadoReportesStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
 import {
-    FiltroEstado,
-    aplicarFiltrosReportes,
-    cargarMisReportes,
-    getPriorityColor,
-    getStatusColor,
-} from '../../src/services/ListadoReportesService'
+  FiltroEstado,
+  aplicarFiltrosReportes,
+  cargarMisReportes,
+  getPriorityColor,
+  getStatusColor,
+} from '../../src/services/reportes/ListadoReportesService'
 import { Reporte } from '../../src/types/Database'
 
 

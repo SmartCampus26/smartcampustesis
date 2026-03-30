@@ -7,17 +7,17 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-    ActivityIndicator, RefreshControl,
-    ScrollView, Text, TouchableOpacity, View,
+  ActivityIndicator, RefreshControl,
+  ScrollView, Text, TouchableOpacity, View,
 } from 'react-native'
 import { homeEmpleadoStyles as styles } from '../../src/components/homeEmpleadoStyles'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-import { cargarDatosEmpleado, getPriorityColor, getStatusColor } from '../../src/services/Homeempleadoservice'
+import { cargarDatosEmpleado, getPriorityColor, getStatusColor } from '../../src/services/empleado/Homeempleadoservice'
 import { Reporte } from '../../src/types/Database'
 // ── PDF General: solo visible para jefes de área ──
 import * as React from 'react'
 import { useToast } from '../../src/components/ToastContext'
-import { puedeGenerarPdfGeneral } from '../../src/services/PdfDepartamentalService'
+import { puedeGenerarPdfGeneral } from '../../src/services/pdf/PdfDepartamentalService'
 
 import { useSesion } from '../../src/context/SesionContext'
 

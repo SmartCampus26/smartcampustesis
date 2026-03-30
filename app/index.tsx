@@ -22,7 +22,7 @@ import {
 // Navegación y redirección entre pantallas
 import { router } from 'expo-router'
 // Servicio personalizado de autenticación
-import { loginPersonalizado } from '../src/services/AuthService'
+import { loginPersonalizado } from '../src/services/auth/AuthService'
 // Tipo de datos de sesión
 import { Sesion } from '../src/types/Database'
 // Librería de íconos

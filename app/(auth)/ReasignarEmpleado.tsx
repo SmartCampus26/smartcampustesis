@@ -2,26 +2,170 @@
 // Pantalla para que la autoridad reasigne reportes activos a colaboradores.
 // Muestra la lista de reportes con filtros, un modal de selección de colaborador
 // y un modal de detalle completo del reporte.
+//
+// Subcomponentes:
+//   - ConfirmModal: modal de confirmación con la misma estética del ToastContext
+//     (fondo oscuro #0f1623, borde azul info #4895ef, punto indicador, texto claro).
+//     Reemplaza Alert.alert para la confirmación de reasignación, manteniendo
+//     consistencia visual con el sistema de notificaciones de la app.
 
+import { Ionicons } from '@expo/vector-icons'
+import * as React from 'react'
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Alert, Modal,
-  ScrollView, Text, TouchableOpacity, View,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { Empleado, Reporte } from '../../src/types/Database'
 import { styles } from '../../src/components/Reasignarempleadostyles'
-import * as React from 'react'
-import {
-  obtenerNombreDesdeSesion,
-  cargarEmpleadosYReportes,
-  reasignarReporteDB,
-  filtrarEmpleados,
-  getEmpleadoNombre,
-} from '../../src/services/Reasignarempleadoservice'
 import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
 import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
+import {
+  cargarEmpleadosYReportes,
+  filtrarEmpleados,
+  getEmpleadoNombre,
+  obtenerNombreDesdeSesion,
+  reasignarReporteDB,
+} from '../../src/services/admin/Reasignarempleadoservice'
+import { Empleado, Reporte } from '../../src/types/Database'
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+/** Datos necesarios para mostrar el modal de confirmación */
+interface ConfirmData {
+  visible: boolean
+  titulo: string
+  mensaje: string
+  labelConfirmar?: string
+  /** Color del borde, punto indicador y botón — espeja la paleta del ToastContext */
+  accentColor?: string
+  onConfirm: () => void
+}
+
+// ─── Subcomponente: ConfirmModal ──────────────────────────────────────────────
+
+/**
+ * Modal de confirmación con la misma estética del ToastContext:
+ *   - Fondo oscuro: #0f1623  (igual que toastInfo)
+ *   - Borde de color: #4895ef (azul info, para reasignaciones neutras)
+ *   - Punto indicador: mismo dot que ToastBanner
+ *   - Texto principal: #f1f1f1  |  Texto secundario: #a0aec0
+ *   - Botón Cancelar con borde sutil (#2d3748)
+ *   - Botón Confirmar con fondo del accentColor y texto oscuro
+ *
+ * Reemplaza Alert.alert para la confirmación de reasignación de reportes,
+ * eliminando la dependencia del diálogo nativo del sistema operativo.
+ *
+ * Props:
+ *  - visible       : controla si el modal está abierto
+ *  - titulo        : título principal (junto al punto indicador)
+ *  - mensaje       : descripción de la acción a confirmar
+ *  - labelConfirmar: texto del botón de acción (por defecto "Confirmar")
+ *  - accentColor   : color del borde, punto y botón (por defecto #4895ef info)
+ *  - onConfirm     : callback ejecutado al confirmar
+ *  - onCancel      : callback ejecutado al cancelar
+ */
+function ConfirmModal({
+  visible,
+  titulo,
+  mensaje,
+  labelConfirmar = 'Confirmar',
+  accentColor = '#4895ef',
+  onConfirm,
+  onCancel,
+}: ConfirmData & { onCancel: () => void }) {
+  return (
+    <Modal transparent animationType="fade" visible={visible}>
+      <View style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.65)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+      }}>
+        <View style={{
+          backgroundColor: '#0f1623',
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: accentColor,
+          padding: 24,
+          width: '100%',
+          maxWidth: 360,
+          shadowColor: accentColor,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+          elevation: 12,
+        }}>
+          {/* Encabezado: punto indicador + título — mismo patrón que ToastBanner */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <View style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: accentColor,
+              flexShrink: 0,
+            }} />
+            <Text style={{
+              fontSize: 15,
+              fontWeight: '700',
+              color: '#f1f1f1',
+              flexShrink: 1,
+            }}>
+              {titulo}
+            </Text>
+          </View>
+
+          {/* Mensaje */}
+          <Text style={{
+            fontSize: 14,
+            color: '#a0aec0',
+            lineHeight: 20,
+            marginBottom: 22,
+            paddingLeft: 18,
+          }}>
+            {mensaje}
+          </Text>
+
+          {/* Acciones */}
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#2d3748',
+              }}
+            >
+              <Text style={{ color: '#a0aec0', fontWeight: '600', fontSize: 14 }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onConfirm}
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 10,
+                backgroundColor: accentColor,
+              }}
+            >
+              <Text style={{ color: '#0f1623', fontWeight: '700', fontSize: 14 }}>
+                {labelConfirmar}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,18 +186,18 @@ const formatId = (id: string): string => {
  * Pantalla de reasignación de reportes.
  * Carga empleados y reportes al montar.
  * Permite filtrar colaboradores por departamento y cargo en el modal de asignación.
- * La confirmación de reasignación usa Alert nativo (2 botones).
+ * La confirmación de reasignación usa ConfirmModal (reemplaza Alert.alert nativo).
  * Los errores se reportan vía toast global.
  */
 export default function ReasignarEmpleado() {
   const { showToast } = useToast()
-  const { sesion } = useSesion();
+  const { sesion } = useSesion()
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [empleados, setEmpleados]                     = useState<Empleado[]>([])
   const [reportes, setReportes]                       = useState<Reporte[]>([])
   const [cargando, setCargando]                       = useState(true)
-  const [nombreAutoridad, setNombreAutoridad]         = useState<string>('Sistema');
+  const [nombreAutoridad, setNombreAutoridad]         = useState<string>('Sistema')
 
   // ── Estado del modal de reasignación ────────────────────────────────────
   const [modalVisible, setModalVisible]               = useState(false)
@@ -67,29 +211,44 @@ export default function ReasignarEmpleado() {
   const [detalleVisible, setDetalleVisible] = useState(false)
   const [reporteDetalle, setReporteDetalle] = useState<Reporte | null>(null)
 
-  
+  // ── Estado del ConfirmModal (reemplaza Alert.alert) ───────────────────────
+  const [confirm, setConfirm] = useState<ConfirmData>({
+    visible: false,
+    titulo: '',
+    mensaje: '',
+    labelConfirmar: 'Confirmar',
+    accentColor: '#4895ef', // azul info por defecto — acción neutra
+    onConfirm: () => {},
+  })
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Abre el ConfirmModal con estética de toast.
+   * Para reasignaciones usa accentColor='#4895ef' (azul, igual que toastInfo).
+   */
+  const openConfirm = (
+    titulo: string,
+    mensaje: string,
+    onConfirm: () => void,
+    labelConfirmar = 'Confirmar',
+    accentColor = '#4895ef',
+  ) => setConfirm({ visible: true, titulo, mensaje, labelConfirmar, accentColor, onConfirm })
+
+  /** Cierra el ConfirmModal sin ejecutar ninguna acción */
+  const closeConfirm = () => setConfirm((p) => ({ ...p, visible: false }))
 
   // Inicializa la pantalla en paralelo: carga datos y sesión
   useEffect(() => {
     const inicializarPantalla = async () => {
       setCargando(true)
-      const nombre = obtenerNombreDesdeSesion(sesion);
-      setNombreAutoridad(nombre);
-
-      await cargarDatos();
-      setCargando(false);
+      const nombre = obtenerNombreDesdeSesion(sesion)
+      setNombreAutoridad(nombre)
+      await cargarDatos()
+      setCargando(false)
     }
     inicializarPantalla()
   }, [sesion])
-
-  /**
-   * Carga el nombre del usuario autoridad desde la sesión activa.
-   * Se usa para registrar quién realizó la reasignación en el historial.
-   */
-  const cargarSesion = async () => {
-    const nombre = await obtenerNombreDesdeSesion(sesion)
-    setNombreAutoridad(nombre)
-  }
 
   /**
    * Carga la lista de empleados y reportes activos desde Supabase.
@@ -125,21 +284,37 @@ export default function ReasignarEmpleado() {
   /**
    * Ejecuta la reasignación del reporte al empleado seleccionado.
    * Muestra toast de éxito o error según el resultado.
-   * La confirmación previa se maneja en el onPress del empleado (Alert nativo).
    * @param empleadoId - ID del empleado al que se reasigna
    */
   const reasignarReporte = async (empleadoId: string) => {
     if (!reporteSeleccionado) return
     try {
-      // Usamos el nombreAutoridad que ya seteamos desde la sesión
-      await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad);
-
+      await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad)
       showToast('Reporte reasignado correctamente', 'success')
       setModalVisible(false)
       cargarDatos()
     } catch (error: any) {
       showToast(error.message || 'Error al reasignar', 'error')
     }
+  }
+
+  /**
+   * Solicita confirmación vía ConfirmModal con estética de info (azul #4895ef,
+   * igual que showToast('...', 'info')) antes de reasignar.
+   * Reemplaza Alert.alert manteniendo coherencia visual total con ToastContext.
+   * @param empleado - Colaborador al que se reasignará el reporte
+   */
+  const confirmarReasignacion = (empleado: Empleado) => {
+    openConfirm(
+      'Confirmar Reasignación',
+      `¿Reasignar reporte a ${empleado.nomEmpl} ${empleado.apeEmpl}?`,
+      () => {
+        closeConfirm()
+        reasignarReporte(empleado.idEmpl)
+      },
+      'Confirmar',
+      '#4895ef', // azul — igual que el borde toastInfo
+    )
   }
 
   // Lista de empleados filtrada por departamento y cargo
@@ -318,17 +493,7 @@ export default function ReasignarEmpleado() {
                     <TouchableOpacity
                       key={empleado.idEmpl}
                       style={styles.empleadoCard}
-                      onPress={() => {
-                        // ⚠️ Alert se mantiene — confirmación con 2 botones (Cancelar / Confirmar)
-                        Alert.alert(
-                          'Confirmar Reasignación',
-                          `¿Reasignar reporte a ${empleado.nomEmpl} ${empleado.apeEmpl}?`,
-                          [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Confirmar', onPress: () => reasignarReporte(empleado.idEmpl) }
-                          ]
-                        )
-                      }}
+                      onPress={() => confirmarReasignacion(empleado)}
                     >
                       <View style={styles.empleadoAvatar}>
                         <Text style={styles.empleadoInitials}>
@@ -373,6 +538,17 @@ export default function ReasignarEmpleado() {
         visible={detalleVisible}
         reporte={reporteDetalle}
         onClose={() => setDetalleVisible(false)}
+      />
+
+      {/* ConfirmModal con estética de toast — fondo #0f1623, borde azul #4895ef */}
+      <ConfirmModal
+        visible={confirm.visible}
+        titulo={confirm.titulo}
+        mensaje={confirm.mensaje}
+        labelConfirmar={confirm.labelConfirmar}
+        accentColor={confirm.accentColor}
+        onConfirm={confirm.onConfirm}
+        onCancel={closeConfirm}
       />
     </View>
   )
