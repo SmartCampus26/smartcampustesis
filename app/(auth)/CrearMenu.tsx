@@ -1,44 +1,39 @@
 // ===============================
 // IMPORTACIONES
 // ===============================
-
 // Importa React
 import * as React from 'react';
-
 // Componentes visuales de React Native
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
-
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 // Librería de íconos Ionicons
-import { Ionicons } from '@expo/vector-icons'
-
+import { Ionicons } from '@expo/vector-icons';
 // Router de expo-router para navegación entre pantallas
-import { router } from 'expo-router'
-
+import { router } from 'expo-router';
 // Estilos personalizados del componente
-import { styles } from '../../src/components/CrearMenuStyles'
+import { styles } from '../../src/components/CrearMenuStyles'; 
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
 
 
 // ===============================
 // COMPONENTE PRINCIPAL
 // ===============================
-
 export default function CrearMenu() {
-
   // Este componente muestra un menú con dos opciones:
   // 1. Crear Usuario (Docente o Autoridad)
   // 2. Crear Empleado (Mantenimiento o Sistemas)
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back()
+    }
+  })
 
   return (
-
     // ScrollView permite desplazamiento vertical si el contenido es grande
     <ScrollView style={styles.container}>
-
       {/* ========================= */}
       {/* HEADER */}
       {/* ========================= */}
-
       <View style={styles.header}>
-
         {/* Título principal */}
         <Text style={styles.headerTitle}>
           Gestión de Accesos
@@ -48,17 +43,11 @@ export default function CrearMenu() {
         <Text style={styles.headerSubtitle}>
           Selecciona el tipo de cuenta que deseas crear
         </Text>
-
       </View>
-
-
       {/* ========================= */}
       {/* CONTENEDOR DE TARJETAS */}
       {/* ========================= */}
-
       <View style={styles.cardsContainer}>
-
-
         {/* ================================== */}
         {/* TARJETA 1: CREAR USUARIO */}
         {/* ================================== */}
@@ -73,7 +62,6 @@ export default function CrearMenu() {
           // Reduce opacidad al presionar
           activeOpacity={0.8}
         >
-
           {/* ÍCONO SUPERIOR */}
           <View style={styles.iconContainer}>
             <Ionicons name="school" size={40} color="#1DCDFE" />
@@ -116,36 +104,26 @@ export default function CrearMenu() {
                 Gestión de reportes
               </Text>
             </View>
-
           </View>
-
 
           {/* BOTÓN INFERIOR VISUAL */}
           <View style={styles.cardButton}>
             <Text style={styles.cardButtonText}>
               Crear Usuario
             </Text>
-
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </View>
-
         </TouchableOpacity>
-
-
         {/* ================================== */}
         {/* TARJETA 2: CREAR EMPLEADO */}
         {/* ================================== */}
-
         <TouchableOpacity
           // Aplica estilo base + estilo específico de empleado
           style={[styles.card, styles.cardEmpleado]}
-
           // Navega a la pantalla EmpleadoNuevo
           onPress={() => router.push('/EmpleadoNuevo')}
-
           activeOpacity={0.8}
         >
-
           {/* ÍCONO SUPERIOR */}
           <View style={styles.iconContainer}>
             <Ionicons name="construct" size={40} color="#2F455C" />
@@ -160,7 +138,6 @@ export default function CrearMenu() {
           <Text style={styles.cardDescription}>
             Personal de mantenimiento y sistemas
           </Text>
-
 
           {/* LISTA DE CARACTERÍSTICAS */}
           <View style={styles.cardFeatures}>
@@ -188,22 +165,17 @@ export default function CrearMenu() {
                 Seguimiento de reportes
               </Text>
             </View>
-
           </View>
-
-
           {/* BOTÓN VISUAL INFERIOR */}
           <View style={styles.cardButton}>
             <Text style={styles.cardButtonText}>
               Crear Colaborador
             </Text>
-
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </View>
-
         </TouchableOpacity>
-
       </View>
     </ScrollView>
   )
 }
+

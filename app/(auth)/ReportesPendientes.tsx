@@ -19,50 +19,54 @@ import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import {
-  GestureHandlerRootView,
-  PanGestureHandler,
-  PinchGestureHandler,
-  State,
+    GestureHandlerRootView,
+    PanGestureHandler,
+    PinchGestureHandler,
+    State,
 } from 'react-native-gesture-handler'
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from 'react-native-reanimated'
 import { colors, styles } from '../../src/components/reportesPendientesStyles'
-import { useToast } from '../../src/components/ToastContext'
 import { useSesion } from '../../src/context/SesionContext'
+import { useToast } from '../../src/context/ToastContext'
 import {
-  ESTADOS_VALIDOS,
-  PRIORIDADES_VALIDAS,
-  ReporteCompleto,
-  asignarColaboradorAReporte,
-  cargarColaboradoresDepto,
-  cargarReportesAsignadosDepto,
-  cargarReportesEmpleado,
-  cargarReportesSinAsignar,
-  getColorEstado,
-  getColorPrioridad,
-  guardarCambiosReporte,
-  obtenerSesionEmpleado,
+    ESTADOS_VALIDOS,
+    PRIORIDADES_VALIDAS,
+    ReporteCompleto,
+    asignarColaboradorAReporte,
+    cargarColaboradoresDepto,
+    cargarReportesAsignadosDepto,
+    cargarReportesEmpleado,
+    cargarReportesSinAsignar,
+    getColorEstado,
+    getColorPrioridad,
+    guardarCambiosReporte,
+    obtenerSesionEmpleado,
 } from '../../src/services/empleado/ReportesPendientesService'
 import { Empleado } from '../../src/types/Database'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { router } from 'expo-router'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
+
+
 
 /** Tabs disponibles para el jefe: reportes sin asignar o ya asignados */
 type TabJefe = 'sinAsignar' | 'asignados'
@@ -102,6 +106,9 @@ interface ConfirmData {
  *  - onConfirm     : callback ejecutado al confirmar
  *  - onCancel      : callback ejecutado al cancelar o tocar fuera
  */
+
+
+
 function ConfirmModal({
   visible,
   titulo,
@@ -380,6 +387,12 @@ const FormularioEdicion: React.FC<FormularioEdicionProps> = ({
 const ReportesPendientes: React.FC = () => {
   const { showToast } = useToast()
   const { sesion }    = useSesion()
+
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back()
+    }
+  })
 
   // ── Datos de sesión ───────────────────────────────────────────────────────
   const [esJefe, setEsJefe]                           = useState(false)
@@ -852,3 +865,4 @@ const ReportesPendientes: React.FC = () => {
 }
 
 export default ReportesPendientes
+

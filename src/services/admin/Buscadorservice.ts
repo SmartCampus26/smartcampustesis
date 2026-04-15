@@ -40,31 +40,45 @@ export const fetchEmpleados = async (): Promise<Empleado[]> => {
 // ─── Eliminación ──────────────────────────────────────────────────────────────
 
 /**
- * Elimina un usuario de la base de datos por su ID.
- * @param id - ID del usuario a eliminar (`idUser`)
- * @throws Error de Supabase si la eliminación falla
+ * Elimina un usuario de la tabla `usuario` Y de Supabase Authentication.
+ * @param id - UUID del usuario (debe coincidir con el auth UID)
  */
 export const eliminarUsuarioDB = async (id: string): Promise<void> => {
-  const { error } = await supabase
+  // 1️⃣ Eliminar de la tabla `usuario`
+  const { error: dbError } = await supabase
     .from('usuario')
     .delete()
     .eq('idUser', id)
 
-  if (error) throw error
+  if (dbError) throw dbError
+
+  // 2️⃣ Eliminar de Supabase Authentication via Edge Function
+  const { error: fnError } = await supabase.functions.invoke('eliminar-auth-user', {
+    body: { userId: id }
+  })
+
+  if (fnError) throw fnError
 }
 
 /**
- * Elimina un empleado de la base de datos por su ID.
- * @param id - ID del empleado a eliminar (`idEmpl`)
- * @throws Error de Supabase si la eliminación falla
+ * Elimina un empleado de la tabla `empleado` Y de Supabase Authentication.
+ * @param id - UUID del empleado (debe coincidir con el auth UID)
  */
 export const eliminarEmpleadoDB = async (id: string): Promise<void> => {
-  const { error } = await supabase
+  // 1️⃣ Eliminar de la tabla `empleado`
+  const { error: dbError } = await supabase
     .from('empleado')
     .delete()
     .eq('idEmpl', id)
 
-  if (error) throw error
+  if (dbError) throw dbError
+
+  // 2️⃣ Eliminar de Supabase Authentication via Edge Function
+  const { error: fnError } = await supabase.functions.invoke('eliminar-auth-user', {
+    body: { userId: id }
+  })
+
+  if (fnError) throw fnError
 }
 
 // ─── Filtrado local ───────────────────────────────────────────────────────────

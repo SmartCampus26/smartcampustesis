@@ -217,3 +217,38 @@ export const BASE_STYLES = StyleSheet.create({
     borderColor: COLORS.border,
   },
 })
+
+// ─── Helpers de color para reportes ──────────────────────────────────────────
+// Estas funciones son puramente visuales: mapean un string a un color del sistema.
+// No contienen lógica de negocio — solo consultan la paleta de COLORS.
+// Se usan en componentes UI (ReporteCard, StatusBadge) y en las vistas
+// para resolver el color antes de pasarlo como prop.
+
+/**
+ * Devuelve el color del sistema correspondiente al estado de un reporte.
+ * Cubre variaciones de mayúsculas/minúsculas para tolerancia ante datos
+ * inconsistentes en la BD.
+ */
+
+// ─── Helpers de color para reportes ──────────────────────────────────────────
+// Mapean estado/prioridad a colores de la UI.
+// Viven en tokens.ts porque son valores de presentación puros.
+// No contienen lógica de negocio — las reglas del dominio viven en services/.
+
+export const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'Pendiente':  return '#f59e0b'
+    case 'En Proceso': return '#3b82f6'
+    case 'Resuelto':   return '#10b981'
+    default:           return '#6b7280'
+  }
+}
+
+export const getPriorityColor = (priority: string): string => {
+  switch (priority) {
+    case 'Alta':  return '#ef4444'
+    case 'Media': return '#f59e0b'
+    case 'Baja':  return '#10b981'
+    default:      return '#6b7280'
+  }
+}

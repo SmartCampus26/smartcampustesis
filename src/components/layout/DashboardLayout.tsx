@@ -1,24 +1,14 @@
 // ─── DashboardLayout.tsx ──────────────────────────────────────────────────────
-// Layout base compartido por HomeAutoridad, HomeDocente y HomeEmpleado.
-// Gestiona el ScrollView con pull-to-refresh y posiciona el header,
-// el grid de estadísticas y el contenido específico de cada home.
+// Layout base compartido por los tres homes (Autoridad, Docente, Empleado).
+// Maneja: header con saludo, grid de stats, botones PDF opcionales,
+// título de sección con acción, y children scrolleables.
 //
-// Reemplaza la estructura repetida en:
-//   HomeAutoridad.tsx, HomeDocente.tsx, HomeEmpleado.tsx
-//
-// USO:
-//   <DashboardLayout
-//     nombre={usuario.nomUser}
-//     cargando={cargando}
-//     refrescando={refrescando}
-//     onRefresh={onRefresh}
-//     stats={stats}
-//     getStatColor={(key) => colores[key]}
-//     onStatPress={(filtro) => router.push({ pathname: '/ListadoReportes', params: { filtro } })}
-//   >
-//     {/* Contenido específico del home: botones PDF, lista de reportes, etc. */}
-//   </DashboardLayout>
+// Reglas:
+//   - Sin imports de services ni hooks
+//   - Sin lógica de negocio
+//   - Solo props + render + estilos con tokens
 
+import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import {
   RefreshControl,
@@ -33,7 +23,6 @@ import HomeHeader from './HomeHeader'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-/** Estructura de estadísticas del dashboard */
 export interface DashboardStats {
   total:      number
   pendientes: number
@@ -41,103 +30,136 @@ export interface DashboardStats {
   resueltos:  number
 }
 
-/** Clave de cada estadística para identificarla al presionar */
-type StatKey = 'todos' | 'pendiente' | 'en proceso' | 'resuelto'
-
-interface StatItem {
-  key:   StatKey
-  label: string
-  value: number
-  color: string
-}
+interface PdfBtn { onPress: () => void }
 
 interface DashboardLayoutProps {
-  /** Nombre del usuario autenticado para el header */
-  nombre: string
-  /** Color de fondo del header. Default: navy */
-  headerColor?: string
-  /** Estadísticas a mostrar en el grid */
-  stats: DashboardStats
-  /** Indica si los datos están cargando por primera vez */
-  cargando: boolean
-  /** Indica si está activo el pull-to-refresh */
-  refrescando: boolean
-  /** Función de refresco ejecutada al bajar la lista */
-  onRefresh: () => void
-  /** Función ejecutada al presionar una tarjeta de estadística.
-   *  Recibe el filtro correspondiente ('todos', 'pendiente', etc.) */
-  onStatPress: (filtro: StatKey) => void
-  /** Contenido específico del home renderizado debajo del grid de stats */
-  children: React.ReactNode
-  /** Contenido adicional en el lado derecho del header (ej. botones PDF) */
-  headerRight?: React.ReactNode
+  // Header
+  nombre:        string
+  headerColor?:  string
+  headerRight?:  React.ReactNode
+  // Stats — opcionales. Si no se pasan, el grid interno no se renderiza.
+  // Las vistas que manejan sus propios StatCard (HomeAutoridad, HomeDocente)
+  // no pasan estas props y renderizan los stats directamente en children.
+  stats?:        DashboardStats
+  cargando?:     boolean
+  onStatPress?:  (filtro: string) => void
+  // Botones PDF (solo HomeEmpleado)
+  pdfPersonal?:  PdfBtn
+  pdfGeneral?:   PdfBtn
+  // Sección de contenido
+  sectionTitle?: string
+  sectionAction?:{ label: string; onPress: () => void }
+  // Scroll
+  refrescando:   boolean
+  onRefresh:     () => void
+  children:      React.ReactNode
 }
 
-// ─── Configuración del grid de estadísticas ───────────────────────────────────
+// ─── Subcomponente: tarjeta de stat individual ────────────────────────────────
 
-/** Devuelve los items del grid ya armados con sus colores y valores */
-function buildStatItems(stats: DashboardStats): StatItem[] {
-  return [
-    { key: 'todos',      label: 'Totales',    value: stats.total,      color: '#13947F' },
-    { key: 'pendiente',  label: 'Pendientes', value: stats.pendientes, color: '#FFA726' },
-    { key: 'en proceso', label: 'En Proceso', value: stats.enProceso,  color: '#42A5F5' },
-    { key: 'resuelto',   label: 'Resueltos',  value: stats.resueltos,  color: '#66BB6A' },
-  ]
+function StatTile({
+  value, label, color, onPress,
+}: {
+  value: number; label: string; color: string; onPress: () => void
+}) {
+  return (
+    <TouchableOpacity
+      style={[s.statTile, { backgroundColor: color }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <Text style={s.statValue}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
+    </TouchableOpacity>
+  )
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function DashboardLayout({
-  nombre,
-  headerColor,
-  stats,
-  cargando,
-  refrescando,
-  onRefresh,
-  onStatPress,
+  nombre, headerColor, headerRight,
+  stats, cargando = false, onStatPress,
+  pdfPersonal, pdfGeneral,
+  sectionTitle, sectionAction,
+  refrescando, onRefresh,
   children,
-  headerRight,
 }: DashboardLayoutProps) {
-  const statItems = buildStatItems(stats)
-
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
+      <HomeHeader
+        nombre={nombre}
+        backgroundColor={headerColor}
+        rightContent={headerRight}
+      />
+
       <ScrollView
-        style={styles.scroll}
+        style={s.scroll}
         refreshControl={
           <RefreshControl
             refreshing={refrescando}
             onRefresh={onRefresh}
-            colors={[COLORS.primary]}
+            colors={[COLORS.accent]}
+            tintColor={COLORS.accent}
           />
         }
       >
-        {/* Header con saludo y nombre */}
-        <HomeHeader
-          nombre={nombre || 'Usuario'}
-          backgroundColor={headerColor}
-          rightContent={headerRight}
-        />
+        {/* Grid de stats — solo si se pasan stats y onStatPress */}
+        {!cargando && stats && onStatPress && (
+          <View style={s.statsGrid}>
+            <StatTile value={stats.total}      label="Total"      color="#1DCDFE" onPress={() => onStatPress('todos')} />
+            <StatTile value={stats.pendientes} label="Pendientes" color="#FFA726" onPress={() => onStatPress('pendiente')} />
+            <StatTile value={stats.enProceso}  label="En Proceso" color="#1E90FF" onPress={() => onStatPress('en_proceso')} />
+            <StatTile value={stats.resueltos}  label="Resueltos"  color="#32CD32" onPress={() => onStatPress('resuelto')} />
+          </View>
+        )}
 
-        {/* Grid de 4 tarjetas de estadísticas */}
-        <View style={styles.statsGrid}>
-          {statItems.map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={[styles.statCard, { backgroundColor: item.color }]}
-              onPress={() => onStatPress(item.key)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.statNumber}>{item.value}</Text>
-              <Text style={styles.statLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Botones PDF — solo visibles en HomeEmpleado */}
+        {(pdfPersonal || pdfGeneral) && (
+          <View style={[s.pdfRow, pdfGeneral && s.pdfRowDoble]}>
+            {pdfPersonal && (
+              <TouchableOpacity
+                style={[s.pdfBtn, s.pdfBtnPersonal, pdfGeneral && s.pdfBtnFlex]}
+                onPress={pdfPersonal.onPress}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="document-text-outline" size={18} color={COLORS.textWhite} />
+                <Text style={s.pdfBtnText}>Mi PDF</Text>
+              </TouchableOpacity>
+            )}
+            {pdfGeneral && (
+              <TouchableOpacity
+                style={[s.pdfBtn, s.pdfBtnGeneral, s.pdfBtnFlex]}
+                onPress={pdfGeneral.onPress}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="people-outline" size={18} color={COLORS.textWhite} />
+                <Text style={s.pdfBtnText}>PDF General</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Encabezado de sección con acción opcional */}
+        {sectionTitle && (
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>{sectionTitle}</Text>
+            {sectionAction && (
+              <TouchableOpacity
+                onPress={sectionAction.onPress}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={s.sectionAction}>{sectionAction.label}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Contenido específico de cada home */}
+        <View style={s.content}>
+          {children}
         </View>
 
-        {/* Contenido específico de cada home (botones, listas, consejos) */}
-        {children}
-
-        <View style={styles.bottomSpacer} />
+        <View style={{ height: SPACING.xxxl }} />
       </ScrollView>
     </View>
   )
@@ -145,50 +167,73 @@ export default function DashboardLayout({
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bgSecondary,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.bgSecondary },
+  scroll:    { flex: 1 },
 
-  scroll: {
-    flex: 1,
-  },
-
-  // Grid de 2×2 para las 4 tarjetas de estadísticas
+  // Stats
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: SPACING.base,
-    gap: SPACING.md,
+    gap: SPACING.sm,
   },
-
-  // Tarjeta individual de estadística
-  statCard: {
+  statTile: {
     flex: 1,
     minWidth: '45%',
-    padding: SPACING.lg,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.sm,
     alignItems: 'center',
-    ...SHADOWS.md,
+    ...SHADOWS.sm,
   },
-
-  statNumber: {
+  statValue: {
     fontSize: TYPOGRAPHY.hero,
     fontWeight: TYPOGRAPHY.bold,
     color: COLORS.textWhite,
-    marginBottom: SPACING.xs,
   },
-
   statLabel: {
     fontSize: TYPOGRAPHY.xs,
     color: COLORS.textWhite,
     opacity: 0.9,
+    marginTop: 2,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
 
-  bottomSpacer: {
-    height: 100,
+  // Botones PDF
+  pdfRow: {
+    paddingHorizontal: SPACING.base,
+    paddingBottom: SPACING.sm,
   },
+  pdfRowDoble: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  pdfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md,
+  },
+  pdfBtnFlex:     { flex: 1 },
+  pdfBtnPersonal: { backgroundColor: '#FF5252' },
+  pdfBtnGeneral:  { backgroundColor: COLORS.pdfBlue },
+  pdfBtnText:     { color: COLORS.textWhite, fontSize: TYPOGRAPHY.md, fontWeight: TYPOGRAPHY.bold },
+
+  // Sección
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.base,
+    paddingBottom: SPACING.sm,
+  },
+  sectionTitle:  { fontSize: TYPOGRAPHY.xl, fontWeight: TYPOGRAPHY.bold, color: COLORS.textPrimary },
+  sectionAction: { fontSize: TYPOGRAPHY.md, color: COLORS.accent, fontWeight: TYPOGRAPHY.semibold },
+
+  // Contenido
+  content: { paddingHorizontal: SPACING.base },
 })

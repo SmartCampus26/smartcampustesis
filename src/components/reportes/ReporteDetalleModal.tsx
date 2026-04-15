@@ -1,11 +1,17 @@
 // src/components/ReporteDetalleModal.tsx
+import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import {
-  Modal, View, Text, ScrollView, TouchableOpacity,
-  Image, StyleSheet, Dimensions,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { Reporte } from '../types/Database'
+import { Reporte } from '../../types/Database'
 
 const getStatusColor  = (e: string) => {
   switch ((e||'').toLowerCase()) {

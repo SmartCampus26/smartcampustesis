@@ -142,6 +142,15 @@ export const insertarObjeto = async (
  * Notifica al JEFE cuando se crea un nuevo reporte pendiente de asignación.
  * Invoca la Edge Function 'notificar-asignacion-jefe'.
  */
+
+/**
+ * Mapea la categoría del objeto al departamento responsable
+ */
+export const mapearCategoriaDepartamento = (categoriaObjeto: string): 'sistemas' | 'mantenimiento' => {
+  const categoriasSistemas = ['equipo_computo', 'proyectores']
+  return categoriasSistemas.includes(categoriaObjeto) ? 'sistemas' : 'mantenimiento'
+} 
+
 export const notificarJefeNuevoReporte = async (params: {
   idReporte: number
   nombreUsuario: string
@@ -152,6 +161,7 @@ export const notificarJefeNuevoReporte = async (params: {
   piso: number
   aulaLugar: string
   numAula?: string
+  departamento: 'sistemas' | 'mantenimiento' 
 }): Promise<void> => {
   const { error } = await supabase.functions.invoke('notificar-asignacion-jefe', {
     body: {
@@ -163,7 +173,8 @@ export const notificarJefeNuevoReporte = async (params: {
       lugar: params.lugar,
       piso: params.piso,
       aulaLugar: params.aulaLugar,
-      numAula: params.numAula,
+      numAula: params.numAula, 
+      departamento: params.departamento,
     },
   })
 

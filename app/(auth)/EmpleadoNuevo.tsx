@@ -1,262 +1,136 @@
-// 👷 EmpleadoNuevo.tsx
-// Pantalla para registrar un nuevo colaborador (personal de mantenimiento o sistemas).
-// Permite ingresar datos personales, asignar departamento y cargo,
-// y crear la cuenta en Supabase Auth + tabla empleado.
+// 👷 EmpleadoNuevo.tsx — sin estilos propios, solo orquestación.
 
-import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Eye, EyeOff } from 'lucide-react-native'
 import * as React from 'react'
-import { useState } from 'react'
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { styles } from '../../src/components/empleadoNuevoStyles'
-import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../../src/context/SesionContext'
-import {
-  crearEmpleadoDB,
-  NuevoEmpleadoForm,
-  validarEmpleado,
-} from '../../src/services/empleado/EmpleadoNuevoService'
+import AppButton from '../../src/components/ui/AppButton'
+import FormField from '../../src/components/ui/FormField'
+import InfoBanner from '../../src/components/ui/InfoBanner'
+import OptionSelector from '../../src/components/ui/OptionSelector'
+import FormLayout from '../../src/components/layout/FormLayout'
+import { useToast } from '../../src/context/ToastContext'
+import { useEmpleadoNuevo } from '../../src/hooks/usuarios/useEmpleadoNuevo'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
 
+const DEPARTAMENTOS = [
+  { label: 'Sistemas',      value: 'sistemas',      icon: 'desktop-outline' as const },
+  { label: 'Mantenimiento', value: 'mantenimiento',  icon: 'construct-outline' as const },
+]
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+const CARGOS = [
+  { label: 'Colaborador', value: 'colaborador', icon: 'person-outline' as const },
+  { label: 'Jefe',        value: 'jefe',        icon: 'briefcase-outline' as const },
+]
 
-/**
- * Pantalla de registro de nuevo colaborador.
- * Al crear exitosamente, Supabase envía un correo de verificación
- * y la app navega de vuelta automáticamente tras 4 segundos.
- */
 export default function EmpleadoNuevo() {
   const { showToast } = useToast()
-  const { sesion, refrescarSesion } = useSesion() 
+  const { form, set, cargando, error, crear } = useEmpleadoNuevo()
 
-  // ── Estado del formulario ─────────────────────────────────────────────────
-  const [nuevoEmpleado, setNuevoEmpleado] = useState<NuevoEmpleadoForm>({
-    nomEmpl:   '',
-    apeEmpl:   '',
-    correoEmpl: '',
-    contraEmpl: '',
-    tlfEmpl:   '',
-    deptEmpl:  'mantenimiento',
-    cargEmpl:  'colaborador',
-  })
-  const [cargando, setCargando]               = useState(false)
-  const [mostrarContrasena, setMostrarContrasena] = useState(false)
-
-  /**
-   * Actualiza un campo individual del formulario sin mutar el resto.
-   * @param campo - Clave del campo a actualizar
-   * @param valor - Nuevo valor del campo
-   */
-  const set = (campo: keyof NuevoEmpleadoForm, valor: string) =>
-    setNuevoEmpleado((prev) => ({ ...prev, [campo]: valor }))
-
-  // ── Crear colaborador ─────────────────────────────────────────────────────
-
-  /**
-   * Valida el formulario y crea el colaborador en Supabase.
-   * Si la validación falla, muestra un toast de error.
-   * Si la creación es exitosa, muestra un toast de éxito
-   * y vuelve atrás automáticamente tras 4 segundos.
-   */
   const handleCrear = async () => {
-    const error = validarEmpleado(nuevoEmpleado)
-    if (error) { showToast(error, 'error'); return }
-
-    setCargando(true)
-    try {
-      await crearEmpleadoDB(nuevoEmpleado)
-      await refrescarSesion()  // ← resincroniza el contexto con AsyncStorage
-      showToast('Colaborador creado. Se envió un correo de verificación a ' + nuevoEmpleado.correoEmpl, 'success', 4000)
-      setTimeout(() => router.replace('/(auth)/CrearMenu'), 4000)
-    } catch (err: any) {
-      showToast(err.message || 'No se pudo crear el colaborador', 'error')
-    } finally {
-      setCargando(false)
+    const ok = await crear()
+    if (ok) {
+      showToast('Colaborador creado correctamente', 'success')
+      router.back()
+    } else if (error) {
+      showToast(error, 'error')
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back()
+    }
+  })
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+    <FormLayout
+      icon="people-outline"
+      iconColor="#2F455C"
+      title="Nuevo Colaborador"
+      subtitle="Completa la información del nuevo miembro del equipo"
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {error && (
+        <InfoBanner
+          text={error}
+          variant="error"
+        />
+      )}
 
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Ionicons name="construct" size={50} color="#2F455C" />
-          <Text style={styles.title}>Nuevo Colaborador</Text>
-          <Text style={styles.subtitle}>
-            Completa la información del personal de mantenimiento o sistemas
-          </Text>
-        </View>
+      <InfoBanner
+        text="El colaborador recibirá un correo con sus credenciales para acceder al sistema."
+        variant="info"
+      />
 
-        <View style={styles.form}>
+      <FormField
+        label="Nombre"
+        placeholder="Nombre del colaborador"
+        value={form.nomEmpl}
+        onChangeText={v => set('nomEmpl', v)}
+        icon="person-outline"
+        autoCapitalize="words"
+      />
 
-          {/* ── Nombre ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: María Elena"
-                value={nuevoEmpleado.nomEmpl}
-                onChangeText={(t) => set('nomEmpl', t)}
-              />
-            </View>
-          </View>
+      <FormField
+        label="Apellido"
+        placeholder="Apellido del colaborador"
+        value={form.apeEmpl}
+        onChangeText={v => set('apeEmpl', v)}
+        icon="person-outline"
+        autoCapitalize="words"
+      />
 
-          {/* ── Apellido ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Apellido *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: López Martínez"
-                value={nuevoEmpleado.apeEmpl}
-                onChangeText={(t) => set('apeEmpl', t)}
-              />
-            </View>
-          </View>
+      <FormField
+        label="Correo electrónico"
+        placeholder="correo@ejemplo.com"
+        value={form.correoEmpl}
+        onChangeText={v => set('correoEmpl', v)}
+        icon="mail-outline"
+        keyboardType="email-address"
+      />
 
-          {/* ── Correo electrónico ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo Electrónico *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="correo@ejemplo.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={nuevoEmpleado.correoEmpl}
-                onChangeText={(t) => set('correoEmpl', t)}
-              />
-            </View>
-          </View>
+      <FormField
+        label="Contraseña"
+        placeholder="Mínimo 6 caracteres"
+        value={form.contraEmpl}
+        onChangeText={v => set('contraEmpl', v)}
+        icon="lock-closed-outline"
+        isPassword
+      />
 
-          {/* ── Contraseña con toggle de visibilidad ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contraseña *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Mínimo 6 caracteres"
-                secureTextEntry={!mostrarContrasena}
-                value={nuevoEmpleado.contraEmpl}
-                onChangeText={(t) => set('contraEmpl', t)}
-              />
-              {/* Botón para alternar visibilidad de contraseña */}
-              <TouchableOpacity onPress={() => setMostrarContrasena(prev => !prev)}>
-                {mostrarContrasena
-                  ? <EyeOff size={20} color="#6B7280" />
-                  : <Eye size={20} color="#6B7280" />
-                }
-              </TouchableOpacity>
-            </View>
-          </View>
+      <FormField
+        label="Teléfono"
+        placeholder="Número de teléfono"
+        value={form.tlfEmpl}
+        onChangeText={v => set('tlfEmpl', v)}
+        icon="call-outline"
+        keyboardType="phone-pad"
+      />
 
-          {/* ── Teléfono (opcional) ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Teléfono (Opcional)</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: 0987654321"
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={nuevoEmpleado.tlfEmpl}
-                onChangeText={(t) => set('tlfEmpl', t)}
-              />
-            </View>
-          </View>
+      <OptionSelector
+        label="Departamento"
+        value={form.deptEmpl}
+        options={DEPARTAMENTOS}
+        onChange={v => set('deptEmpl', v)}
+      />
 
-          {/* ── Selector de departamento ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Departamento *</Text>
-            <View style={styles.roleContainer}>
-              {(['mantenimiento', 'sistemas'] as const).map((dep) => (
-                <TouchableOpacity
-                  key={dep}
-                  style={[styles.roleButton, nuevoEmpleado.deptEmpl === dep && styles.roleButtonActive]}
-                  onPress={() => set('deptEmpl', dep)}
-                >
-                  <Ionicons
-                    name={dep === 'mantenimiento' ? 'hammer' : 'desktop'}
-                    size={24}
-                    color={nuevoEmpleado.deptEmpl === dep ? '#FFF' : dep === 'mantenimiento' ? '#21D0B2' : '#2F455C'}
-                  />
-                  <Text style={[styles.roleButtonText, nuevoEmpleado.deptEmpl === dep && styles.roleButtonTextActive]}>
-                    {dep === 'mantenimiento' ? 'Mantenimiento' : 'Sistemas'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+      <OptionSelector
+        label="Cargo"
+        value={form.cargEmpl}
+        options={CARGOS}
+        onChange={v => set('cargEmpl', v)}
+      />
 
-          {/* ── Selector de cargo ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Cargo *</Text>
-            <View style={styles.roleContainer}>
-              {(['colaborador', 'jefe'] as const).map((cargo) => (
-                <TouchableOpacity
-                  key={cargo}
-                  style={[styles.roleButton, nuevoEmpleado.cargEmpl === cargo && styles.roleButtonActive]}
-                  onPress={() => set('cargEmpl', cargo)}
-                >
-                  <Ionicons
-                    name={cargo === 'jefe' ? 'shield-checkmark' : 'person'}
-                    size={24}
-                    color={nuevoEmpleado.cargEmpl === cargo ? '#FFF' : cargo === 'jefe' ? '#21D0B2' : '#2F455C'}
-                  />
-                  <Text style={[styles.roleButtonText, nuevoEmpleado.cargEmpl === cargo && styles.roleButtonTextActive]}>
-                    {cargo === 'jefe' ? 'Jefe' : 'Colaborador'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+      <AppButton
+        label="Crear Colaborador"
+        onPress={handleCrear}
+        loading={cargando}
+        icon="person-add-outline"
+      />
 
-          {/* ── Nota informativa ── */}
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color="#1DCDFE" />
-            <Text style={styles.infoText}>
-              El reporte será asignado directamente al jefe de cada departamento.
-            </Text>
-          </View>
-
-          {/* ── Botones de acción ── */}
-          <TouchableOpacity
-            style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
-            onPress={handleCrear}
-            disabled={cargando}
-          >
-            <Text style={styles.submitButtonText}>
-              {cargando ? 'Creando Colaborador...' : 'Crear Colaborador'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.replace('/(auth)/CrearMenu')}>
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
-
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <AppButton
+        label="Cancelar"
+        onPress={() => router.back()}
+        variant="secondary"
+      />
+    </FormLayout>
   )
 }

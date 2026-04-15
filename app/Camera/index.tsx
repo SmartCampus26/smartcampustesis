@@ -9,6 +9,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PhotoReviewCard from '../../Components/Photoreviewcard';
 import { useSaved } from '../../src/context/SavedContext';
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
 
 export default function HomeScreen() {
 
@@ -138,6 +139,8 @@ export default function HomeScreen() {
       </SafeAreaView>
     );
   }
+
+ 
 
   // ═══════════════════════════════════════════════════════════════════════════
   // VISTA: PRINCIPAL
@@ -409,3 +412,7 @@ const styles = StyleSheet.create({
   },
   closeButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
 });
+
+function handleCancelar(): void {
+  throw new Error('Function not implemented.');
+}

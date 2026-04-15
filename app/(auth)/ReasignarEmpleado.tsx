@@ -21,9 +21,9 @@ import {
   View,
 } from 'react-native'
 import { styles } from '../../src/components/Reasignarempleadostyles'
-import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-import { useToast } from '../../src/components/ToastContext'
+import ReporteDetalleModal from '../../src/components/reportes/ReporteDetalleModal'
 import { useSesion } from '../../src/context/SesionContext'
+import { useToast } from '../../src/context/ToastContext'
 import {
   cargarEmpleadosYReportes,
   filtrarEmpleados,
@@ -32,6 +32,8 @@ import {
   reasignarReporteDB,
 } from '../../src/services/admin/Reasignarempleadoservice'
 import { Empleado, Reporte } from '../../src/types/Database'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { router } from 'expo-router'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +71,8 @@ interface ConfirmData {
  *  - onConfirm     : callback ejecutado al confirmar
  *  - onCancel      : callback ejecutado al cancelar
  */
+
+
 function ConfirmModal({
   visible,
   titulo,
@@ -192,6 +196,13 @@ const formatId = (id: string): string => {
 export default function ReasignarEmpleado() {
   const { showToast } = useToast()
   const { sesion } = useSesion()
+
+  
+useAndroidBack(() => {
+  if (router.canGoBack()) {
+    router.back()
+  }
+})
 
   // ── Estado de datos ──────────────────────────────────────────────────────
   const [empleados, setEmpleados]                     = useState<Empleado[]>([])

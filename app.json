@@ -4,7 +4,7 @@
     "slug": "SmartCampus_Tesis",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo_tesis.png",
+    "icon": "./assets/images/SmartCampusLogo.png",
    "scheme": "smartcampus-tesis",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -16,7 +16,7 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/logo_tesis.png"
+        "foregroundImage": "./assets/images/SmartCampusLogo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -35,7 +35,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/logo_tesis.png",
+      "favicon": "./assets/images/SmartCampusLogo.png",
       "display": "standalone"
     },
     "plugins": [
@@ -43,7 +43,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo_tesis.png",
+          "image": "./assets/images/SmartCampusLogo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

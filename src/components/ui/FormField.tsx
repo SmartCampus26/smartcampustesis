@@ -61,8 +61,16 @@ interface FormFieldProps {
   error?: string | null
   /** Longitud máxima permitida */
   maxLength?: number
+  /** Número de líneas para input multiline */
+  numberOfLines?: number
+  /** Permite múltiples líneas de texto */
+  multiline?: boolean
   /** Deshabilita el input */
   editable?: boolean
+  /** Muestra botón X para limpiar el campo (útil en búsquedas) */
+  onClear?: () => void
+  /** Oculta el label superior (útil en barras de búsqueda) */
+  hideLabel?: boolean
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -79,6 +87,10 @@ export default function FormField({
   error,
   maxLength,
   editable = true,
+  onClear,
+  hideLabel = false,
+  multiline = false,
+  numberOfLines = 1,
 }: FormFieldProps) {
   // Controla si la contraseña es visible o no
   const [secureText, setSecureText] = useState(isPassword)
@@ -86,13 +98,14 @@ export default function FormField({
   const [focused, setFocused] = useState(false)
 
   return (
-    <View style={styles.container}>
-      {/* Label superior */}
-      <Text style={styles.label}>{label}</Text>
+    <View style={[styles.container, hideLabel && styles.containerSearch]}>
+      {/* Label superior — oculto en modo búsqueda */}
+      {!hideLabel && <Text style={styles.label}>{label}</Text>}
 
       {/* Contenedor del input con borde dinámico */}
       <View style={[
         styles.inputWrapper,
+        hideLabel && styles.inputWrapperSearch,
         focused && styles.inputWrapperFocused,
         !!error && styles.inputWrapperError,
       ]}>
@@ -106,7 +119,7 @@ export default function FormField({
 
         {/* Input de texto */}
         <TextInput
-          style={styles.input}
+          style={[styles.input, multiline && styles.inputMultiline]}
           placeholder={placeholder}
           placeholderTextColor={COLORS.textSecondary}
           value={value}
@@ -117,9 +130,19 @@ export default function FormField({
           autoCorrect={false}
           maxLength={maxLength}
           editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? 'top' : 'center'}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
+
+        {/* Botón limpiar — solo en modo búsqueda con texto */}
+        {!!onClear && !!value && (
+          <TouchableOpacity onPress={onClear} style={styles.eyeButton}>
+            <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         {/* Toggle de visibilidad — solo para campos de contraseña */}
         {isPassword && (
@@ -148,7 +171,14 @@ export default function FormField({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+    marginHorizontal: SPACING.base,
+  },
+
+  // Modo búsqueda — margen superior adicional para separarse del header
+  containerSearch: {
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
   },
 
   label: {
@@ -167,6 +197,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     paddingHorizontal: SPACING.base,
+  },
+
+  // Modo búsqueda — fondo blanco con borde gris visible, sin label
+  inputWrapperSearch: {
+    backgroundColor: COLORS.bgPrimary,
+    borderColor: COLORS.borderLight,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   // Estado con foco — resalta el borde en teal
@@ -190,6 +232,11 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     fontSize: TYPOGRAPHY.base,
     color: COLORS.textPrimary,
+  },
+
+  inputMultiline: {
+    minHeight: 100,
+    paddingTop: SPACING.md,
   },
 
   eyeButton: {

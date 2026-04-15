@@ -29,8 +29,8 @@ import { Sesion } from '../src/types/Database'
 import { Ionicons } from '@expo/vector-icons'
 // Toast global para notificaciones (reemplaza Alert)
 import * as React from 'react'
-import { useToast } from '../src/components/ToastContext'
 import { useSesion } from '../src/context/SesionContext'
+import { useToast } from '../src/context/ToastContext'
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 

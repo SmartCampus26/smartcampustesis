@@ -1,265 +1,154 @@
-// 📄 ListadoReportes.tsx
-// Pantalla de listado de reportes del usuario autenticado.
-// Permite filtrar por estado (todos, pendiente, en proceso, resuelto),
-// buscar por texto, refrescar con pull-to-refresh y ver el detalle
-// de cada reporte en un modal.
+// 📋 ListadoReportes.tsx — sin estilos propios, solo orquestación.
 
-import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator, RefreshControl, ScrollView,
-  Text, TextInput, TouchableOpacity, View,
-} from 'react-native'
-import { styles } from '../../src/components/listadoReportesStyles'
-import ReporteDetalleModal from '../../src/components/Reportedetallemodal'
-import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../../src/context/SesionContext'
-import {
-  FiltroEstado,
-  aplicarFiltrosReportes,
-  cargarMisReportes,
-  getPriorityColor,
-  getStatusColor,
-} from '../../src/services/reportes/ListadoReportesService'
+import { RefreshControl, ScrollView } from 'react-native'
+import FilterChips from '../../src/components/ui/FilterChips'
+import EmptyState from '../../src/components/ui/EmptyState'
+import FormField from '../../src/components/ui/FormField'
+import LoadingScreen from '../../src/components/ui/LoadingScreen'
+import ListHeader from '../../src/components/usuarios/ListHeader'
+import ReporteCard from '../../src/components/reportes/ReporteCard'
+import ReporteDetalleModal from '../../src/components/reportes/ReporteDetalleModal'
+import SectionContainer from '../../src/components/layout/SectionContainer'
+import { useToast } from '../../src/context/ToastContext'
+import { useListadoReportes } from '../../src/hooks/reportes/useListadoReportes'
+import { getStatusColor, getPriorityColor } from '../../src/styles/tokens'
 import { Reporte } from '../../src/types/Database'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { router } from 'expo-router'
 
+// Keys en minúsculas — coinciden con FiltroEstado del service
+// que compara con r.estReporte.toLowerCase()
+const FILTROS = [
+  { key: 'todos',      label: 'Todos',      dotColor: undefined },
+  { key: 'pendiente',  label: 'Pendientes', dotColor: '#FFA726' },
+  { key: 'en proceso', label: 'En Proceso', dotColor: '#4A90D9' },
+  { key: 'resuelto',   label: 'Resueltos',  dotColor: '#5CB85C' },
+]
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-/**
- * Lista de reportes del usuario autenticado con filtros y búsqueda.
- * Acepta el param `filtro` por ruta para pre-seleccionar el filtro de estado.
- */
-export default function MisReportes() {
-  const { filtro } = useLocalSearchParams<{ filtro?: string }>()
+export default function ListadoReportes() {
+  const router = useRouter();
   const { showToast } = useToast()
-  const { sesion } = useSesion() 
+  const { filtro: filtroParam } = useLocalSearchParams<{ filtro?: string }>()
 
-  // ── Estado de datos ──────────────────────────────────────────────────────
-  const [reportes, setReportes]                   = useState<Reporte[]>([])
-  const [reportesFiltrados, setReportesFiltrados] = useState<Reporte[]>([])
-  const [cargando, setCargando]                   = useState(true)
-  const [refrescando, setRefrescando]             = useState(false)
+  // Param vacío o ausente → 'todos'
+  const filtroInicial = filtroParam?.trim() || undefined
 
-  // ── Estado de filtros y búsqueda ─────────────────────────────────────────
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
-  const [busqueda, setBusqueda]         = useState('')
+  const {
+    reportes, reportesFiltrados,
+    filtroEstado, setFiltroEstado,
+    busqueda, setBusqueda,
+    cargando, refrescando, error, onRefresh,
+  } = useListadoReportes(filtroInicial)
 
-  // ── Estado del modal de detalle ──────────────────────────────────────────
-  const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
-  const [modalVisible, setModalVisible]               = useState(false)
+  const [reporteSeleccionado, setReporteSeleccionado] = React.useState<Reporte | null>(null)
+  const [modalVisible, setModalVisible]               = React.useState(false)
 
-  // Pre-selecciona el filtro si viene como param de navegación
-  useEffect(() => {
-    if (filtro && ['todos', 'pendiente', 'en proceso', 'resuelto'].includes(filtro)) {
-      setFiltroEstado(filtro as FiltroEstado)
+  // Sincroniza el chip activo cuando cambia el param de navegación
+  const handleBack = React.useCallback(() => {
+    if (modalVisible) {
+      setModalVisible(false); // Cierra el modal si está abierto
+    } else {
+      router.back(); // Si no hay modal, regresa a la pantalla anterior
     }
-  }, [filtro])
+  }, [modalVisible, router]);
 
- useEffect(() => {
-    if (sesion) fetchReportes()
-  }, [sesion])
+  // 3. MUEVE EL HOOK AQUÍ (Antes de los "if cargando")
+  useAndroidBack(handleBack);
 
-  // Recalcula la lista filtrada cada vez que cambian reportes, filtro o búsqueda
-  useEffect(() => {
-    setReportesFiltrados(aplicarFiltrosReportes(reportes, filtroEstado, busqueda))
-  }, [reportes, filtroEstado, busqueda])
+  React.useEffect(() => {
+    setFiltroEstado(filtroInicial ?? 'todos')
+  }, [filtroParam])
 
-  /**
-   * Carga los reportes del usuario autenticado desde Supabase.
-   */
-  const fetchReportes = async () => {
-    try {
-       if (!sesion) return  // ← agrega
-      const data = await cargarMisReportes(sesion) 
-      setReportes(data)
-    } catch (err: any) {
-      showToast(err.message || 'Error al cargar reportes', 'error')
-    } finally {
-      setCargando(false)
-      setRefrescando(false)
-    }
-  }
+  if (cargando) return <LoadingScreen color="#1DCDFE" />
+  if (error)    showToast(error, 'error')
 
-  /** Activa el refresco por pull-to-refresh y recarga los datos */
-  const onRefresh = () => { setRefrescando(true); fetchReportes() }
+  // Subtítulo dinámico del header
+  const subtitulo = filtroEstado === 'todos'
+    ? `${reportes.length} reportes en total`
+    : `${reportesFiltrados.length} reporte${reportesFiltrados.length !== 1 ? 's' : ''} ${filtroEstado}`
 
-  /**
-   * Abre el modal de detalle para el reporte seleccionado.
-   * @param reporte - Reporte a visualizar
-   */
-  const handleVerDetalle = (reporte: Reporte) => {
-    setReporteSeleccionado(reporte)
-    setModalVisible(true)
-  }
-
-  /**
-   * Cuenta cuántos reportes tienen un estado específico.
-   * Se usa para mostrar el conteo en cada chip de filtro.
-   * @param estado - Estado a contar ('pendiente' | 'en proceso' | 'resuelto')
-   */
-  const contarPor = (estado: string) =>
-    reportes.filter((r) => r.estReporte === estado).length
-
-  // ── Loading ───────────────────────────────────────────────────────────────
-
-  if (cargando) {
-    return (
-      <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#21D0B2" />
-      </View>
-    )
-  }
-
-  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <>
+      {/* Header con título y conteo */}
+      <ListHeader title="Mis Reportes" subtitle={subtitulo} />
 
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mis Reportes</Text>
-        <Text style={styles.headerSubtitle}>
-          {reportes.length} {reportes.length === 1 ? 'reporte' : 'reportes'} en total
-        </Text>
-      </View>
+      {/* Barra de búsqueda */}
+      <FormField
+        label="Buscar"
+        hideLabel
+        placeholder="Buscar por descripción o ID..."
+        value={busqueda}
+        onChangeText={setBusqueda}
+        onClear={() => setBusqueda('')}
+        icon="search-outline"
+      />
 
-      {/* ── BARRA DE BÚSQUEDA ── */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#8B9BA8" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por descripción o ID..."
-          value={busqueda}
-          onChangeText={setBusqueda}
-          placeholderTextColor="#8B9BA8"
-        />
-        {busqueda.length > 0 && (
-          <TouchableOpacity onPress={() => setBusqueda('')}>
-            <Ionicons name="close-circle" size={20} color="#8B9BA8" />
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Chips de filtro con conteo por estado */}
+      <FilterChips
+        chips={FILTROS.map(f => ({
+          ...f,
+          label: f.key === 'todos'
+            ? `Todos (${reportes.length})`
+            : `${f.label} (${reportes.filter(r => r.estReporte?.toLowerCase() === f.key).length})`,
+        }))}
+        selected={filtroEstado}
+        onSelect={setFiltroEstado}
+      />
 
-      {/* ── CHIPS DE FILTRO POR ESTADO ── */}
+      {/* Lista de reportes filtrados */}
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersContainer}
-        contentContainerStyle={styles.filtersContent}
-      >
-        {([
-          { key: 'todos',      label: `Todos (${reportes.length})`,              color: null },
-          { key: 'pendiente',  label: `Pendientes (${contarPor('pendiente')})`,  color: '#FFA726' },
-          { key: 'en proceso', label: `En Proceso (${contarPor('en proceso')})`, color: '#42A5F5' },
-          { key: 'resuelto',   label: `Resueltos (${contarPor('resuelto')})`,    color: '#66BB6A' },
-        ] as { key: FiltroEstado; label: string; color: string | null }[]).map(({ key, label, color }) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.filterButton, filtroEstado === key && styles.filterButtonActive]}
-            onPress={() => setFiltroEstado(key)}
-          >
-            {color && <View style={[styles.filterDot, { backgroundColor: color }]} />}
-            <Text style={[styles.filterText, filtroEstado === key && styles.filterTextActive]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* ── LISTA DE REPORTES ── */}
-      <ScrollView
-        style={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refrescando} onRefresh={onRefresh} colors={['#21D0B2']} />
+          <RefreshControl
+            refreshing={refrescando}
+            onRefresh={onRefresh}
+            tintColor="#1DCDFE"
+            colors={['#1DCDFE']}
+          />
         }
       >
-        {reportesFiltrados.length === 0 ? (
-          // Estado vacío — cambia el mensaje según el contexto
-          <View style={styles.emptyState}>
-            <Ionicons
-              name={busqueda ? 'search' : 'document-text-outline'}
-              size={64}
-              color="#E1E8ED"
-            />
-            <Text style={styles.emptyText}>
-              {busqueda
-                ? 'No se encontraron reportes'
-                : filtroEstado === 'todos'
-                ? 'No tienes reportes aún'
-                : `No tienes reportes ${filtroEstado}`}
-            </Text>
-            <Text style={styles.emptySubtext}>
-              {busqueda
-                ? 'Intenta con otros términos de búsqueda'
-                : 'Crea un nuevo reporte desde la pantalla de inicio'}
-            </Text>
-          </View>
-        ) : (
-          reportesFiltrados.map((reporte) => (
-            <TouchableOpacity
-              key={reporte.idReporte}
-              style={styles.reportCard}
-              onPress={() => handleVerDetalle(reporte)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.reportHeader}>
-                <View style={styles.reportIdContainer}>
-                  <Text style={styles.reportId}>#{reporte.idReporte}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reporte.estReporte) }]}>
-                    <Text style={styles.statusText}>{reporte.estReporte}</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
-              </View>
-
-              <Text style={styles.reportDesc} numberOfLines={3}>
-                {reporte.descriReporte}
-              </Text>
-
-              {/* Metadata: fecha y prioridad */}
-              <View style={styles.reportMeta}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="calendar-outline" size={14} color="#8B9BA8" />
-                  <Text style={styles.metaText}>
-                    {new Date(reporte.fecReporte).toLocaleDateString('es-ES', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
-                  </Text>
-                </View>
-                {reporte.prioReporte && reporte.prioReporte !== 'no asignada' && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="flag" size={14} color={getPriorityColor(reporte.prioReporte)} />
-                    <Text style={[styles.metaText, { color: getPriorityColor(reporte.prioReporte) }]}>
-                      {reporte.prioReporte}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Colaborador asignado (si existe) */}
-              {reporte.empleado && (
-                <View style={styles.assignedSection}>
-                  <Ionicons name="person" size={16} color="#21D0B2" />
-                  <Text style={styles.assignedText}>
-                    Asignado a: {reporte.empleado.nomEmpl} {reporte.empleado.apeEmpl}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))
-        )}
-        <View style={styles.bottomSpacer} />
+        <SectionContainer title="" padded>
+          {reportesFiltrados.length === 0
+            ? (
+                <EmptyState
+                  icon="document-text-outline"
+                  title="Sin reportes"
+                  subtitle="No hay reportes para este filtro"
+                />
+              )
+            : reportesFiltrados.map(r => (
+                <ReporteCard
+                  key={r.idReporte}
+                  id={r.idReporte}
+                  descripcion={r.descriReporte}
+                  estado={r.estReporte}
+                  statusColor={getStatusColor(r.estReporte)}
+                  fecha={r.fecReporte}
+                  prioridad={r.prioReporte}
+                  priorityColor={getPriorityColor(r.prioReporte)}
+                  empleadoNombre={
+                    (r as any).empleado
+                      ? `${(r as any).empleado.nomEmpl} ${(r as any).empleado.apeEmpl}`
+                      : undefined
+                  }
+                  onPress={() => { setReporteSeleccionado(r); setModalVisible(true) }}
+                />
+              ))
+          }
+        </SectionContainer>
       </ScrollView>
 
-      {/* Modal de detalle de reporte */}
       <ReporteDetalleModal
         visible={modalVisible}
         reporte={reporteSeleccionado}
         onClose={() => setModalVisible(false)}
       />
-    </View>
+    </>
   )
+}
+
+function handleCancelar(): void {
+  throw new Error('Function not implemented.')
 }

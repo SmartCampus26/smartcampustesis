@@ -1,233 +1,124 @@
-// 👤 UsuarioNuevo.tsx
-// Pantalla para registrar un nuevo usuario del sistema (docente o coordinador).
-// Permite ingresar datos personales, seleccionar rol, y crear la cuenta
-// en Supabase Auth + tabla usuario.
+// 👤 UsuarioNuevo.tsx — sin estilos propios, solo orquestación.
 
-// React y hook para manejar estado del formulario
-import { useState } from 'react'
-// Componentes nativos para la interfaz y control del teclado
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-// Íconos de Ionicons usados en inputs y botones
-import { Ionicons } from '@expo/vector-icons'
-// Íconos de Lucide para el toggle de contraseña
-import { Eye, EyeOff } from 'lucide-react-native'
-// Router de Expo para navegación entre pantallas
 import { router } from 'expo-router'
-// Lógica de creación de usuario, tipo del formulario, valor inicial y validaciones
-import {
-  crearUsuario,
-  NuevoUsuarioData,
-  USUARIO_INICIAL,
-  validarUsuario,
-} from '../../src/services/usuario/UsuarioServices'
-// Estilos
-import { usuarioNuevoStyles as styles } from '../../src/components/usuarioNuevoStyles'
-// Toast global para notificaciones
 import * as React from 'react'
-import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../../src/context/SesionContext'
+import AppButton from '../../src/components/ui/AppButton'
+import FormField from '../../src/components/ui/FormField'
+import InfoBanner from '../../src/components/ui/InfoBanner'
+import OptionSelector from '../../src/components/ui/OptionSelector'
+import FormLayout from '../../src/components/layout/FormLayout'
+import { useToast } from '../../src/context/ToastContext'
+import { useUsuarioNuevo } from '../../src/hooks/usuarios/useUsuarioNuevo'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+const ROLES = [
+  { label: 'Docente',      value: 'docente',    icon: 'school-outline' as const },
+  { label: 'Coordinador',  value: 'autoridad',  icon: 'shield-checkmark-outline' as const },
+]
 
-/**
- * Pantalla de registro de nuevo usuario (docente o coordinador).
- * Al crear exitosamente, Supabase envía un enlace de verificación al correo
- * y la app navega de vuelta automáticamente tras 4 segundos.
- */
 export default function UsuarioNuevo() {
   const { showToast } = useToast()
-  const { refrescarSesion } = useSesion()  
+  const { form, set, cargando, error, crear } = useUsuarioNuevo()
 
-  // ── Estado del formulario ─────────────────────────────────────────────────
-  // Se inicializa con USUARIO_INICIAL para garantizar valores por defecto limpios
-  const [nuevoUsuario, setNuevoUsuario] = useState<NuevoUsuarioData>(USUARIO_INICIAL)
-  // Controla el indicador de carga mientras se procesa la solicitud
-  const [cargando, setCargando] = useState(false)
-  // Controla la visibilidad del campo de contraseña
-  const [mostrarContrasena, setMostrarContrasena] = useState(false)
-
-  /**
-   * Retorna una función que actualiza un campo específico del formulario.
-   * Usa currying para mantener el handler limpio en los TextInput.
-   * @param campo - Nombre del campo a actualizar
-   */
-  const set = (campo: keyof NuevoUsuarioData) => (valor: string) =>
-    setNuevoUsuario(prev => ({ ...prev, [campo]: valor }))
-
-  // ── Crear usuario ─────────────────────────────────────────────────────────
-
-  /**
-   * Valida el formulario y crea el usuario en Supabase.
-   * Flujo:
-   *   1. Valida campos → muestra error si falla
-   *   2. Llama al servicio de creación
-   *   3. Muestra toast de éxito y vuelve atrás tras 4 segundos
-   *   4. En caso de error, muestra toast con el mensaje recibido
-   */
   const handleCrear = async () => {
-    const error = validarUsuario(nuevoUsuario)
-    if (error) {
+    const ok = await crear()
+    if (ok) {
+      showToast('Usuario creado correctamente', 'success')
+      router.back()
+    } else if (error) {
       showToast(error, 'error')
-      return
-    }
-
-    setCargando(true)
-    try {
-      await crearUsuario(nuevoUsuario)
-      await refrescarSesion() 
-      showToast(
-        'Usuario registrado. Se envió un enlace de verificación a ' + nuevoUsuario.correoUser,
-        'success',
-        4000
-      )
-      setTimeout(() => router.replace('/(auth)/CrearMenu'), 4000) 
-    } catch (error) {
-      if (error instanceof Error) {
-        showToast(error.message, 'error')
-      } else {
-        showToast('Ocurrió un error inesperado', 'error')
-      }
-    } finally {
-      setCargando(false)
     }
   }
-
-  // ── Render principal ──────────────────────────────────────────────────────
+  
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back()
+    }
+  })
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+    <FormLayout
+      icon="person-add-outline"
+      iconColor="#1DCDFE"
+      title="Nuevo Usuario"
+      subtitle="Completa la información del docente o coordinador"
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {error && (
+        <InfoBanner
+          text={error}
+          variant="error"
+        />
+      )}
 
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Ionicons name="person-add" size={50} color="#1DCDFE" />
-          <Text style={styles.title}>Nuevo Usuario</Text>
-          <Text style={styles.subtitle}>
-            Completa la información del docente o coordinador
-          </Text>
-        </View>
+      <InfoBanner
+        text="El usuario recibirá un correo de bienvenida con sus credenciales de acceso."
+        variant="info"
+      />
 
-        <View style={styles.form}>
+      <FormField
+        label="Nombre"
+        placeholder="Nombre del usuario"
+        value={form.nomUser}
+        onChangeText={v => set('nomUser', v)}
+        icon="person-outline"
+        autoCapitalize="words"
+      />
 
-          {/* ── Nombre ── */}
-          <Campo label="Nombre *" icon="person-outline" placeholder="Ej: Juan Carlos"
-            value={nuevoUsuario.nomUser} onChangeText={set('nomUser')} />
+      <FormField
+        label="Apellido"
+        placeholder="Apellido del usuario"
+        value={form.apeUser}
+        onChangeText={v => set('apeUser', v)}
+        icon="person-outline"
+        autoCapitalize="words"
+      />
 
-          {/* ── Apellido ── */}
-          <Campo label="Apellido *" icon="person-outline" placeholder="Ej: Pérez García"
-            value={nuevoUsuario.apeUser} onChangeText={set('apeUser')} />
+      <FormField
+        label="Correo electrónico"
+        placeholder="correo@ejemplo.com"
+        value={form.correoUser}
+        onChangeText={v => set('correoUser', v)}
+        icon="mail-outline"
+        keyboardType="email-address"
+      />
 
-          {/* ── Correo electrónico ── */}
-          <Campo label="Correo Electrónico *" icon="mail-outline" placeholder="correo@ejemplo.com"
-            value={nuevoUsuario.correoUser} onChangeText={set('correoUser')}
-            keyboardType="email-address" autoCapitalize="none" />
+      <FormField
+        label="Contraseña"
+        placeholder="Mínimo 6 caracteres"
+        value={form.contraUser}
+        onChangeText={v => set('contraUser', v)}
+        icon="lock-closed-outline"
+        isPassword
+      />
 
-          {/* ── Contraseña con toggle de visibilidad ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contraseña *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Mínimo 6 caracteres"
-                secureTextEntry={!mostrarContrasena}
-                value={nuevoUsuario.contraUser}
-                onChangeText={set('contraUser')}
-              />
-              {/* Botón para mostrar u ocultar la contraseña */}
-              <TouchableOpacity onPress={() => setMostrarContrasena(prev => !prev)}>
-                {mostrarContrasena
-                  ? <EyeOff size={20} color="#6B7280" />
-                  : <Eye size={20} color="#6B7280" />
-                }
-              </TouchableOpacity>
-            </View>
-          </View>
+      <FormField
+        label="Teléfono"
+        placeholder="Número de teléfono"
+        value={form.tlfUser}
+        onChangeText={v => set('tlfUser', v)}
+        icon="call-outline"
+        keyboardType="phone-pad"
+      />
 
-          {/* ── Teléfono (opcional) ── */}
-          <Campo label="Teléfono (Opcional)" icon="call-outline" placeholder="Ej: 0987654321"
-            value={nuevoUsuario.tlfUser} onChangeText={set('tlfUser')}
-            keyboardType="phone-pad" maxLength={10} />
+      <OptionSelector
+        label="Rol del usuario"
+        value={form.rolUser}
+        options={ROLES}
+        onChange={v => set('rolUser', v)}
+      />
 
-          {/* ── Selector de rol ── */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Rol del Usuario *</Text>
-            <View style={styles.roleContainer}>
-              <TouchableOpacity
-                style={[styles.roleButton, nuevoUsuario.rolUser === 'docente' && styles.roleButtonActive]}
-                onPress={() => set('rolUser')('docente')}
-              >
-                <Ionicons name="school" size={24} color={nuevoUsuario.rolUser === 'docente' ? '#FFF' : '#1DCDFE'} />
-                <Text style={[styles.roleButtonText, nuevoUsuario.rolUser === 'docente' && styles.roleButtonTextActive]}>
-                  Docente
-                </Text>
-              </TouchableOpacity>
+      <AppButton
+        label="Crear Usuario"
+        onPress={handleCrear}
+        loading={cargando}
+        icon="person-add-outline"
+      />
 
-              <TouchableOpacity
-                style={[styles.roleButton, nuevoUsuario.rolUser === 'autoridad' && styles.roleButtonActive]}
-                onPress={() => set('rolUser')('autoridad')}
-              >
-                <Ionicons name="shield-checkmark" size={24} color={nuevoUsuario.rolUser === 'autoridad' ? '#FFF' : '#21D0B2'} />
-                <Text style={[styles.roleButtonText, nuevoUsuario.rolUser === 'autoridad' && styles.roleButtonTextActive]}>
-                  Coordinador
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ── Botones de acción ── */}
-          <TouchableOpacity
-            style={[styles.submitButton, cargando && styles.submitButtonDisabled]}
-            onPress={handleCrear}
-            disabled={cargando}
-          >
-            <Text style={styles.submitButtonText}>
-              {cargando ? 'Creando Usuario...' : 'Crear Usuario'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.replace('/(auth)/CrearMenu')}>
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
-
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  )
-}
-
-// ─── Sub-componentes ──────────────────────────────────────────────────────────
-
-/**
- * Campo de texto reutilizable con ícono y label.
- * Acepta todas las props de TextInput además de `label` e `icon`.
- *
- * @param label - Texto del label superior
- * @param icon  - Nombre del ícono de Ionicons a mostrar a la izquierda
- */
-function Campo({ label, icon, ...props }: {
-  label: string
-  icon: React.ComponentProps<typeof Ionicons>['name']
-  [key: string]: any
-}) {
-  return (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputContainer}>
-        <Ionicons name={icon} size={20} color="#6B7280" />
-        <TextInput style={styles.input} {...props} />
-      </View>
-    </View>
+      <AppButton
+        label="Cancelar"
+        onPress={() => router.back()}
+        variant="secondary"
+      />
+    </FormLayout>
   )
 }
