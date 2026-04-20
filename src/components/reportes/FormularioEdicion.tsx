@@ -22,6 +22,9 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -29,6 +32,8 @@ import {
   View,
 } from 'react-native'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../styles/tokens'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
+
 
 // ─── Paleta oscura (consistente con reportesPendientesStyles) ─────────────────
 const C = {
@@ -79,6 +84,16 @@ export default function FormularioEdicion({
   onCancelar,
 }: FormularioEdicionProps) {
   return (
+    <KeyboardAwareScrollView
+    enableOnAndroid
+    keyboardShouldPersistTaps="handled"
+    extraScrollHeight={80}        // espacio extra sobre el campo enfocado
+    enableAutomaticScroll
+    >
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
     <View style={styles.container}>
       <View style={styles.form}>
 
@@ -153,6 +168,8 @@ export default function FormularioEdicion({
 
       </View>
     </View>
+    </ScrollView>
+    </KeyboardAwareScrollView>
   )
 }
 
