@@ -1,395 +1,128 @@
 // 🔐 app/index.tsx
 // Pantalla de inicio de sesión de SmartCampus.
-// Permite autenticarse como Usuario (docente / coordinador)
-// o como Colaborador (mantenimiento / sistemas).
-// Redirige al home correspondiente según el rol de la sesión.
+// Lógica: useLogin | Estilos: src/styles/auth/loginStyles.ts
 
-// React y hook useState para manejar el estado del componente
-import { useState } from 'react'
-// Componentes nativos de React Native para construir la interfaz
-import {
-    ActivityIndicator,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native'
-// Navegación y redirección entre pantallas
-import { router } from 'expo-router'
-// Servicio personalizado de autenticación
-import { loginPersonalizado } from '../src/services/auth/AuthService'
-// Tipo de datos de sesión
-import { Sesion } from '../src/types/Database'
-// Librería de íconos
-import { Ionicons } from '@expo/vector-icons'
-// Toast global para notificaciones (reemplaza Alert)
 import * as React from 'react'
+import { useState } from 'react'
+import {
+  ActivityIndicator, Image, KeyboardAvoidingView,
+  Platform, ScrollView, Text, TextInput, TouchableOpacity, View,
+} from 'react-native'
+import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useSesion } from '../src/context/SesionContext'
 import { useToast } from '../src/context/ToastContext'
+import { useLogin } from '../src/hooks/auth/useLogin'
+import { styles } from '../src/styles/auth/loginStyles'
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-/**
- * Pantalla de login.
- * Permite seleccionar el tipo de cuenta (usuario o colaborador)
- * antes de ingresar credenciales.
- * Redirige a HomeAutoridad, HomeDocente o HomeEmpleado según el rol.
- */
 export default function LoginScreen() {
   const { showToast } = useToast()
-  const { iniciarSesion } = useSesion()   
-
-  // ── Estado del formulario ─────────────────────────────────────────────────
-  const [correo, setCorreo]               = useState('')
-  const [contrasena, setContrasena]       = useState('')
-  const [tipoUsuario, setTipoUsuario]     = useState<'usuario' | 'empleado'>('usuario')
-  const [cargando, setCargando]           = useState(false)
+  const { iniciarSesion } = useSesion()
   const [mostrarContrasena, setMostrarContrasena] = useState(false)
+  const { correo, setCorreo, contrasena, setContrasena, tipoUsuario, setTipoUsuario, cargando, login } = useLogin()
 
-  // ── Login ─────────────────────────────────────────────────────────────────
-
-  /**
-   * Valida los campos, autentica al usuario y redirige según el rol.
-   * Flujo:
-   *   1. Valida que correo y contraseña no estén vacíos
-   *   2. Llama a loginPersonalizado con el tipo seleccionado
-   *   3. Según el rol/tipo de la sesión, redirige a la pantalla correspondiente
-   *   4. Muestra toast de bienvenida o de error
-   */
   const handleLogin = async () => {
-    if (!correo.trim() || !contrasena.trim()) {
-      showToast('Por favor completa todos los campos', 'error')
-      return
-    }
+    const sesion = await login()
+    if (!sesion) { showToast('Credenciales incorrectas o campos vacíos', 'error'); return }
 
-    setCargando(true)
-    try {
-      const sesion: Sesion = await loginPersonalizado(correo, contrasena, tipoUsuario)
-      await iniciarSesion(sesion)
+    await iniciarSesion(sesion)
 
-      if (sesion.tipo === 'usuario') {
-        if (sesion.rol === 'autoridad') {
-          showToast(`Bienvenido, ${sesion.data.nomUser}`, 'success')
-          router.replace('/(auth)/HomeAutoridad')
-        } else if (sesion.rol === 'docente') {
-          showToast(`Bienvenido, ${sesion.data.nomUser}`, 'success')
-          router.replace('/(auth)/HomeDocente')
-        } else {
-          throw new Error('Rol de usuario no reconocido')
-        }
-      } else if (sesion.tipo === 'empleado') {
-        showToast(`Bienvenido, ${sesion.data.nomEmpl}`, 'success')
-        router.replace('/(auth)/HomeEmpleado')
+    if (sesion.tipo === 'usuario') {
+      if (sesion.rol === 'autoridad') {
+        showToast(`Bienvenido, ${sesion.data.nomUser}`, 'success')
+        router.replace('/(auth)/HomeAutoridad')
+      } else if (sesion.rol === 'docente') {
+        showToast(`Bienvenido, ${sesion.data.nomUser}`, 'success')
+        router.replace('/(auth)/HomeDocente')
       }
-    } catch (error: any) {
-      showToast(error.message || 'Credenciales incorrectas', 'error')
-    } finally {
-      setCargando(false)
+    } else if (sesion.tipo === 'empleado') {
+      showToast(`Bienvenido, ${sesion.data.nomEmpl}`, 'success')
+      router.replace('/(auth)/HomeEmpleado')
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Logo de la app */}
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/images/logo_tesis.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Image source={require('../assets/images/logo_tesis.png')} style={styles.logo} resizeMode="contain" />
         </View>
 
         <Text style={styles.title}>Iniciar Sesión</Text>
         <Text style={styles.subtitle}>Accede a tu cuenta</Text>
 
-        {/* ── SELECTOR DE TIPO DE USUARIO ──────────────────────────────────
-            Determina si el login se procesa como usuario o como empleado.
-            Afecta la tabla de BD consultada en el servicio. ── */}
+        {/* Selector tipo usuario */}
         <View style={styles.tipoUsuarioContainer}>
-          <TouchableOpacity
-            style={[styles.tipoBoton, tipoUsuario === 'usuario' && styles.tipoBotonActivo]}
-            onPress={() => setTipoUsuario('usuario')}
-          >
-            <Ionicons
-              name="people"
-              size={20}
-              color={tipoUsuario === 'usuario' ? '#FFFFFF' : '#2F455C'}
-              style={{ marginRight: 8 }}
-            />
-            <Text style={[styles.tipoTexto, tipoUsuario === 'usuario' && styles.tipoTextoActivo]}>
-              Usuario
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tipoBoton, tipoUsuario === 'empleado' && styles.tipoBotonActivo]}
-            onPress={() => setTipoUsuario('empleado')}
-          >
-            <Ionicons
-              name="briefcase"
-              size={20}
-              color={tipoUsuario === 'empleado' ? '#FFFFFF' : '#2F455C'}
-              style={{ marginRight: 8 }}
-            />
-            <Text style={[styles.tipoTexto, tipoUsuario === 'empleado' && styles.tipoTextoActivo]}>
-              Colaborador
-            </Text>
-          </TouchableOpacity>
+          {(['usuario', 'empleado'] as const).map((tipo) => (
+            <TouchableOpacity
+              key={tipo}
+              style={[styles.tipoBoton, tipoUsuario === tipo && styles.tipoBotonActivo]}
+              onPress={() => setTipoUsuario(tipo)}
+            >
+              <Ionicons
+                name={tipo === 'usuario' ? 'people' : 'briefcase'}
+                size={20}
+                color={tipoUsuario === tipo ? '#FFFFFF' : '#2F455C'}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.tipoTexto, tipoUsuario === tipo && styles.tipoTextoActivo]}>
+                {tipo === 'usuario' ? 'Usuario' : 'Colaborador'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* ── FORMULARIO ── */}
+        {/* Formulario */}
         <View style={styles.formContainer}>
-
-          {/* Campo de correo electrónico */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Correo Electrónico</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color="#8B9BA8" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
-                placeholder="ejemplo@correo.com"
-                placeholderTextColor="#8B9BA8"
-                value={correo}
-                onChangeText={setCorreo}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
+                style={styles.input} placeholder="ejemplo@correo.com" placeholderTextColor="#8B9BA8"
+                value={correo} onChangeText={setCorreo} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
               />
             </View>
           </View>
 
-          {/* Campo de contraseña con toggle de visibilidad */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Contraseña</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color="#8B9BA8" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="#8B9BA8"
-                value={contrasena}
-                onChangeText={setContrasena}
-                secureTextEntry={!mostrarContrasena}
-                autoCapitalize="none"
+                style={styles.input} placeholder="••••••••" placeholderTextColor="#8B9BA8"
+                value={contrasena} onChangeText={setContrasena} secureTextEntry={!mostrarContrasena} autoCapitalize="none"
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setMostrarContrasena(!mostrarContrasena)}
-              >
-                <Ionicons
-                  name={mostrarContrasena ? "eye-off-outline" : "eye-outline"}
-                  size={22}
-                  color="#8B9BA8"
-                />
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setMostrarContrasena(v => !v)}>
+                <Ionicons name={mostrarContrasena ? 'eye-off-outline' : 'eye-outline'} size={22} color="#8B9BA8" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* ── Enlace de recuperación de contraseña ── */}
-          <TouchableOpacity
-            style={styles.forgotContainer}
-            onPress={() => router.push('/ContraseniaOlvidada')}
-          >
+          <TouchableOpacity style={styles.forgotContainer} onPress={() => router.push('/ContraseniaOlvidada')}>
             <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 
-          {/* Botón de inicio de sesión */}
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-            disabled={cargando}
-          >
-            {cargando ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={{ marginLeft: 8 }} />
-              </>
-            )}
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={cargando}>
+            {cargando
+              ? <ActivityIndicator color="#FFFFFF" />
+              : <><Text style={styles.loginButtonText}>Iniciar Sesión</Text><Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={{ marginLeft: 8 }} /></>
+            }
           </TouchableOpacity>
         </View>
 
-        {/* Badge informativo sobre el tipo de acceso seleccionado */}
+        {/* Badge informativo */}
         <View style={styles.infoContainer}>
           <View style={styles.infoBadge}>
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color="#8B9BA8"
-              style={{ marginRight: 6 }}
-            />
+            <Ionicons name="information-circle-outline" size={16} color="#8B9BA8" style={{ marginRight: 6 }} />
             <Text style={styles.infoText}>
-              {tipoUsuario === 'usuario'
-                ? 'Acceso para autoridades y docentes'
-                : 'Acceso para personal de mantenimiento y/o sistemas'}
+              {tipoUsuario === 'usuario' ? 'Acceso para autoridades y docentes' : 'Acceso para personal de mantenimiento y/o sistemas'}
             </Text>
           </View>
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   )
 }
-
-// ─── Estilos ──────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2F455C',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#8B9BA8',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  tipoUsuarioContainer: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tipoBoton: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-  },
-  tipoBotonActivo: {
-    backgroundColor: '#21D0B2',
-    shadowColor: '#21D0B2',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  tipoTexto: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2F455C',
-  },
-  tipoTextoActivo: {
-    color: '#FFFFFF',
-  },
-  formContainer: {
-    marginBottom: 24,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2F455C',
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    paddingHorizontal: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#2F455C',
-  },
-  eyeButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  // ── Enlace de contraseña olvidada ──
-  forgotContainer: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-    marginBottom: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 2,
-  },
-  forgotText: {
-    fontSize: 14,
-    color: '#21D0B2',
-    fontWeight: '600',
-  },
-  loginButton: {
-    backgroundColor: '#21D0B2',
-    borderRadius: 12,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    shadowColor: '#21D0B2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  infoContainer: {
-    alignItems: 'center',
-    paddingTop: 16,
-  },
-  infoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#8B9BA8',
-    textAlign: 'center',
-  },
-})

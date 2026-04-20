@@ -4,7 +4,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { profileStyles as s } from '../../src/components/Profilestyles'
+import { profileStyles as s } from '../../src/styles/usuario/Profilestyles'
 import LoadingScreen from '../../src/components/ui/LoadingScreen'
 import { useProfile } from '../../src/hooks/usuarios/useProfile'
 import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'

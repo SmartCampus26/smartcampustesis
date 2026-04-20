@@ -10,8 +10,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 import * as React from 'react'
-import { ActivityIndicator, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { styles } from '../../src/components/reportes/CrearReporteStyles'
+import { ActivityIndicator, Image, ScrollView, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { styles } from '../../src/styles/reportes/CrearReporteStyles'
 import { CATEGORIAS_OBJETOS, LUGARES_PREDEFINIDOS, TIPOS_AULA } from '../../src/services/reportes/CrearReporteServices'
 import { useCrearReporte } from '../../src/hooks/reportes/useCrearReporte'
 import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
@@ -82,11 +82,11 @@ export default function CrearReporte() {
           </View>
 
           {/* 4. DESCRIPCIÓN */}
-          <View style={styles.inputContainer}>
+          <SafeAreaView style={styles.inputContainer}>
             <Text style={styles.label}>Descripción *</Text>
             <TextInput style={[styles.input, styles.textArea]} placeholder="Describe el problema con detalle..." value={descripcion} onChangeText={setDescripcion} multiline numberOfLines={4} textAlignVertical="top" maxLength={500} />
             <Text style={styles.charCount}>{descripcion.length}/500</Text>
-          </View>
+          </SafeAreaView>
 
           {/* 5. OBJETO */}
           <View style={styles.section}>

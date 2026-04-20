@@ -11,22 +11,22 @@ import {
   reasignarReporteDB,
 } from '../../services/admin/Reasignarempleadoservice'
 import { useSesion } from '../../context/SesionContext'
+import { useToast } from '../../context/ToastContext'
 import { Empleado, Reporte } from '../../types/Database'
 
 export function useReasignarEmpleado() {
-  const { sesion } = useSesion()
+  const { sesion }    = useSesion()
+  const { showToast } = useToast()
 
-  const [empleados, setEmpleados]                     = useState<Empleado[]>([])
-  const [reportes, setReportes]                       = useState<Reporte[]>([])
-  const [cargando, setCargando]                       = useState(true)
-  const [error, setError]                             = useState<string | null>(null)
-  const [nombreAutoridad, setNombreAutoridad]         = useState('Sistema')
+  const [empleados, setEmpleados]             = useState<Empleado[]>([])
+  const [reportes, setReportes]               = useState<Reporte[]>([])
+  const [cargando, setCargando]               = useState(true)
+  const [error, setError]                     = useState<string | null>(null)
+  const [nombreAutoridad, setNombreAutoridad] = useState('Sistema')
 
-  // Modal de selección de colaborador
   const [modalVisible, setModalVisible]               = useState(false)
   const [reporteSeleccionado, setReporteSeleccionado] = useState<Reporte | null>(null)
 
-  // Filtros del modal
   const [filtroDepto, setFiltroDepto] = useState('todos')
   const [filtroCargo, setFiltroCargo] = useState('todos')
 
@@ -57,12 +57,23 @@ export function useReasignarEmpleado() {
 
   const reasignar = async (empleadoId: string) => {
     if (!reporteSeleccionado) return
-    await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad)
-    setModalVisible(false)
-    cargar()
+    try {
+      await reasignarReporteDB(reporteSeleccionado.idReporte, empleadoId, nombreAutoridad)
+      showToast('Reporte reasignado correctamente', 'success')
+      setModalVisible(false)
+      cargar()
+    } catch (err: any) {
+      showToast(err.message || 'Error al reasignar', 'error')
+    }
   }
 
   const empleadosFiltrados = filtrarEmpleados(empleados, filtroDepto, filtroCargo)
+
+  const getNombreAsignado = (idEmpl?: string): string => {
+    if (!idEmpl) return 'Sin asignar'
+    const emp = empleados.find(e => e.idEmpl === idEmpl)
+    return emp ? `${emp.nomEmpl} ${emp.apeEmpl}` : 'Desconocido'
+  }
 
   return {
     empleados, reportes, empleadosFiltrados,
@@ -71,5 +82,6 @@ export function useReasignarEmpleado() {
     reporteSeleccionado, abrirModal, reasignar,
     filtroDepto, setFiltroDepto,
     filtroCargo, setFiltroCargo,
+    getNombreAsignado,
   }
 }

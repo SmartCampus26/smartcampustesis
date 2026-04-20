@@ -584,7 +584,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    color: C.white,
+    color: C.mintDark,
     borderWidth: 1,
     borderColor: C.cardBorder,
     fontSize: 14,
