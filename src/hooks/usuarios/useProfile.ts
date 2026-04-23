@@ -56,11 +56,12 @@ export function useProfile() {
 
   // ── Acciones ──────────────────────────────────────────────────────────────
 
-  const abrirWhatsApp = useCallback(() => {
-    const msg = encodeURIComponent('Hola, tengo una consulta sobre SmartCampus 👋')
-    Linking.openURL(`whatsapp://send?phone=593984672753&text=${msg}`)
-      .catch(() => Linking.openURL(`https://wa.me/593984672753?text=${msg}`))
-  }, [])
+  const abrirCorreo = useCallback(() => {
+    const subject = encodeURIComponent('Consulta sobre SmartCampus')
+    const body    = encodeURIComponent('Hola, tengo una consulta sobre SmartCampus 👋')
+    Linking.openURL(`mailto:emyvale0811@gmail.com?subject=${subject}&body=${body}`)
+      .catch(() => showToast('No se pudo abrir el correo', 'error'))
+  }, [showToast])
 
   /** Primer toque: activa confirmación. Segundo toque: cierra sesión y navega. */
   const handleCerrarSesion = useCallback(() => {
@@ -100,7 +101,7 @@ export function useProfile() {
   ] : []
 
   const MENU: MenuItem[] = [
-    { iconName: 'help-circle-outline',        iconBg: '#E0F7FA', iconColor: '#00ACC1', label: 'Ayuda y Soporte', onPress: abrirWhatsApp  },
+    { iconName: 'help-circle-outline',        iconBg: '#E0F7FA', iconColor: '#00ACC1', label: 'Ayuda y Soporte', onPress: abrirCorreo  },
     {  iconName:  'logo-youtube' , iconBg:    '#FFEBEE' ,  iconColor: '#E53935' , label:     'Tutorial' ,       onPress: abrirYouTube },
   ]
 

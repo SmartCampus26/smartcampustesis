@@ -48,11 +48,10 @@ export default function CameraScreen() {
     <SafeAreaView style={styles.container}>
 
       <View style={styles.header}>
-        <Text style={styles.title}>SmartCampus</Text>
         <Text style={styles.subtitle}>
           Almacenaremos la foto en tu celular para que tenga un respaldo
         </Text>
-        <Text style={styles.photoCount}>{savedPhotos.length} fotos guardadas</Text>
+        <Text style={styles.photoCount}>{savedPhotos.length} foto guardada</Text>
       </View>
 
       <View style={styles.body}>
