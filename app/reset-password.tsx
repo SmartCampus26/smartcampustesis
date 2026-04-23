@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { router } from 'expo-router'
-import * as React from 'react'
 
 export default function ResetPasswordRedirect() {
   useEffect(() => {

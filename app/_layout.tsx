@@ -3,11 +3,12 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as React from 'react';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ToastProvider } from "../src/components/ToastContext";
 import { NetworkProvider } from "../src/context/Networkcontext";
 import { SavedProvider } from "../src/context/SavedContext";
 import { SesionProvider, useSesion } from '../src/context/SesionContext';
+import { ToastProvider } from "../src/context/ToastContext";
 import { supabase } from '../src/lib/Supabase';
+import { useAndroidBack } from '@/src/hooks/androidService/useAndroidBack';
 
 function RouteGuard() {
   const { sesion, cargando } = useSesion();
@@ -28,6 +29,7 @@ function RouteGuard() {
 
     if (sesion && !enAuth && !esRutaCamara) {
       const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol;
+      console.log("ROL DETECTADO:", rol);
 
       switch (rol) {
         case 'autoridad':
@@ -50,6 +52,12 @@ export default function RootLayout() {
 
   const router = useRouter()
 
+  useAndroidBack(() => {
+    console.log('Botón físico de atrás presionado');
+    // Aquí puedes poner lógica global, por ejemplo, 
+    // verificar si pueden salir de la app o si quieres redirigirlos.
+  }); 
+  
   useEffect(() => {
     console.log('🔗 Mi URL de desarrollo:', Linking.createURL('reset-password'))
 

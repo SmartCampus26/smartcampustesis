@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { useSesion } from '../../src/context/SesionContext';
+import LoadingScreen from '@/src/components/ui/LoadingScreen';
 
 const COLORS = {
   autoridad:     { active: '#1DCDFE', header: '#2F455C' },
@@ -13,38 +14,41 @@ const COLORS = {
 
 export default function UnifiedLayout() {
   const { sesion, cargando } = useSesion()
+  const segments = useSegments()
   
-  if (cargando) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1DCDFE" />
-      </View>
-    )
-  }
+ // 1. Validaciones de carga y sesión
+ if (cargando) return <LoadingScreen color="#1DCDFE" />;
+ if (!sesion) return <Redirect href="/" />;
+// 2. Determinar el rol y la pantalla actual
+const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol;
+const pantallaActual = segments[segments.length - 1]; 
+const color = COLORS[rol as keyof typeof COLORS] ?? COLORS.docente;
 
-  if (!sesion) return <Redirect href="/" />
+// 3. Variables de permisos (ESTO ES LO QUE FALTABA)
+const isAutoridad = rol === 'autoridad';
+const isDocente   = rol === 'docente';
+const isEmpleado  = rol === 'mantenimiento' || rol === 'sistemas';
+const isSistemas  = rol === 'sistemas';
 
-  if (cargando) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1DCDFE" />
-      </View>
-    )
-  }
+// 4. Mapa de Restricciones (Validación de Seguridad)
+const restricciones: Record<string, boolean> = {
+  'HomeAutoridad':     isAutoridad,
+  'HomeDocente':       isDocente,
+  'HomeEmpleado':      isEmpleado,
+  'ReasignarEmpleado': isAutoridad,
+  'ReportesPendientes':isEmpleado,
+  'CrearMenu':         (isAutoridad || isSistemas),
+};
 
-  if (!sesion) return <Redirect href="/" />
+// Redirección de seguridad si intenta entrar donde no debe (por ejemplo, con el botón atrás)
+if (restricciones[pantallaActual] === false) {
+  const homeDestino = 
+    isAutoridad ? '/(auth)/HomeAutoridad' :
+    isDocente   ? '/(auth)/HomeDocente'   : 
+    '/(auth)/HomeEmpleado';
 
-  // ─── Determina el rol unificado ───────────────────────────────────────────
-  // Para empleados el rol viene de deptEmpl, para usuarios de sesion.rol
-  const rol = sesion.tipo === 'empleado' ? sesion.data.deptEmpl : sesion.rol
-  const color = COLORS[rol as keyof typeof COLORS] ?? COLORS.docente
-
-  const isAutoridad = rol === 'autoridad'
-  const isDocente   = rol === 'docente'
-  const isEmpleado  = rol === 'mantenimiento' || rol === 'sistemas'
-  const isSistemas  = rol === 'sistemas'
-
-  const isWeb = Platform.OS === 'web'
+  return <Redirect href={homeDestino as any} />;
+}
 
   return (
     <Tabs

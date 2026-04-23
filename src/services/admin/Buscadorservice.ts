@@ -1,0 +1,121 @@
+// 📦 Buscadorservice.ts
+// Servicios de acceso a datos para el listado de personal (usuarios y empleados).
+// Centraliza todas las operaciones con Supabase y la lógica de filtrado local.
+
+import { supabase } from '../../lib/Supabase'
+import { Empleado, Usuario } from '../../types/Database'
+
+// ─── Fetch ────────────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene todos los usuarios ordenados alfabéticamente por nombre.
+ * @returns Lista de usuarios registrados en la tabla `usuario`
+ * @throws Error de Supabase si la consulta falla
+ */
+export const fetchUsuarios = async (): Promise<Usuario[]> => {
+  const { data, error } = await supabase
+    .from('usuario')
+    .select('*')
+    .order('nomUser', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Obtiene todos los empleados ordenados alfabéticamente por nombre.
+ * @returns Lista de empleados registrados en la tabla `empleado`
+ * @throws Error de Supabase si la consulta falla
+ */
+export const fetchEmpleados = async (): Promise<Empleado[]> => {
+  const { data, error } = await supabase
+    .from('empleado')
+    .select('*')
+    .order('nomEmpl', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
+// ─── Eliminación ──────────────────────────────────────────────────────────────
+
+/**
+ * Elimina un usuario de la tabla `usuario` Y de Supabase Authentication.
+ * @param id - UUID del usuario (debe coincidir con el auth UID)
+ */
+export const eliminarUsuarioDB = async (id: string): Promise<void> => {
+  // 1️⃣ Eliminar de la tabla `usuario`
+  const { error: dbError } = await supabase
+    .from('usuario')
+    .delete()
+    .eq('idUser', id)
+
+  if (dbError) throw dbError
+
+  // 2️⃣ Eliminar de Supabase Authentication via Edge Function
+  const { error: fnError } = await supabase.functions.invoke('eliminar-auth-user', {
+    body: { userId: id }
+  })
+
+  if (fnError) throw fnError
+}
+
+/**
+ * Elimina un empleado de la tabla `empleado` Y de Supabase Authentication.
+ * @param id - UUID del empleado (debe coincidir con el auth UID)
+ */
+export const eliminarEmpleadoDB = async (id: string): Promise<void> => {
+  // 1️⃣ Eliminar de la tabla `empleado`
+  const { error: dbError } = await supabase
+    .from('empleado')
+    .delete()
+    .eq('idEmpl', id)
+
+  if (dbError) throw dbError
+
+  // 2️⃣ Eliminar de Supabase Authentication via Edge Function
+  const { error: fnError } = await supabase.functions.invoke('eliminar-auth-user', {
+    body: { userId: id }
+  })
+
+  if (fnError) throw fnError
+}
+
+// ─── Filtrado local ───────────────────────────────────────────────────────────
+
+/**
+ * Filtra la lista de usuarios en memoria según un término de búsqueda.
+ * Busca coincidencias en: nombre, apellido, correo, rol e ID.
+ * @param usuarios - Lista completa de usuarios
+ * @param busqueda - Texto ingresado por el usuario en el buscador
+ * @returns Subconjunto de usuarios que coinciden con el término
+ */
+export const filtrarUsuarios = (usuarios: Usuario[], busqueda: string): Usuario[] => {
+  const t = busqueda.toLowerCase()
+  return usuarios.filter(u =>
+    u.nomUser.toLowerCase().includes(t) ||
+    u.apeUser.toLowerCase().includes(t) ||
+    u.correoUser.toLowerCase().includes(t) ||
+    u.rolUser.toLowerCase().includes(t) ||
+    u.idUser.toString().includes(t)
+  )
+}
+
+/**
+ * Filtra la lista de empleados en memoria según un término de búsqueda.
+ * Busca coincidencias en: nombre, apellido, correo, departamento, cargo e ID.
+ * @param empleados - Lista completa de empleados
+ * @param busqueda - Texto ingresado por el usuario en el buscador
+ * @returns Subconjunto de empleados que coinciden con el término
+ */
+export const filtrarEmpleados = (empleados: Empleado[], busqueda: string): Empleado[] => {
+  const t = busqueda.toLowerCase()
+  return empleados.filter(e =>
+    e.nomEmpl.toLowerCase().includes(t) ||
+    e.apeEmpl.toLowerCase().includes(t) ||
+    e.correoEmpl.toLowerCase().includes(t) ||
+    e.deptEmpl.toLowerCase().includes(t) ||
+    e.cargEmpl.toLowerCase().includes(t) ||
+    e.idEmpl.toString().includes(t)
+  )
+}

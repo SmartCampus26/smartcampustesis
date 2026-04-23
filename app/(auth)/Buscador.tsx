@@ -1,393 +1,160 @@
-// 👥 ListadoMaxAutoridad.tsx
-// Pantalla de gestión de personal para la máxima autoridad.
-// Permite visualizar, buscar, filtrar y eliminar usuarios y empleados.
+// 👥 Buscador.tsx
+// Gestión de personal. Eliminación solo disponible para autoridades.
+// Sin estilos propios — solo orquestación de componentes.
 
 import * as React from 'react'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import {
-  ActivityIndicator,
-  Animated,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { RefreshControl, ScrollView, View } from 'react-native'
+import ListHeader from '../../src/components/usuarios/ListHeader'
+import PersonaCard from '../../src/components/usuarios/PersonaCard'
+import FilterChips from '../../src/components/ui/FilterChips'
+import FormField from '../../src/components/ui/FormField'
+import ConfirmModal from '../../src/components/ui/ConfirmModal'
+import EmptyState from '../../src/components/ui/EmptyState'
+import LoadingScreen from '../../src/components/ui/LoadingScreen'
+import { useToast } from '../../src/context/ToastContext'
+import { useBuscador } from '../../src/hooks/usuarios/useBuscador'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { router } from 'expo-router'
 
-import { Empleado, Usuario } from '../../src/types/Database'
-import {
-  fetchUsuarios,
-  fetchEmpleados,
-  eliminarUsuarioDB,
-  eliminarEmpleadoDB,
-  filtrarUsuarios,
-  filtrarEmpleados,
-} from '../../src/services/Buscadorservice'
-import { styles } from '../../src/components/Buscadorstyles'
-import { useToast } from '../../src/components/ToastContext'
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-/** Opciones del filtro principal de la lista */
 type TipoPersonal = 'todos' | 'usuarios' | 'empleados'
 
-/** Datos necesarios para mostrar el modal de confirmación */
-interface ConfirmData {
-  visible: boolean
-  nombre: string
-  onConfirm: () => void
-}
-
-// ─── Modal confirmación ───────────────────────────────────────────────────────
-
-/**
- * Modal de confirmación antes de eliminar un registro.
- * Muestra el nombre del elemento a eliminar y dos acciones: cancelar o confirmar.
- */
-function ConfirmModal({
-  visible,
-  nombre,
-  onConfirm,
-  onCancel,
-}: ConfirmData & { onCancel: () => void }) {
-  return (
-    <Modal transparent animationType="fade" visible={visible}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Confirmar eliminación</Text>
-          <Text style={styles.modalMessage}>
-            ¿Estás segura de eliminar a{' '}
-            <Text style={styles.modalBold}>{nombre}</Text>?
-          </Text>
-          <View style={styles.modalRow}>
-            <TouchableOpacity style={styles.modalBtnCancel} onPress={onCancel}>
-              <Text style={styles.modalBtnCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalBtnDelete} onPress={onConfirm}>
-              <Text style={styles.modalBtnDeleteText}>Eliminar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  )
-}
-
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-/**
- * Pantalla principal de gestión de personal.
- * Carga usuarios y empleados desde Supabase, permite buscar por texto,
- * filtrar por tipo y eliminar registros con confirmación.
- */
-export default function ListadoMaxAutoridad() {
-
-  // ── Toast global ─────────────────────────────────────────────────────────────
+export default function Buscador() {
   const { showToast } = useToast()
+  const {
+    usuariosFiltrados, empleadosFiltrados,
+    busqueda, setBusqueda,
+    filtroActivo, setFiltroActivo,
+    cargando, refrescando, onRefresh,
+    eliminarUsuario, eliminarEmpleado,
+    esAutoridad,
+  } = useBuscador()
 
-  // ── Estado de datos ──────────────────────────────────────────────────────────
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [empleados, setEmpleados] = useState<Empleado[]>([])
-  const [busqueda, setBusqueda] = useState('')
-  const [filtroActivo, setFiltroActivo] = useState<TipoPersonal>('todos')
-  const [cargando, setCargando] = useState(true)
-  const [refrescando, setRefrescando] = useState(false)
-
-  // ── Estado del modal de confirmación ────────────────────────────────────────
-  const [confirm, setConfirm] = useState<ConfirmData>({
-    visible: false,
-    nombre: '',
-    onConfirm: () => {},
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back()
+    }
   })
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const [confirm, setConfirm] = React.useState({
+    visible: false, titulo: '', mensaje: '', onConfirm: () => {},
+  })
+  const openConfirm = (titulo: string, mensaje: string, onConfirm: () => void) =>
+    setConfirm({ visible: true, titulo, mensaje, onConfirm })
+  const closeConfirm = () => setConfirm(p => ({ ...p, visible: false }))
 
-  /** Abre el modal de confirmación con el nombre y la acción a ejecutar */
-  const openConfirm = (nombre: string, onConfirm: () => void) =>
-    setConfirm({ visible: true, nombre, onConfirm })
+  if (cargando) return <LoadingScreen />
 
-  /** Cierra el modal de confirmación sin ejecutar ninguna acción */
-  const closeConfirm = () => setConfirm((p) => ({ ...p, visible: false }))
+  const totalGeneral = usuariosFiltrados.length + empleadosFiltrados.length
 
-  // ── Carga de datos ────────────────────────────────────────────────────────────
+  const FILTROS = [
+    { key: 'todos',     label: `Todos (${totalGeneral})` },
+    { key: 'usuarios',  label: `Usuarios (${usuariosFiltrados.length})` },
+    { key: 'empleados', label: `Colaboradores (${empleadosFiltrados.length})` },
+  ]
 
-  useEffect(() => { cargarDatos() }, [])
-
-  /**
-   * Carga usuarios y empleados desde Supabase.
-   * Maneja los estados de carga y refresco.
-   */
-  const cargarDatos = async () => {
-    try {
-      setUsuarios(await fetchUsuarios())
-      setEmpleados(await fetchEmpleados())
-    } catch {
-      showToast('No se pudieron cargar los datos', 'error')
-    } finally {
-      setCargando(false)
-      setRefrescando(false)
-    }
-  }
-
-  /** Activa el estado de refresco y recarga los datos */
-  const onRefresh = () => { setRefrescando(true); cargarDatos() }
-
-  // ── Eliminación ───────────────────────────────────────────────────────────────
-
-  /**
-   * Solicita confirmación y elimina un usuario por su ID.
-   * Muestra toast de éxito o error según el resultado.
-   */
-  const eliminarUsuario = (id: string, nombre: string) => {
-    openConfirm(nombre, async () => {
+  const handleEliminarUsuario = (id: string, nombre: string) =>
+    openConfirm('Confirmar eliminación', `¿Eliminar a ${nombre}?`, async () => {
       closeConfirm()
-      try {
-        await eliminarUsuarioDB(id)
-        showToast('Usuario eliminado correctamente', 'success')
-        cargarDatos()
-      } catch {
-        showToast('No se pudo eliminar el usuario', 'error')
-      }
+      try { await eliminarUsuario(id); showToast('Usuario eliminado', 'success') }
+      catch { showToast('No se pudo eliminar', 'error') }
     })
-  }
 
-  /**
-   * Solicita confirmación y elimina un empleado por su ID.
-   * Muestra toast de éxito o error según el resultado.
-   */
-  const eliminarEmpleado = (id: string, nombre: string) => {
-    openConfirm(nombre, async () => {
+  const handleEliminarEmpleado = (id: string, nombre: string) =>
+    openConfirm('Confirmar eliminación', `¿Eliminar a ${nombre}?`, async () => {
       closeConfirm()
-      try {
-        await eliminarEmpleadoDB(id)
-        showToast('Empleado eliminado correctamente', 'success')
-        cargarDatos()
-      } catch {
-        showToast('No se pudo eliminar el empleado', 'error')
-      }
+      try { await eliminarEmpleado(id); showToast('Colaborador eliminado', 'success') }
+      catch { showToast('No se pudo eliminar', 'error') }
     })
-  }
-
-  // ── Filtros ───────────────────────────────────────────────────────────────────
-
-  // Listas filtradas según el texto de búsqueda actual
-  const usuariosFiltrados = filtrarUsuarios(usuarios, busqueda)
-  const empleadosFiltrados = filtrarEmpleados(empleados, busqueda)
-  const totalUsuarios = usuariosFiltrados.length
-  const totalEmpleados = empleadosFiltrados.length
-  const totalGeneral = totalUsuarios + totalEmpleados
-
-  // ── Renders de tarjetas ───────────────────────────────────────────────────────
-
-  /**
-   * Renderiza la tarjeta de un usuario con sus datos y botón de eliminación.
-   * Muestra: nombre, rol, correo, teléfono, fecha de registro e ID.
-   */
-  const renderUsuario = (usuario: Usuario) => (
-    <View key={usuario.idUser} style={[styles.card, styles.usuarioCard]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <Text style={styles.cardName}>
-            {usuario.nomUser} {usuario.apeUser}
-          </Text>
-          <View style={[
-            styles.badge,
-            usuario.rolUser === 'autoridad' ? styles.badgeAutoridad : styles.badgeDocente,
-          ]}>
-            <Text style={styles.badgeText}>
-              {usuario.rolUser === 'autoridad' ? '👔 Coordinador' : '📚 Docente'}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => eliminarUsuario(usuario.idUser, `${usuario.nomUser} ${usuario.apeUser}`)}
-        >
-          <Text style={styles.deleteButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📧 Correo:</Text>
-          <Text style={styles.infoValue}>{usuario.correoUser}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📱 Teléfono:</Text>
-          <Text style={styles.infoValue}>{usuario.tlfUser || 'No registrado'}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📅 Registro:</Text>
-          <Text style={styles.infoValue}>
-            {usuario.fec_reg_user
-              ? new Date(usuario.fec_reg_user).toLocaleDateString()
-              : 'N/A'}
-          </Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>🆔 ID:</Text>
-          <Text style={styles.infoValue}>{usuario.idUser}</Text>
-        </View>
-      </View>
-    </View>
-  )
-
-  /**
-   * Renderiza la tarjeta de un empleado con sus datos y botón de eliminación.
-   * Muestra: nombre, departamento, cargo, correo, teléfono e ID.
-   */
-  const renderEmpleado = (empleado: Empleado) => (
-    <View key={empleado.idEmpl} style={[styles.card, styles.empleadoCard]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <Text style={styles.cardName}>
-            {empleado.nomEmpl} {empleado.apeEmpl}
-          </Text>
-          <View style={styles.badgeContainer}>
-            <View style={[styles.badge, styles.badgeDepartamento]}>
-              <Text style={styles.badgeText}>
-                {empleado.deptEmpl === 'mantenimiento' ? '🔧 Mantenimiento' : '💻 Sistemas'}
-              </Text>
-            </View>
-            <View style={[
-              styles.badge,
-              empleado.cargEmpl === 'jefe' ? styles.badgeJefe : styles.badgeEmpleado,
-            ]}>
-              <Text style={styles.badgeText}>
-                {empleado.cargEmpl === 'jefe' ? '👨‍💼 Jefe' : '👷 Colaborador'}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => eliminarEmpleado(empleado.idEmpl, `${empleado.nomEmpl} ${empleado.apeEmpl}`)}
-        >
-          <Text style={styles.deleteButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📧 Correo:</Text>
-          <Text style={styles.infoValue}>{empleado.correoEmpl}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📱 Teléfono:</Text>
-          <Text style={styles.infoValue}>{empleado.tlfEmpl || 'No registrado'}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>🆔 ID:</Text>
-          <Text style={styles.infoValue}>{empleado.idEmpl}</Text>
-        </View>
-      </View>
-    </View>
-  )
-
-  // ── Loading ───────────────────────────────────────────────────────────────────
-
-  if (cargando) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#21D0B2" />
-        <Text style={styles.loadingText}>Cargando personal...</Text>
-      </View>
-    )
-  }
-
-  // ── Render principal ──────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <>
+      <ListHeader
+        title="Listado de Personal"
+        subtitle={`Total: ${totalGeneral} personas`}
+      />
 
-      {/* Encabezado con título y total */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Listado de Personal</Text>
-        <Text style={styles.subtitle}>Total: {totalGeneral} personas</Text>
-      </View>
+      <FormField
+        label="Buscar"
+        hideLabel
+        placeholder="Buscar por nombre, correo, rol..."
+        value={busqueda}
+        onChangeText={setBusqueda}
+        onClear={() => setBusqueda('')}
+        icon="search-outline"
+      />
 
-      {/* Campo de búsqueda por texto */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por nombre, correo, rol..."
-          placeholderTextColor="#8B9BA8"
-          value={busqueda}
-          onChangeText={setBusqueda}
-        />
-      </View>
+      {/* horizontal={false} para que los chips se muestren en fila sin scroll */}
+      <FilterChips
+        chips={FILTROS}
+        selected={filtroActivo}
+        onSelect={(k) => setFiltroActivo(k as TipoPersonal)}
+        horizontal={false}
+      />
 
-      {/* Filtros: Todos / Usuarios / Colaboradores */}
-      <View style={styles.filterContainer}>
-        {(['todos', 'usuarios', 'empleados'] as TipoPersonal[]).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterButton, filtroActivo === f && styles.filterButtonActive]}
-            onPress={() => setFiltroActivo(f)}
-          >
-            <Text style={[
-              styles.filterButtonText,
-              filtroActivo === f && styles.filterButtonTextActive,
-            ]}>
-              {f === 'todos'
-                ? `Todos (${totalGeneral})`
-                : f === 'usuarios'
-                ? `Usuarios (${totalUsuarios})`
-                : `Colaboradores (${totalEmpleados})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Lista principal con pull-to-refresh */}
       <ScrollView
-        style={styles.listContainer}
-        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={onRefresh} />
+        }
       >
-        {/* Sección de usuarios */}
-        {(filtroActivo === 'todos' || filtroActivo === 'usuarios') && (
-          <>
-            {usuariosFiltrados.length > 0 ? (
-              <>
-                <Text style={styles.sectionTitle}>👥 Usuarios ({usuariosFiltrados.length})</Text>
-                {usuariosFiltrados.map(renderUsuario)}
-              </>
-            ) : busqueda !== '' && filtroActivo === 'usuarios' ? (
-              <Text style={styles.noResults}>No se encontraron usuarios</Text>
-            ) : null}
-          </>
-        )}
-
-        {/* Sección de colaboradores */}
-        {(filtroActivo === 'todos' || filtroActivo === 'empleados') && (
-          <>
-            {empleadosFiltrados.length > 0 ? (
-              <>
-                <Text style={styles.sectionTitle}>🔧 Colaboradores ({empleadosFiltrados.length})</Text>
-                {empleadosFiltrados.map(renderEmpleado)}
-              </>
-            ) : busqueda !== '' && filtroActivo === 'empleados' ? (
-              <Text style={styles.noResults}>No se encontraron colaboradores</Text>
-            ) : null}
-          </>
-        )}
-
-        {/* Sin resultados globales */}
-        {totalGeneral === 0 && busqueda !== '' && (
-          <Text style={styles.noResults}>No se encontraron resultados</Text>
-        )}
-
-        <View style={{ height: 40 }} />
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          {(filtroActivo === 'todos' || filtroActivo === 'usuarios') &&
+            usuariosFiltrados.map(u => (
+              <PersonaCard
+                key={u.idUser}
+                tipo="usuario"
+                nombre={`${u.nomUser} ${u.apeUser}`}
+                rol={u.rolUser}
+                correo={u.correoUser}
+                telefono={u.tlfUser}
+                fechaRegistro={u.fec_reg_user}
+                id={u.idUser}
+                // Eliminar solo disponible para autoridades
+                onEliminar={esAutoridad
+                  ? () => handleEliminarUsuario(u.idUser, `${u.nomUser} ${u.apeUser}`)
+                  : undefined
+                }
+              />
+            ))
+          }
+          {(filtroActivo === 'todos' || filtroActivo === 'empleados') &&
+            empleadosFiltrados.map(e => (
+              <PersonaCard
+                key={e.idEmpl}
+                tipo="empleado"
+                nombre={`${e.nomEmpl} ${e.apeEmpl}`}
+                departamento={e.deptEmpl}
+                cargo={e.cargEmpl}
+                correo={e.correoEmpl}
+                telefono={e.tlfEmpl}
+                id={e.idEmpl}
+                // Eliminar solo disponible para autoridades
+                onEliminar={esAutoridad
+                  ? () => handleEliminarEmpleado(e.idEmpl, `${e.nomEmpl} ${e.apeEmpl}`)
+                  : undefined
+                }
+              />
+            ))
+          }
+          {totalGeneral === 0 && busqueda !== '' && (
+            <EmptyState
+              icon="search"
+              title="Sin resultados"
+              subtitle="Intenta con otros términos de búsqueda"
+            />
+          )}
+          <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
 
-      {/* Modal de confirmación de eliminación */}
       <ConfirmModal
         visible={confirm.visible}
-        nombre={confirm.nombre}
+        titulo={confirm.titulo}
+        mensaje={confirm.mensaje}
+        labelConfirmar="Eliminar"
+        accentColor="#e63946"
         onConfirm={confirm.onConfirm}
         onCancel={closeConfirm}
       />
-
-    </View>
+    </>
   )
 }

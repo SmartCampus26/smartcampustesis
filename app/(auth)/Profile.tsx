@@ -1,236 +1,118 @@
-// 👤 Profile.tsx
-// Pantalla de perfil del usuario autenticado (usuario o empleado).
-// Muestra datos personales, estadísticas de reportes, soporte y opción de cerrar sesión.
+// 👤 Profile.tsx — solo JSX. Sin lógica, sin funciones inline.
+// Lógica → useProfile | Estilos → Profilestyles
 
-// Iconos de Expo para interfaz visual
 import { Ionicons } from '@expo/vector-icons'
-// Router para navegación entre pantallas
-import { useRouter } from 'expo-router'
-// Hooks principales de React
-import { useEffect, useState } from 'react'
-// Alert se mantiene SOLO para la confirmación de cerrar sesión (requiere 2 botones)
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
-// Estilos del perfil
-import { profileStyles as s } from '../../src/components/Profilestyles'
-// Servicios para cargar perfil y cerrar sesión
-import { cargarPerfil, ProfileData } from '../../src/services/Profileservice'
-// Contexto para limpiar fotos guardadas al cerrar sesión (solo usuarios, no empleados)
-import { Linking } from 'react-native'
-import { useSaved } from '../../src/context/SavedContext'
-// Toast global para notificaciones de error e info
 import * as React from 'react'
-import { useToast } from '../../src/components/ToastContext'
-import { useSesion } from '../../src/context/SesionContext'
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { profileStyles as s } from '../../src/styles/usuario/Profilestyles'
+import LoadingScreen from '../../src/components/ui/LoadingScreen'
+import { useProfile } from '../../src/hooks/usuarios/useProfile'
+import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { useRouter } from 'expo-router';
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-/**
- * Pantalla de perfil.
- * Carga los datos del usuario/empleado autenticado al montar.
- * Maneja el cierre de sesión con confirmación nativa (Alert de 2 botones).
- */
 export default function ProfileScreen() {
-  const router = useRouter()
-  const { clearSavedPhotos } = useSaved()
-  const { showToast } = useToast()
-  const { cerrarSesion } = useSesion()
+  const router = useRouter();
 
-  // Estado que almacena los datos del perfil
-  const [perfil, setPerfil] = useState<ProfileData | null>(null)
-  // Estado que controla el indicador de carga
-  const [cargando, setCargando] = useState(true)
-  const [confirmando, setConfirmando] = useState(false)
+  const {
+    perfil, cargando, confirmando,
+    STATS, INFO_ROWS, MENU,
+    handleCerrarSesion,
+  } = useProfile()
 
-  /**
-   * Abre WhatsApp con un mensaje predefinido para contactar soporte.
-   * Si WhatsApp no está instalado, abre el enlace en el navegador.
-   */
-  const abrirWhatsApp = () => {
-    const mensaje = encodeURIComponent('Hola, tengo una consulta sobre SmartCampus 👋')
-    Linking.openURL(`whatsapp://send?phone=593984672753&text=${mensaje}`)
-      .catch(() => {
-        Linking.openURL(`https://wa.me/593984672753?text=${mensaje}`)
-      })
-  }
-
-  // Se ejecuta una sola vez al montar el componente
-  // Carga los datos del perfil desde el servicio
-  useEffect(() => {
-    cargarPerfil()
-      .then(setPerfil)
-      .catch(() => showToast('No se pudo cargar el perfil', 'error'))
-      .finally(() => setCargando(false))
-  }, [])
-
-  /**
-   * Maneja el proceso de cierre de sesión.
-   * Usa Alert nativo para la confirmación porque requiere 2 botones (Cancelar / Cerrar Sesión).
-   * Los errores de cierre se reportan vía toast global.
-   */
-  const handleCerrarSesion = async () => {
-    try {
-      await cerrarSesion()
-      if (!perfil?.esEmpleado) clearSavedPhotos()
-      router.replace('/')
-    } catch {
-      showToast('No se pudo cerrar la sesión', 'error')
+  useAndroidBack(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      console.log("No hay historial para volver");
     }
-  }
-  // ── Loading ───────────────────────────────────────────────────────────────
+  });
 
-  if (cargando || !perfil) {
-    return (
-      <View style={s.centeredContainer}>
-        <ActivityIndicator size="large" color="#1DCDFE" />
-      </View>
-    )
-  }
+  if (cargando || !perfil) return <LoadingScreen />
 
-  // Extrae los datos principales del perfil
-  const { nombre, email, rol, depto, badge, stats } = perfil
-
-  // ── Render principal ──────────────────────────────────────────────────────
 
   return (
     <ScrollView style={s.container}>
 
-      {/* ── HEADER con avatar, nombre, email y badge de rol ── */}
+      {/* ── Encabezado: avatar, nombre, email y badge de rol ── */}
       <View style={s.header}>
         <View style={s.avatarContainer}>
           <View style={s.avatar}>
             <Ionicons name="person" size={48} color="#FFFFFF" />
           </View>
         </View>
-        <Text style={s.userName}>{nombre}</Text>
-        <Text style={s.userEmail}>{email}</Text>
+        <Text style={s.userName}>{perfil.nombre}</Text>
+        <Text style={s.userEmail}>{perfil.email}</Text>
         <View style={s.userBadge}>
-          <Ionicons name={badge.icon as any} size={14} color="#21C0B2" />
-          <Text style={s.userBadgeText}>{badge.label}</Text>
+          <Ionicons name={perfil.badge.icon as any} size={14} color="#21C0B2" />
+          <Text style={s.userBadgeText}>{perfil.badge.label}</Text>
         </View>
       </View>
 
-      {/* ── TARJETA DE ESTADÍSTICAS ── */}
+      {/* ── Tarjeta de estadísticas ── */}
       <View style={s.statsCard}>
         <Text style={s.statsTitle}>Mis Estadísticas</Text>
         <View style={s.statsGrid}>
-          <View style={s.statItem}>
-            <Text style={s.statNumber}>{stats.total}</Text>
-            <Text style={s.statLabel}>Total</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statNumber, { color: '#FFA726' }]}>{stats.pendientes}</Text>
-            <Text style={s.statLabel}>Pendientes</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statNumber, { color: '#21D0B2' }]}>{stats.enProceso}</Text>
-            <Text style={s.statLabel}>En Proceso</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statNumber, { color: '#34F5C5' }]}>{stats.resueltos}</Text>
-            <Text style={s.statLabel}>Resueltos</Text>
-          </View>
+          {STATS.map(({ key, label, color }, i) => (
+            <React.Fragment key={key}>
+              {i > 0 && <View style={s.statDivider} />}
+              <View style={s.statItem}>
+                <Text style={[s.statNumber, color ? { color } : undefined]}>
+                  {perfil.stats[key]}
+                </Text>
+                <Text style={s.statLabel}>{label}</Text>
+              </View>
+            </React.Fragment>
+          ))}
         </View>
       </View>
 
-      {/* ── INFORMACIÓN PERSONAL ── */}
+      {/* ── Información personal ── */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Información Personal</Text>
         <View style={s.infoCard}>
-          <View style={s.infoRow}>
-            <Ionicons name="person-outline" size={20} color="#2F455C" />
-            <View style={s.infoTextContainer}>
-              <Text style={s.infoLabel}>Nombre Completo</Text>
-              <Text style={s.infoValue}>{nombre}</Text>
-            </View>
-          </View>
-          <View style={s.divider} />
-          <View style={s.infoRow}>
-            <Ionicons name="mail-outline" size={20} color="#2F455C" />
-            <View style={s.infoTextContainer}>
-              <Text style={s.infoLabel}>Correo Electrónico</Text>
-              <Text style={s.infoValue}>{email}</Text>
-            </View>
-          </View>
-          <View style={s.divider} />
-          <View style={s.infoRow}>
-            <Ionicons name="briefcase-outline" size={20} color="#2F455C" />
-            <View style={s.infoTextContainer}>
-              <Text style={s.infoLabel}>Cargo/Rol</Text>
-              <Text style={s.infoValue}>{rol}</Text>
-            </View>
-          </View>
-          {/* El departamento solo existe para empleados */}
-          {depto && (
-            <>
-              <View style={s.divider} />
+          {INFO_ROWS.map(({ icon, label, value }, i) => (
+            <React.Fragment key={label}>
+              {i > 0 && <View style={s.divider} />}
               <View style={s.infoRow}>
-                <Ionicons name="business-outline" size={20} color="#2F455C" />
+                <Ionicons name={icon} size={20} color="#2F455C" />
                 <View style={s.infoTextContainer}>
-                  <Text style={s.infoLabel}>Departamento</Text>
-                  <Text style={s.infoValue}>{depto}</Text>
+                  <Text style={s.infoLabel}>{label}</Text>
+                  <Text style={s.infoValue}>{value}</Text>
                 </View>
               </View>
-            </>
-          )}
+            </React.Fragment>
+          ))}
         </View>
       </View>
 
-      {/* ── SECCIÓN DE SOPORTE ── */}
+      {/* ── Sección de soporte ── */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Soporte</Text>
-
-        {/* Abre WhatsApp de soporte */}
-        <TouchableOpacity style={s.menuItem} onPress={abrirWhatsApp}>
-          <View style={s.menuItemLeft}>
-            <View style={[s.menuIcon, { backgroundColor: '#E0F7FA' }]}>
-              <Ionicons name="help-circle-outline" size={20} color="#00ACC1" />
+        {MENU.map(({ iconName, iconBg, iconColor, label, onPress }) => (
+          <TouchableOpacity key={label} style={s.menuItem} onPress={onPress}>
+            <View style={s.menuItemLeft}>
+              <View style={[s.menuIcon, { backgroundColor: iconBg }]}>
+                <Ionicons name={iconName} size={20} color={iconColor} />
+              </View>
+              <Text style={s.menuItemText}>{label}</Text>
             </View>
-            <Text style={s.menuItemText}>Ayuda y Soporte</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
-        </TouchableOpacity>
-
-        {/* Muestra info de versión vía toast */}
-        <TouchableOpacity style={s.menuItem} onPress={() => showToast('Sistema de Gestión de Reportes v1.0', 'info')}>
-          <View style={s.menuItemLeft}>
-            <View style={[s.menuIcon, { backgroundColor: '#F3E5F5' }]}>
-              <Ionicons name="information-circle-outline" size={20} color="#AB47BC" />
-            </View>
-            <Text style={s.menuItemText}>Acerca de</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
-        </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* ── BOTÓN DE CERRAR SESIÓN ── */}
+      {/* ── Cerrar sesión (doble toque para confirmar) ── */}
       <View style={s.section}>
-  <TouchableOpacity
-    style={[s.logoutButton, confirmando && { borderColor: '#FF5252', backgroundColor: '#FFF5F5' }]}
-    onPress={async () => {
-      if (!confirmando) {
-        setConfirmando(true)
-        showToast('Toca de nuevo para confirmar cierre de sesión', 'info')
-        setTimeout(() => setConfirmando(false), 3000)
-        return
-      }
-      try {
-        await cerrarSesion()
-        if (!perfil?.esEmpleado) clearSavedPhotos()
-        router.replace('/')
-      } catch {
-        showToast('No se pudo cerrar la sesión', 'error')
-      }
-    }}
-  >
-    <Ionicons name="log-out-outline" size={20} color="#FF5252" />
-    <Text style={s.logoutText}>
-      {confirmando ? '¿Confirmar cierre?' : 'Cerrar Sesión'}
-    </Text>
-  </TouchableOpacity>
-</View>
+        <TouchableOpacity
+          style={[s.logoutButton, confirmando && { borderColor: '#FF5252', backgroundColor: '#FFF5F5' }]}
+          onPress={handleCerrarSesion}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#FF5252" />
+          <Text style={s.logoutText}>
+            {confirmando ? '¿Confirmar cierre?' : 'Cerrar Sesión'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={s.versionContainer}>
         <Text style={s.versionText}>Versión 1.0.0</Text>
@@ -240,3 +122,4 @@ export default function ProfileScreen() {
     </ScrollView>
   )
 }
+
