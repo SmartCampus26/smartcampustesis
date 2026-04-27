@@ -10,11 +10,11 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 import * as React from 'react'
-import { ActivityIndicator, Image, ScrollView, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { styles } from '../../src/styles/reportes/CrearReporteStyles'
-import { CATEGORIAS_OBJETOS, LUGARES_PREDEFINIDOS, TIPOS_AULA } from '../../src/services/reportes/CrearReporteServices'
-import { useCrearReporte } from '../../src/hooks/reportes/useCrearReporte'
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { useAndroidBack } from '../../src/hooks/androidService/useAndroidBack'
+import { useCrearReporte } from '../../src/hooks/reportes/useCrearReporte'
+import { CATEGORIAS_OBJETOS, LUGARES_PREDEFINIDOS, TIPOS_AULA } from '../../src/services/reportes/CrearReporteServices'
+import { styles } from '../../src/styles/reportes/CrearReporteStyles'
 
 export default function CrearReporte() {
   const { idUser, nombreUsuario } = useLocalSearchParams<{ idUser: string; nombreUsuario: string }>()
@@ -61,7 +61,7 @@ export default function CrearReporte() {
             </View>
             <TouchableOpacity style={styles.cameraButton} onPress={() => require('expo-router').router.push('/Camera')}>
               <Ionicons name="camera" size={24} color="#FFFFFF" />
-              <Text style={styles.cameraButtonText}>{savedPhotos.length > 0 ? 'Agregar más fotos' : 'Tomar Fotos'}</Text>
+              <Text style={styles.cameraButtonText}>{savedPhotos.length > 0 ? 'Reiniciar foto' : 'Tomar Fotos'}</Text>
             </TouchableOpacity>
             {savedPhotos.length > 0 && (
               <View style={styles.photosPreview}>
